@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
+  m_Name: GreenHelmet
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
+  itemName: GreenHelmet
+  slot: 3
+  inventoryIcon: {fileID: 3822735974016340120, guid: 4cadfed79a53b344986303bada3f1fcf, type: 3}
+  rarityColour: {r: 1, g: 1, b: 1, a: 1}
+  healthBonus: 0
+  abilityBonus: 0
+  damageBonus: 0
+  walkSprites:
+  - {fileID: 21300000, guid: 66b51bc803033b14c80f75a5d12ac8f2, type: 3}
+  - {fileID: 21300000, guid: 9c970aed9c102b749891fa736388ce4a, type: 3}
+  - {fileID: 21300000, guid: e623c7e06c7ec264e9036e06e4b27b88, type: 3}
+  - {fileID: 21300000, guid: f01407b6e8daf9a4c8a8d24f61f9bcf8, type: 3}
+  - {fileID: 21300000, guid: 80f8a49b5a2de5246b23b9c9758b1fdb, type: 3}
+  - {fileID: 21300000, guid: 7114a5a01b5832d47a014005fd43c3bc, type: 3}
+  - {fileID: 21300000, guid: 5705c560bec33f141925b88284c6d1e3, type: 3}
+  - {fileID: 21300000, guid: f97ff509d96aa424d903f60bb598d05e, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: c9a5ce51c693d7045b9789dd8c95a018, type: 3}
+  - {fileID: 21300000, guid: 97e5537aaacb73347b0890c8c80f4ea1, type: 3}
+  - {fileID: 21300000, guid: 31a65b29358897146a0825e6ca01a496, type: 3}
+  - {fileID: 21300000, guid: 30c14c61847bba1438555621e6c4a857, type: 3}
+  deathSprites:
+  - {fileID: 21300000, guid: 75dd3bc4946727d4aa1af08befbb5249, type: 3}
+  - {fileID: 21300000, guid: 7054ff1d57353f7449942c319339bd6b, type: 3}
+  - {fileID: 21300000, guid: 0a4b1c90cc255954eb106798d8dda5a1, type: 3}
+  - {fileID: 21300000, guid: 5f3fd70ffaeebda44a83a4d3cb259b5b, type: 3}
+  - {fileID: 21300000, guid: 115855aee8c3ce6478c8a8003a8466f2, type: 3}
+  - {fileID: 21300000, guid: a69267c2564fb154fbc086e9c37b099a, type: 3}
+  - {fileID: 21300000, guid: c21fe0a4bce0ea54ea3a63f037a03474, type: 3}
+  bodyTypeVariants: []

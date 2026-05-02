@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
+  m_Name: SilverHelmet
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
+  itemName: SilverHelmet
+  slot: 3
+  inventoryIcon: {fileID: 21300000, guid: 4cf2a826653e4fe469f72c0b1192934b, type: 3}
+  rarityColour: {r: 1, g: 1, b: 1, a: 1}
+  healthBonus: 0
+  abilityBonus: 0
+  damageBonus: 0
+  walkSprites:
+  - {fileID: 21300000, guid: 882c84018f8f39247b985a0ac9bbffc3, type: 3}
+  - {fileID: 21300000, guid: 7abe1fee446513447962ae790eb1b28e, type: 3}
+  - {fileID: 21300000, guid: 60dcc32eedd6f114ca13215a7534f1f0, type: 3}
+  - {fileID: 21300000, guid: 7480738ac0f22414f84159b13a7a5ee2, type: 3}
+  - {fileID: 21300000, guid: f0cc21430eb958541b95e0a195a3abf3, type: 3}
+  - {fileID: 21300000, guid: 0e3d07362c7174a49bab2526716cc15e, type: 3}
+  - {fileID: 21300000, guid: d4fe842f3a17fb04dac76a9e8bb0ecf6, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: b1b347f972f0bbe4cbee060a0c51237b, type: 3}
+  - {fileID: 21300000, guid: 1c9be860d97ab494d87632e7557ac27d, type: 3}
+  - {fileID: 21300000, guid: 57988fef9b1c07543b823e5b341fdebb, type: 3}
+  - {fileID: 21300000, guid: 0570414cd70bb374285fe59ad423a0b7, type: 3}
+  deathSprites:
+  - {fileID: 21300000, guid: 406cc8185c4437f46b62d63ff2c21d32, type: 3}
+  - {fileID: 21300000, guid: 6752d929921aa0a41a444225ab86c046, type: 3}
+  - {fileID: 21300000, guid: 58d5cc28d29035b49a1a88e4464779b6, type: 3}
+  - {fileID: 21300000, guid: 967b375abd8c16b4da45ad5bf60133d5, type: 3}
+  - {fileID: 21300000, guid: 5c2f61a7b9dc25c41bbc78fd3c055420, type: 3}
+  - {fileID: 21300000, guid: ea82f55c78bbc0c46a73c3668c57508b, type: 3}
+  - {fileID: 21300000, guid: 11b501d50c64017478bf4f460cc141f5, type: 3}
+  bodyTypeVariants:
+  - bodyType: 0
+    walkSprites: []
+    idleSprites: []
+    deathSprites: []

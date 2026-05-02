@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 164c32e8cd6a00543b8f61d6799cb008, type: 3}
+  m_Name: BlackHorse
+  m_EditorClassIdentifier: Assembly-CSharp::HorseData
+  horseName: Hollow
+  level: 2
+  cost: 150
+  age: 20
+  prefab: {fileID: 9120316277647439233, guid: a0c207af296750942a178619cbd7e5f2, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: 871b9a5063407194688b5dd3e0bc5193, type: 3}
+  - {fileID: 21300000, guid: 562bb473c0a4a054ca7485a73c5f2e14, type: 3}
+  - {fileID: 21300000, guid: 272241fb89e1ebe4793a2a57fbf1c353, type: 3}
+  - {fileID: 21300000, guid: 5b029a384f32bf840a731b9ef6e9ebfd, type: 3}
+  - {fileID: 21300000, guid: 190257f5d5928b149a1fceb3cabfdced, type: 3}
+  - {fileID: 21300000, guid: 0901638959a31994598524c975747810, type: 3}
+  idleFPS: 6
+  health: 45
+  ability: 55
+  damage: 55
+  upgradeHealthGain: 10
+  upgradeAbilityGain: 8
+  upgradeDamageGain: 12
+  upgradeDuration: 10

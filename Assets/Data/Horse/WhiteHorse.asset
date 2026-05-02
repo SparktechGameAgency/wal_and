@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 164c32e8cd6a00543b8f61d6799cb008, type: 3}
+  m_Name: WhiteHorse
+  m_EditorClassIdentifier: Assembly-CSharp::HorseData
+  horseName: Ashy
+  level: 3
+  cost: 200
+  age: 25
+  prefab: {fileID: 2288478195812368321, guid: 4544ca183c965794da9b81c406ef3655, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: 9986ee98d2cbeec4fb8df1ae9c013d0e, type: 3}
+  - {fileID: 21300000, guid: 83c7a72b8c794a749a5c89d3b1971642, type: 3}
+  - {fileID: 21300000, guid: a8f721b44c28d2247ad0231257ed63c5, type: 3}
+  - {fileID: 21300000, guid: ce0c78b9fe9047b4e8a7da6bc4ca4e9b, type: 3}
+  - {fileID: 21300000, guid: 14761fde00d4aba4cb3fd557686b555d, type: 3}
+  - {fileID: 21300000, guid: 1a10411783fee234886c6678871d199f, type: 3}
+  idleFPS: 6
+  health: 50
+  ability: 50
+  damage: 60
+  upgradeHealthGain: 15
+  upgradeAbilityGain: 12
+  upgradeDamageGain: 13
+  upgradeDuration: 10
