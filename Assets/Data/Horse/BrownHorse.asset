@@ -26,8 +26,8 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 7f2b1beb3679ed847914a8fe9350d5bf, type: 3}
   idleFPS: 6
   health: 40
-  ability: 35
-  damage: 40
+  ability: 25
+  damage: 35
   upgradeHealthGain: 7
   upgradeAbilityGain: 5
   upgradeDamageGain: 4

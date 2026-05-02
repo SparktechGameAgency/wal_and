@@ -2032,13 +2032,14 @@ GameObject:
   - component: {fileID: 91984274}
   - component: {fileID: 91984276}
   - component: {fileID: 91984275}
+  - component: {fileID: 91984277}
   m_Layer: 0
   m_Name: Level5
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &91984274
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2098,6 +2099,23 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 91984273}
   m_CullTransparentMesh: 1
+--- !u!114 &91984277
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 91984273}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5d0f894757641e4db665becb5af1125, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HorseLevelButton
+  levelText: {fileID: 1157509292}
+  horseThumb: {fileID: 0}
+  cardButton: {fileID: 0}
+  lockObject: {fileID: 1335872558}
+  selectedObject: {fileID: 0}
 --- !u!1 &92618858
 GameObject:
   m_ObjectHideFlags: 0
@@ -4849,7 +4867,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &208814755
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4867,8 +4885,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -206, y: 73.29999}
-  m_SizeDelta: {x: 121.16, y: 45.43}
+  m_AnchoredPosition: {x: -119.99997, y: 73.29999}
+  m_SizeDelta: {x: 150, y: 50}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &208814756
 MonoBehaviour:
@@ -10339,7 +10357,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &472415909
 RectTransform:
   m_ObjectHideFlags: 0
@@ -10357,8 +10375,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -206, y: 73.29999}
-  m_SizeDelta: {x: 121.16, y: 45.43}
+  m_AnchoredPosition: {x: -120, y: 73.29999}
+  m_SizeDelta: {x: 150, y: 50}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &472415910
 MonoBehaviour:
@@ -19607,13 +19625,14 @@ GameObject:
   - component: {fileID: 880790071}
   - component: {fileID: 880790073}
   - component: {fileID: 880790072}
+  - component: {fileID: 880790074}
   m_Layer: 0
   m_Name: Level6
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &880790071
 RectTransform:
   m_ObjectHideFlags: 0
@@ -19673,6 +19692,23 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 880790070}
   m_CullTransparentMesh: 1
+--- !u!114 &880790074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 880790070}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5d0f894757641e4db665becb5af1125, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HorseLevelButton
+  levelText: {fileID: 463306144}
+  horseThumb: {fileID: 0}
+  cardButton: {fileID: 0}
+  lockObject: {fileID: 220532854}
+  selectedObject: {fileID: 0}
 --- !u!1 &882215398
 GameObject:
   m_ObjectHideFlags: 0
@@ -21071,7 +21107,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -23, y: 64}
+  m_AnchoredPosition: {x: -95, y: 64}
   m_SizeDelta: {x: 165.14, y: 66.06}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &964802089
@@ -23639,7 +23675,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1085169905
 RectTransform:
   m_ObjectHideFlags: 0
@@ -23657,8 +23693,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -206, y: 73.29999}
-  m_SizeDelta: {x: 121.16, y: 45.43}
+  m_AnchoredPosition: {x: -114, y: 73.29999}
+  m_SizeDelta: {x: 150, y: 50}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &1085169906
 MonoBehaviour:
@@ -25443,7 +25479,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1192568290
 RectTransform:
   m_ObjectHideFlags: 0
@@ -28538,7 +28574,7 @@ MonoBehaviour:
   horseLevelText: {fileID: 1885266596}
   costText: {fileID: 1684751922}
   coinText: {fileID: 2136595633}
-  startingGold: 500
+  startingGold: 1000
   warningText: {fileID: 461779980}
 --- !u!1 &1387012313
 GameObject:
@@ -29109,13 +29145,14 @@ GameObject:
   - component: {fileID: 1417218150}
   - component: {fileID: 1417218152}
   - component: {fileID: 1417218151}
+  - component: {fileID: 1417218153}
   m_Layer: 0
   m_Name: Level4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1417218150
 RectTransform:
   m_ObjectHideFlags: 0
@@ -29175,6 +29212,23 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1417218149}
   m_CullTransparentMesh: 1
+--- !u!114 &1417218153
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1417218149}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5d0f894757641e4db665becb5af1125, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HorseLevelButton
+  levelText: {fileID: 808819446}
+  horseThumb: {fileID: 0}
+  cardButton: {fileID: 0}
+  lockObject: {fileID: 232257367}
+  selectedObject: {fileID: 0}
 --- !u!1 &1418353463
 GameObject:
   m_ObjectHideFlags: 0
