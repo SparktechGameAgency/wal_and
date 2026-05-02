@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
+  m_Name: LiteWhite
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
+  itemName: LiteWhite
+  slot: 1
+  inventoryIcon: {fileID: 21300000, guid: e6af1cfe3d0487d4cb4be41eb10cfc8a, type: 3}
+  rarityColour: {r: 1, g: 1, b: 1, a: 1}
+  healthBonus: 0
+  abilityBonus: 0
+  damageBonus: 0
+  walkSprites:
+  - {fileID: 21300000, guid: bdf4b511db9a7fc41bd0b8ee995b76c0, type: 3}
+  - {fileID: 21300000, guid: 6b7322379502388488f6782c14865069, type: 3}
+  - {fileID: 21300000, guid: b4bed3f5e7e934940881190cc56030a3, type: 3}
+  - {fileID: 21300000, guid: 95713508f47e2b1458704152405e5db7, type: 3}
+  - {fileID: 21300000, guid: 08602d4d62981ee418f6d7410066572d, type: 3}
+  - {fileID: 21300000, guid: a81bcb745e0e3ce40bb22c8dcbc732e1, type: 3}
+  - {fileID: 21300000, guid: 4d1f5404e30415748a69ba7bc714976e, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: fd0d8be7be845434d91bf4a700facc21, type: 3}
+  - {fileID: 21300000, guid: 36464b6488162484b82cb99096b3756b, type: 3}
+  - {fileID: 21300000, guid: 4776628e6ed936047a07523902418cb3, type: 3}
+  - {fileID: 21300000, guid: f61a68e59c25d4649b1882cd450da6d1, type: 3}
+  deathSprites:
+  - {fileID: 21300000, guid: 11eb75eec53402b468a4e08a8f715046, type: 3}
+  - {fileID: 21300000, guid: cb25528ccd0647245aed846615c78819, type: 3}
+  - {fileID: 21300000, guid: 07da16ee44047994ead498a83d2465b6, type: 3}
+  - {fileID: 21300000, guid: 9ac63ff860e870e438026ef656fd36a1, type: 3}
+  - {fileID: 21300000, guid: 77a9a6a1332e1da4eae62781253519a8, type: 3}
+  - {fileID: 21300000, guid: b53a7d15d6602294b8ba614bc7434177, type: 3}
+  - {fileID: 21300000, guid: 9fceffb77bd259c49b4b481e256fac55, type: 3}
+  bodyTypeVariants: []

@@ -4849,7 +4849,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &208814755
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4867,7 +4867,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -41, y: 73.29999}
+  m_AnchoredPosition: {x: -206, y: 73.29999}
   m_SizeDelta: {x: 121.16, y: 45.43}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &208814756
@@ -9656,7 +9656,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -13024,7 +13024,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -15839,7 +15839,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &704617207
 RectTransform:
   m_ObjectHideFlags: 0
@@ -25214,7 +25214,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1192568290
 RectTransform:
   m_ObjectHideFlags: 0
@@ -27906,7 +27906,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1354508104
 RectTransform:
   m_ObjectHideFlags: 0
@@ -28287,9 +28287,7 @@ MonoBehaviour:
   - {fileID: 668555907}
   - {fileID: 424153029}
   - {fileID: 521004410}
-  levelCardsParent: {fileID: 784797198}
   previewImage: {fileID: 1857148710}
-  previewCostText: {fileID: 1684751922}
   previewNameText: {fileID: 993560128}
   previewAgeText: {fileID: 914820904}
   healthBar: {fileID: 221866192}
@@ -28304,11 +28302,12 @@ MonoBehaviour:
   buyButton: {fileID: 1085169906}
   buyButtonText: {fileID: 863619595}
   sellButton: {fileID: 472415910}
-  sellPriceText: {fileID: 442488115}
-  upgradeButton: {fileID: 964802091}
-  upgradeButtonText: {fileID: 1453987269}
+  updateButton: {fileID: 964802091}
+  updateButtonText: {fileID: 1453987269}
+  equipButton: {fileID: 208814756}
   upgradeTimerText: {fileID: 1595865111}
   horseLevelText: {fileID: 1885266596}
+  costText: {fileID: 1684751922}
   coinText: {fileID: 2136595633}
   startingGold: 500
   warningText: {fileID: 461779980}
@@ -32051,7 +32050,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1595865110
 RectTransform:
   m_ObjectHideFlags: 0

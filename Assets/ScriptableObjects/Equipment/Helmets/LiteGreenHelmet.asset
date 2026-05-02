@@ -14,12 +14,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
   itemName: LiteGreenHelmet
   slot: 3
-  inventoryIcon: {fileID: 21300000, guid: ce64cac2c5b4b3446a54561435d95708, type: 3}
+  inventoryIcon: {fileID: 21300000, guid: 82acb49088847df4d8ee55ca87c27e16, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
   healthBonus: 0
   abilityBonus: 0
   damageBonus: 0
-  walkSprites: []
-  idleSprites: []
-  deathSprites: []
+  walkSprites:
+  - {fileID: 21300000, guid: 42011455d058b634a8aee736f7ce7405, type: 3}
+  - {fileID: 21300000, guid: e2c3770f654c3c44a8c13a7b1f5faa71, type: 3}
+  - {fileID: 21300000, guid: 54868f1acf28c1c4992f260d05f6a58c, type: 3}
+  - {fileID: 21300000, guid: 07629eb7395473847975cdacb46a4475, type: 3}
+  - {fileID: 21300000, guid: 4f22cace92720a74281cd65e526f0b8c, type: 3}
+  - {fileID: 21300000, guid: dfc307d1d65acfd46a957985e93364de, type: 3}
+  - {fileID: 21300000, guid: 3d26fcbee95928b44bbb2b8430559f1f, type: 3}
+  - {fileID: 21300000, guid: d76ced848a67aa0419febc788614ac64, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: 065502ba4deb02e488fcd44715bf046a, type: 3}
+  - {fileID: 21300000, guid: 7b084394ad275a242af5351976452759, type: 3}
+  - {fileID: 21300000, guid: 28b629c976a5aec4599fea8315481103, type: 3}
+  - {fileID: 21300000, guid: 60e7d1ea8b82a2044b7ed64250dbc8ca, type: 3}
+  deathSprites:
+  - {fileID: 21300000, guid: 347dfa5792bb33c429bbbf2cd52e02a6, type: 3}
+  - {fileID: 21300000, guid: b34537682a54cd04eb5a8919fb1f5e0b, type: 3}
+  - {fileID: 21300000, guid: fcd436316b0584847b8460c9af145e64, type: 3}
+  - {fileID: 21300000, guid: 114bdb45941b33a4bb1d84870f8b5ede, type: 3}
+  - {fileID: 21300000, guid: 35f59e32706a5644288517373b56faec, type: 3}
+  - {fileID: 21300000, guid: 3e5f60b72bbf9c74ebeda7f52c526950, type: 3}
+  - {fileID: 21300000, guid: c40559424f02cac4199c827e2ea190e6, type: 3}
   bodyTypeVariants: []
