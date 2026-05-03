@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
+  m_Name: ShortAxe
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
+  itemName: ShortAxe
+  slot: 5
+  inventoryIcon: {fileID: 21300000, guid: 2353589d7122ae34aa3fdf62dbd7c04a, type: 3}
+  rarityColour: {r: 1, g: 1, b: 1, a: 1}
+  healthBonus: 0
+  abilityBonus: 0
+  damageBonus: 0
+  walkSprites:
+  - {fileID: 21300000, guid: 2f68c7c5e039fbc4692fd1e1020d7bef, type: 3}
+  - {fileID: 21300000, guid: 8f6db1443b18675429f4615d7e4dff24, type: 3}
+  - {fileID: 21300000, guid: 325f74a44578a25459eebc1e7fc2e104, type: 3}
+  - {fileID: 21300000, guid: 748dac2a84ab7fc4ba51e7f6c3f82e54, type: 3}
+  - {fileID: 21300000, guid: e94264f5c046fdf428a588e3ef85b6d4, type: 3}
+  - {fileID: 21300000, guid: 1618338b86c169c409742f9632b0923f, type: 3}
+  - {fileID: 21300000, guid: a66503b6b12c5ce4c8f9f8a2c535e0b9, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: 8182113218c24d74195cb895607ed44e, type: 3}
+  - {fileID: 21300000, guid: 9374542bd0acb6c49a33d310dd904a47, type: 3}
+  - {fileID: 21300000, guid: 6aff27efa3aff254e92ff301534ede4f, type: 3}
+  - {fileID: 21300000, guid: 44307f8cac412154a8839e59fe909dbc, type: 3}
+  deathSprites:
+  - {fileID: 21300000, guid: c4bdb134dc08e0b44a74b809e0b8958c, type: 3}
+  - {fileID: 21300000, guid: 39df094e0a40fd047a7bf98df352c2b6, type: 3}
+  - {fileID: 21300000, guid: 653a159717380b94aadf2cd49ae8c830, type: 3}
+  - {fileID: 21300000, guid: c2afe0d2466fae04ab4d95bd3eed65aa, type: 3}
+  - {fileID: 21300000, guid: 59b77864fe52bad48a34a13d4092151f, type: 3}
+  - {fileID: 21300000, guid: 94c3a4c185cdaa94b8dae6ddfac28b3a, type: 3}
+  - {fileID: 21300000, guid: 212a86c5f6f51d14fb8db49e8139c73c, type: 3}
+  bodyTypeVariants: []

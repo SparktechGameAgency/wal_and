@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
+  m_Name: ShortSword
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
+  itemName: ShortSword
+  slot: 5
+  inventoryIcon: {fileID: 21300000, guid: f89ce7beaaf869d4486a9ca2a3d379c0, type: 3}
+  rarityColour: {r: 1, g: 1, b: 1, a: 1}
+  healthBonus: 0
+  abilityBonus: 0
+  damageBonus: 0
+  walkSprites:
+  - {fileID: 21300000, guid: 61448a741d7fd4e4eac150590abc46d1, type: 3}
+  - {fileID: 21300000, guid: 988f551a1306cbb4f9893beb5f0923bb, type: 3}
+  - {fileID: 21300000, guid: a00e293e553cc874eb1392b4666827eb, type: 3}
+  - {fileID: 21300000, guid: d790f6ddffc8b9b459be282153351ab3, type: 3}
+  - {fileID: 21300000, guid: 64a7d6908c501ad42945ec93988111d0, type: 3}
+  - {fileID: 21300000, guid: 7ee9cca750a9c3740b85a31cd38f9432, type: 3}
+  - {fileID: 21300000, guid: 4075434e0e6ce0f41a54959cf495d30d, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: 0a91f57620ad52946b7c7cdd2c4c2fe0, type: 3}
+  - {fileID: 21300000, guid: 06c9f1f3c76f7404e8b58e9bee22fbaf, type: 3}
+  - {fileID: 21300000, guid: 3733d52846ada44418dcbb828e52f46f, type: 3}
+  - {fileID: 21300000, guid: fbd17bead199ef446960100ba5a199a6, type: 3}
+  deathSprites:
+  - {fileID: 21300000, guid: 77a6916f9264bf74e877d5b4c0f1de6d, type: 3}
+  - {fileID: 21300000, guid: d45c0a85019fa0b4388102dcf7cc24ba, type: 3}
+  - {fileID: 21300000, guid: 2d0748102fb485e4e8ce6d7eb33c9630, type: 3}
+  - {fileID: 21300000, guid: 607ca0cd26110c748b5dd1c0d5b89034, type: 3}
+  - {fileID: 21300000, guid: 6ced950c5129c144aac53440610e9625, type: 3}
+  - {fileID: 21300000, guid: 4389f5c6350505c47bdc8eaf3039fc3e, type: 3}
+  - {fileID: 21300000, guid: 2cc621a911905b146b1356e3ebbeb118, type: 3}
+  bodyTypeVariants: []
