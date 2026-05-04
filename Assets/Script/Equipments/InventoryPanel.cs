@@ -1,70 +1,513 @@
-////using System.Collections.Generic;
+////////using System.Collections.Generic;
+////////using UnityEngine;
+////////using UnityEngine.UI;
+////////using TMPro;
+
+/////////// <summary>
+/////////// AREA FORGE - InventoryPanel
+///////////
+/////////// The main inventory window. Shows one tab per equipment slot.
+/////////// Clicking a tab filters the item grid to show only items for that slot.
+/////////// Clicking an item equips it on the soldier instantly.
+///////////
+/////////// ── UI Hierarchy to build ────────────────────────────────────────────────────
+///////////
+///////////   InventoryPanel  (Panel)           ← InventoryPanel.cs
+///////////     ├── TabBar    (HorizontalLayoutGroup)
+///////////     │     ├── Tab_BodyType  (Button + TabButton.cs)
+///////////     │     ├── Tab_Face      (Button + TabButton.cs)
+///////////     │     ├── Tab_Hair      (Button + TabButton.cs)
+///////////     │     ├── Tab_Helmet    (Button + TabButton.cs)
+///////////     │     ├── Tab_Armor     (Button + TabButton.cs)
+///////////     │     └── Tab_Weapon    (Button + TabButton.cs)
+///////////     ├── ItemGrid  (ScrollRect → Viewport → Content)
+///////////     │     └── Content  (GridLayoutGroup)  ← SlotButton prefabs spawn here
+///////////     └── StatsPreview (optional)
+///////////           ├── HPText   (TextMeshProUGUI)
+///////////           ├── APText   (TextMeshProUGUI)
+///////////           └── ADText   (TextMeshProUGUI)
+///////////
+/////////// ── Inspector fields ─────────────────────────────────────────────────────────
+///////////   • soldierEquipment  → drag the SolderPrefab (or its CharacterEquipment)
+///////////   • allItems[]        → drag ALL your EquipmentItem ScriptableObject assets
+///////////   • slotButtonPrefab  → drag the SlotButton prefab
+///////////   • gridContent       → drag the Content object inside the ScrollRect
+///////////   • tab buttons       → drag each Tab_XXX button
+/////////// </summary>
+////////public class InventoryPanel : MonoBehaviour
+////////{
+////////    // ─── Inspector ────────────────────────────────────────────────────────────
+
+////////    [Header("Soldier Reference")]
+////////    [Tooltip("The soldier whose equipment this panel controls")]
+////////    [SerializeField] private CharacterEquipment soldierEquipment;
+
+////////    [Header("All Equipment Items")]
+////////    [Tooltip("Drag every EquipmentItem ScriptableObject asset here")]
+////////    [SerializeField] private EquipmentItem[] allItems;
+
+////////    [Header("Grid")]
+////////    [Tooltip("The SlotButton prefab (has InventorySlotButton + Button + Image)")]
+////////    [SerializeField] private GameObject slotButtonPrefab;
+////////    [Tooltip("GridLayoutGroup Content object inside the ScrollRect")]
+////////    [SerializeField] private Transform gridContent;
+
+////////    [Header("Tab Buttons (one per slot — order must match EquipmentSlot enum)")]
+////////    [SerializeField] private Button tabBodyType;
+////////    [SerializeField] private Button tabFace;
+////////    [SerializeField] private Button tabHair;
+////////    [SerializeField] private Button tabHelmet;
+////////    [SerializeField] private Button tabArmor;
+////////    [SerializeField] private Button tabWeapon;
+
+////////    [Header("Tab Active Colour")]
+////////    [SerializeField] private Color tabActiveColor = new Color(0.9f, 0.7f, 0.1f);
+////////    [SerializeField] private Color tabInactiveColor = new Color(0.2f, 0.2f, 0.2f);
+
+////////    [Header("Stats Preview (optional — leave null to skip)")]
+////////    [SerializeField] private TextMeshProUGUI hpText;
+////////    [SerializeField] private TextMeshProUGUI apText;
+////////    [SerializeField] private TextMeshProUGUI adText;
+
+////////    // ─── Private ──────────────────────────────────────────────────────────────
+
+////////    private EquipmentSlot _activeSlot = EquipmentSlot.Armor;
+////////    private readonly List<InventorySlotButton> _spawnedButtons = new();
+
+////////    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
+
+////////    private void Awake()
+////////    {
+////////        // Wire tab buttons
+////////        tabBodyType?.onClick.AddListener(() => ShowSlot(EquipmentSlot.BodyType));
+////////        tabFace?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Face));
+////////        tabHair?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Hair));
+////////        tabHelmet?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Helmet));
+////////        tabArmor?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Armor));
+////////        tabWeapon?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Weapon));
+////////    }
+
+////////    private void OnEnable()
+////////    {
+////////        // Refresh stats display whenever the panel is opened
+////////        if (soldierEquipment != null)
+////////            soldierEquipment.OnEquipmentChanged += OnEquipmentChanged;
+
+////////        ShowSlot(_activeSlot);
+////////        RefreshStats();
+////////    }
+
+////////    private void OnDisable()
+////////    {
+////////        if (soldierEquipment != null)
+////////            soldierEquipment.OnEquipmentChanged -= OnEquipmentChanged;
+////////    }
+
+////////    // ─── Tab Logic ────────────────────────────────────────────────────────────
+
+////////    private void ShowSlot(EquipmentSlot slot)
+////////    {
+////////        _activeSlot = slot;
+////////        UpdateTabColours();
+////////        PopulateGrid(slot);
+////////    }
+
+////////    private void UpdateTabColours()
+////////    {
+////////        SetTabColour(tabBodyType, EquipmentSlot.BodyType);
+////////        SetTabColour(tabFace, EquipmentSlot.Face);
+////////        SetTabColour(tabHair, EquipmentSlot.Hair);
+////////        SetTabColour(tabHelmet, EquipmentSlot.Helmet);
+////////        SetTabColour(tabArmor, EquipmentSlot.Armor);
+////////        SetTabColour(tabWeapon, EquipmentSlot.Weapon);
+////////    }
+
+////////    private void SetTabColour(Button btn, EquipmentSlot slot)
+////////    {
+////////        if (btn == null) return;
+////////        var img = btn.GetComponent<Image>();
+////////        if (img != null)
+////////            img.color = (_activeSlot == slot) ? tabActiveColor : tabInactiveColor;
+////////    }
+
+////////    // ─── Grid Population ──────────────────────────────────────────────────────
+
+////////    private void PopulateGrid(EquipmentSlot slot)
+////////    {
+////////        // Clear existing buttons
+////////        foreach (var btn in _spawnedButtons)
+////////            if (btn != null) Destroy(btn.gameObject);
+////////        _spawnedButtons.Clear();
+
+////////        // Spawn one button per item that matches this slot
+////////        foreach (var item in allItems)
+////////        {
+////////            if (item == null || item.slot != slot) continue;
+
+////////            var go = Instantiate(slotButtonPrefab, gridContent);
+////////            var btn = go.GetComponent<InventorySlotButton>();
+////////            if (btn != null)
+////////            {
+////////                btn.Setup(item, soldierEquipment, this);
+////////                _spawnedButtons.Add(btn);
+////////            }
+////////        }
+////////    }
+
+////////    // ─── Button Refresh ───────────────────────────────────────────────────────
+
+////////    /// <summary>Called by InventorySlotButton after any equip/unequip.</summary>
+////////    public void RefreshAllButtons()
+////////    {
+////////        foreach (var btn in _spawnedButtons)
+////////            btn?.RefreshSelection();
+
+////////        RefreshStats();
+////////    }
+
+////////    // ─── Stats Preview ────────────────────────────────────────────────────────
+
+////////    private void OnEquipmentChanged(EquipmentSlot slot, EquipmentItem item)
+////////        => RefreshStats();
+
+////////    private void RefreshStats()
+////////    {
+////////        if (soldierEquipment == null) return;
+////////        var stats = soldierEquipment.GetComponent<SoldierStats>();
+////////        if (stats == null) return;
+
+////////        if (hpText != null) hpText.text = $"HP  {stats.MaxHealth:F0}";
+////////        if (apText != null) apText.text = $"AP  {stats.AbilityPower:F0}";
+////////        if (adText != null) adText.text = $"AD  {stats.AttackDamage:F0}";
+////////    }
+
+////////    // ─── Open / Close (call from a button in the HUD) ────────────────────────
+
+////////    public void Open() => gameObject.SetActive(true);
+////////    public void Close() => gameObject.SetActive(false);
+////////    public void Toggle() => gameObject.SetActive(!gameObject.activeSelf);
+////////}
+
+//////using UnityEngine;
+//////using UnityEngine.UI;
+//////using TMPro;
+
+///////// <summary>
+///////// AREA FORGE - InventoryPanel  (Pre-Placed Groups version)
+/////////
+///////// Your item buttons already exist in the hierarchy as pre-placed GameObjects,
+///////// organised into one group per slot:
+/////////
+/////////   Content
+/////////     ├── GROUP_Player   ← all BodyType buttons live here
+/////////     ├── GROUP_Head     ← all Face/Head buttons live here
+/////////     ├── GROUP_Hair
+/////////     ├── GROUP_Helmet
+/////////     ├── GROUP_Armor
+/////////     └── GROUP_Weapon
+/////////
+///////// This script shows the active group and hides all others when a tab is clicked.
+///////// It also injects the soldier reference into every InventorySlotButton child
+///////// so they can equip items at runtime.
+/////////
+///////// ── Inspector wiring ────────────────────────────────────────────────────────
+/////////   1. Drag each group GameObject into the matching Group field below.
+/////////   2. Drag each tab Button into the matching Tab field.
+/////////   3. Leave soldierEquipment EMPTY — found automatically at runtime.
+/////////   4. On each pre-placed button GameObject, add InventorySlotButton and
+/////////      drag the correct EquipmentItem asset into its "Item" field.
+///////// </summary>
+//////public class InventoryPanel : MonoBehaviour
+//////{
+//////    // ─── Inspector — Soldier ──────────────────────────────────────────────────
+
+//////    [Header("Soldier (leave empty — found at runtime)")]
+//////    [SerializeField] private CharacterEquipment soldierEquipment;
+
+//////    // ─── Inspector — Item Groups ──────────────────────────────────────────────
+
+//////    [Header("Item Groups — drag each slot's parent GameObject here")]
+//////    [SerializeField] private GameObject groupPlayer;   // BodyType slot
+//////    [SerializeField] private GameObject groupHead;     // Face slot
+//////    [SerializeField] private GameObject groupHair;
+//////    [SerializeField] private GameObject groupHelmet;
+//////    [SerializeField] private GameObject groupArmor;
+//////    [SerializeField] private GameObject groupWeapon;
+
+//////    // ─── Inspector — Tab Buttons ──────────────────────────────────────────────
+
+//////    [Header("Tab Buttons")]
+//////    [SerializeField] private Button tabPlayer;
+//////    [SerializeField] private Button tabHead;
+//////    [SerializeField] private Button tabHair;
+//////    [SerializeField] private Button tabHelmet;
+//////    [SerializeField] private Button tabArmor;
+//////    [SerializeField] private Button tabWeapon;
+
+//////    [Header("Tab Colours")]
+//////    [SerializeField] private Color tabActiveColor = new Color(0.9f, 0.7f, 0.1f);
+//////    [SerializeField] private Color tabInactiveColor = new Color(0.2f, 0.2f, 0.2f);
+
+//////    // ─── Inspector — Front-View Preview (optional) ────────────────────────────
+
+//////    [Header("Front-View Preview (optional)")]
+//////    [SerializeField] private CharacterPreview characterPreview;
+
+//////    // ─── Inspector — Stats Display (optional) ─────────────────────────────────
+
+//////    [Header("Stats Display (optional)")]
+//////    [SerializeField] private TextMeshProUGUI hpText;
+//////    [SerializeField] private TextMeshProUGUI apText;
+//////    [SerializeField] private TextMeshProUGUI adText;
+
+//////    // ─── Private ──────────────────────────────────────────────────────────────
+
+//////    private EquipmentSlot _activeSlot = EquipmentSlot.Armor;
+
+//////    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
+
+//////    private void Awake()
+//////    {
+//////        tabPlayer?.onClick.AddListener(() => ShowSlot(EquipmentSlot.BodyType));
+//////        tabHead?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Face));
+//////        tabHair?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Hair));
+//////        tabHelmet?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Helmet));
+//////        tabArmor?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Armor));
+//////        tabWeapon?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Weapon));
+
+//////        GameManager.OnSoldierSpawned += OnSoldierSpawned;
+//////    }
+
+//////    private void OnDestroy()
+//////    {
+//////        GameManager.OnSoldierSpawned -= OnSoldierSpawned;
+//////        UnsubscribeEquipment();
+//////    }
+
+//////    private void OnEnable()
+//////    {
+//////        if (soldierEquipment == null)
+//////            soldierEquipment = FindObjectOfType<CharacterEquipment>();
+
+//////        SubscribeEquipment();
+//////        characterPreview?.SetEquipmentSource(soldierEquipment);
+//////        InitAllButtons();
+//////        ShowSlot(_activeSlot);
+//////        RefreshStats();
+//////    }
+
+//////    private void OnDisable()
+//////    {
+//////        UnsubscribeEquipment();
+//////    }
+
+//////    // ─── Soldier Spawn Callback ───────────────────────────────────────────────
+
+//////    private void OnSoldierSpawned(GameObject soldierGO)
+//////    {
+//////        var eq = soldierGO.GetComponent<CharacterEquipment>();
+//////        if (eq == null) return;
+
+//////        UnsubscribeEquipment();
+//////        soldierEquipment = eq;
+
+//////        if (!gameObject.activeInHierarchy) return;
+
+//////        SubscribeEquipment();
+//////        characterPreview?.SetEquipmentSource(soldierEquipment);
+//////        InitAllButtons();
+//////        ShowSlot(_activeSlot);
+//////        RefreshStats();
+//////    }
+
+//////    // ─── Button Initialisation ────────────────────────────────────────────────
+
+//////    /// <summary>
+//////    /// Walks every group and calls Init() on every InventorySlotButton child
+//////    /// so each button knows which soldier to equip onto.
+//////    /// </summary>
+//////    private void InitAllButtons()
+//////    {
+//////        InitGroup(groupPlayer);
+//////        InitGroup(groupHead);
+//////        InitGroup(groupHair);
+//////        InitGroup(groupHelmet);
+//////        InitGroup(groupArmor);
+//////        InitGroup(groupWeapon);
+//////    }
+
+//////    private void InitGroup(GameObject group)
+//////    {
+//////        if (group == null || soldierEquipment == null) return;
+//////        foreach (var btn in group.GetComponentsInChildren<InventorySlotButton>(true))
+//////            btn.Init(soldierEquipment, this);
+//////    }
+
+//////    // ─── Tab / Show Logic ─────────────────────────────────────────────────────
+
+//////    private void ShowSlot(EquipmentSlot slot)
+//////    {
+//////        _activeSlot = slot;
+//////        UpdateTabColours();
+//////        ShowActiveGroup();
+//////    }
+
+//////    private void ShowActiveGroup()
+//////    {
+//////        SetGroupActive(groupPlayer, _activeSlot == EquipmentSlot.BodyType);
+//////        SetGroupActive(groupHead, _activeSlot == EquipmentSlot.Face);
+//////        SetGroupActive(groupHair, _activeSlot == EquipmentSlot.Hair);
+//////        SetGroupActive(groupHelmet, _activeSlot == EquipmentSlot.Helmet);
+//////        SetGroupActive(groupArmor, _activeSlot == EquipmentSlot.Armor);
+//////        SetGroupActive(groupWeapon, _activeSlot == EquipmentSlot.Weapon);
+//////    }
+
+//////    private static void SetGroupActive(GameObject group, bool active)
+//////    {
+//////        if (group != null) group.SetActive(active);
+//////    }
+
+//////    // ─── Tab Colours ──────────────────────────────────────────────────────────
+
+//////    private void UpdateTabColours()
+//////    {
+//////        SetTabColour(tabPlayer, EquipmentSlot.BodyType);
+//////        SetTabColour(tabHead, EquipmentSlot.Face);
+//////        SetTabColour(tabHair, EquipmentSlot.Hair);
+//////        SetTabColour(tabHelmet, EquipmentSlot.Helmet);
+//////        SetTabColour(tabArmor, EquipmentSlot.Armor);
+//////        SetTabColour(tabWeapon, EquipmentSlot.Weapon);
+//////    }
+
+//////    private void SetTabColour(Button btn, EquipmentSlot slot)
+//////    {
+//////        if (btn == null) return;
+//////        var img = btn.GetComponent<Image>();
+//////        if (img != null)
+//////            img.color = (_activeSlot == slot) ? tabActiveColor : tabInactiveColor;
+//////    }
+
+//////    // ─── Public Refresh (called by InventorySlotButton after equip) ───────────
+
+//////    public void RefreshAllButtons()
+//////    {
+//////        var activeGroup = GetActiveGroup();
+//////        if (activeGroup == null) return;
+
+//////        foreach (var btn in activeGroup.GetComponentsInChildren<InventorySlotButton>(true))
+//////            btn.RefreshSelection();
+
+//////        RefreshStats();
+//////    }
+
+//////    private GameObject GetActiveGroup() => _activeSlot switch
+//////    {
+//////        EquipmentSlot.BodyType => groupPlayer,
+//////        EquipmentSlot.Face => groupHead,
+//////        EquipmentSlot.Hair => groupHair,
+//////        EquipmentSlot.Helmet => groupHelmet,
+//////        EquipmentSlot.Armor => groupArmor,
+//////        EquipmentSlot.Weapon => groupWeapon,
+//////        _ => null
+//////    };
+
+//////    // ─── Stats ────────────────────────────────────────────────────────────────
+
+//////    private void SubscribeEquipment()
+//////    {
+//////        if (soldierEquipment != null)
+//////            soldierEquipment.OnEquipmentChanged += OnEquipmentChanged;
+//////    }
+
+//////    private void UnsubscribeEquipment()
+//////    {
+//////        if (soldierEquipment != null)
+//////            soldierEquipment.OnEquipmentChanged -= OnEquipmentChanged;
+//////    }
+
+//////    private void OnEquipmentChanged(EquipmentSlot slot, EquipmentItem item) => RefreshStats();
+
+//////    private void RefreshStats()
+//////    {
+//////        if (soldierEquipment == null) return;
+//////        var stats = soldierEquipment.GetComponent<SoldierStats>();
+//////        if (stats == null) return;
+
+//////        if (hpText != null) hpText.text = $"HP  {stats.MaxHealth:F0}";
+//////        if (apText != null) apText.text = $"AP  {stats.AbilityPower:F0}";
+//////        if (adText != null) adText.text = $"AD  {stats.AttackDamage:F0}";
+//////    }
+
+//////    // ─── Open / Close ─────────────────────────────────────────────────────────
+
+//////    public void Open() => gameObject.SetActive(true);
+//////    public void Close() => gameObject.SetActive(false);
+//////    public void Toggle() => gameObject.SetActive(!gameObject.activeSelf);
+//////}
+
 ////using UnityEngine;
 ////using UnityEngine.UI;
 ////using TMPro;
 
 /////// <summary>
-/////// AREA FORGE - InventoryPanel
+/////// AREA FORGE - InventoryPanel  (Pre-Placed Groups version)
 ///////
-/////// The main inventory window. Shows one tab per equipment slot.
-/////// Clicking a tab filters the item grid to show only items for that slot.
-/////// Clicking an item equips it on the soldier instantly.
+/////// Your item buttons already exist in the hierarchy as pre-placed GameObjects,
+/////// organised into one group per slot:
 ///////
-/////// ── UI Hierarchy to build ────────────────────────────────────────────────────
+///////   Content
+///////     ├── GROUP_Player   ← all BodyType buttons live here
+///////     ├── GROUP_Head     ← all Face/Head buttons live here
+///////     ├── GROUP_Hair
+///////     ├── GROUP_Helmet
+///////     ├── GROUP_Armor
+///////     └── GROUP_Weapon
 ///////
-///////   InventoryPanel  (Panel)           ← InventoryPanel.cs
-///////     ├── TabBar    (HorizontalLayoutGroup)
-///////     │     ├── Tab_BodyType  (Button + TabButton.cs)
-///////     │     ├── Tab_Face      (Button + TabButton.cs)
-///////     │     ├── Tab_Hair      (Button + TabButton.cs)
-///////     │     ├── Tab_Helmet    (Button + TabButton.cs)
-///////     │     ├── Tab_Armor     (Button + TabButton.cs)
-///////     │     └── Tab_Weapon    (Button + TabButton.cs)
-///////     ├── ItemGrid  (ScrollRect → Viewport → Content)
-///////     │     └── Content  (GridLayoutGroup)  ← SlotButton prefabs spawn here
-///////     └── StatsPreview (optional)
-///////           ├── HPText   (TextMeshProUGUI)
-///////           ├── APText   (TextMeshProUGUI)
-///////           └── ADText   (TextMeshProUGUI)
+/////// This script shows the active group and hides all others when a tab is clicked.
+/////// It also injects the soldier reference into every InventorySlotButton child
+/////// so they can equip items at runtime.
 ///////
-/////// ── Inspector fields ─────────────────────────────────────────────────────────
-///////   • soldierEquipment  → drag the SolderPrefab (or its CharacterEquipment)
-///////   • allItems[]        → drag ALL your EquipmentItem ScriptableObject assets
-///////   • slotButtonPrefab  → drag the SlotButton prefab
-///////   • gridContent       → drag the Content object inside the ScrollRect
-///////   • tab buttons       → drag each Tab_XXX button
+/////// ── Inspector wiring ────────────────────────────────────────────────────────
+///////   1. Drag each group GameObject into the matching Group field below.
+///////   2. Drag each tab Button into the matching Tab field.
+///////   3. Leave soldierEquipment EMPTY — found automatically at runtime.
+///////   4. On each pre-placed button GameObject, add InventorySlotButton and
+///////      drag the correct EquipmentItem asset into its "Item" field.
 /////// </summary>
 ////public class InventoryPanel : MonoBehaviour
 ////{
-////    // ─── Inspector ────────────────────────────────────────────────────────────
+////    // ─── Inspector — Soldier ──────────────────────────────────────────────────
 
-////    [Header("Soldier Reference")]
-////    [Tooltip("The soldier whose equipment this panel controls")]
+////    [Header("Soldier (leave empty — found at runtime)")]
 ////    [SerializeField] private CharacterEquipment soldierEquipment;
 
-////    [Header("All Equipment Items")]
-////    [Tooltip("Drag every EquipmentItem ScriptableObject asset here")]
-////    [SerializeField] private EquipmentItem[] allItems;
+////    // ─── Inspector — Item Groups ──────────────────────────────────────────────
 
-////    [Header("Grid")]
-////    [Tooltip("The SlotButton prefab (has InventorySlotButton + Button + Image)")]
-////    [SerializeField] private GameObject slotButtonPrefab;
-////    [Tooltip("GridLayoutGroup Content object inside the ScrollRect")]
-////    [SerializeField] private Transform gridContent;
+////    [Header("Item Groups — drag each slot's parent GameObject here")]
+////    [SerializeField] private GameObject groupPlayer;   // BodyType slot
+////    [SerializeField] private GameObject groupHead;     // Face slot
+////    [SerializeField] private GameObject groupHair;
+////    [SerializeField] private GameObject groupHelmet;
+////    [SerializeField] private GameObject groupArmor;
+////    [SerializeField] private GameObject groupWeapon;
 
-////    [Header("Tab Buttons (one per slot — order must match EquipmentSlot enum)")]
-////    [SerializeField] private Button tabBodyType;
-////    [SerializeField] private Button tabFace;
+////    // ─── Inspector — Tab Buttons ──────────────────────────────────────────────
+
+////    [Header("Tab Buttons")]
+////    [SerializeField] private Button tabPlayer;
+////    [SerializeField] private Button tabHead;
 ////    [SerializeField] private Button tabHair;
 ////    [SerializeField] private Button tabHelmet;
 ////    [SerializeField] private Button tabArmor;
 ////    [SerializeField] private Button tabWeapon;
 
-////    [Header("Tab Active Colour")]
+////    [Header("Tab Colours")]
 ////    [SerializeField] private Color tabActiveColor = new Color(0.9f, 0.7f, 0.1f);
 ////    [SerializeField] private Color tabInactiveColor = new Color(0.2f, 0.2f, 0.2f);
 
-////    [Header("Stats Preview (optional — leave null to skip)")]
+////    // ─── Inspector — Stats Display (optional) ─────────────────────────────────
+
+////    [Header("Stats Display (optional)")]
 ////    [SerializeField] private TextMeshProUGUI hpText;
 ////    [SerializeField] private TextMeshProUGUI apText;
 ////    [SerializeField] private TextMeshProUGUI adText;
@@ -72,50 +515,114 @@
 ////    // ─── Private ──────────────────────────────────────────────────────────────
 
 ////    private EquipmentSlot _activeSlot = EquipmentSlot.Armor;
-////    private readonly List<InventorySlotButton> _spawnedButtons = new();
 
 ////    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
 
 ////    private void Awake()
 ////    {
-////        // Wire tab buttons
-////        tabBodyType?.onClick.AddListener(() => ShowSlot(EquipmentSlot.BodyType));
-////        tabFace?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Face));
+////        tabPlayer?.onClick.AddListener(() => ShowSlot(EquipmentSlot.BodyType));
+////        tabHead?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Face));
 ////        tabHair?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Hair));
 ////        tabHelmet?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Helmet));
 ////        tabArmor?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Armor));
 ////        tabWeapon?.onClick.AddListener(() => ShowSlot(EquipmentSlot.Weapon));
+
+////        GameManager.OnSoldierSpawned += OnSoldierSpawned;
+////    }
+
+////    private void OnDestroy()
+////    {
+////        GameManager.OnSoldierSpawned -= OnSoldierSpawned;
+////        UnsubscribeEquipment();
 ////    }
 
 ////    private void OnEnable()
 ////    {
-////        // Refresh stats display whenever the panel is opened
-////        if (soldierEquipment != null)
-////            soldierEquipment.OnEquipmentChanged += OnEquipmentChanged;
+////        if (soldierEquipment == null)
+////            soldierEquipment = FindObjectOfType<CharacterEquipment>();
 
+////        SubscribeEquipment();
+////        InitAllButtons();
 ////        ShowSlot(_activeSlot);
 ////        RefreshStats();
 ////    }
 
 ////    private void OnDisable()
 ////    {
-////        if (soldierEquipment != null)
-////            soldierEquipment.OnEquipmentChanged -= OnEquipmentChanged;
+////        UnsubscribeEquipment();
 ////    }
 
-////    // ─── Tab Logic ────────────────────────────────────────────────────────────
+////    // ─── Soldier Spawn Callback ───────────────────────────────────────────────
+
+////    private void OnSoldierSpawned(GameObject soldierGO)
+////    {
+////        var eq = soldierGO.GetComponent<CharacterEquipment>();
+////        if (eq == null) return;
+
+////        UnsubscribeEquipment();
+////        soldierEquipment = eq;
+
+////        if (!gameObject.activeInHierarchy) return;
+
+////        SubscribeEquipment();
+////        InitAllButtons();
+////        ShowSlot(_activeSlot);
+////        RefreshStats();
+////    }
+
+////    // ─── Button Initialisation ────────────────────────────────────────────────
+
+////    /// <summary>
+////    /// Walks every group and calls Init() on every InventorySlotButton child
+////    /// so each button knows which soldier to equip onto.
+////    /// </summary>
+////    private void InitAllButtons()
+////    {
+////        InitGroup(groupPlayer);
+////        InitGroup(groupHead);
+////        InitGroup(groupHair);
+////        InitGroup(groupHelmet);
+////        InitGroup(groupArmor);
+////        InitGroup(groupWeapon);
+////    }
+
+////    private void InitGroup(GameObject group)
+////    {
+////        if (group == null || soldierEquipment == null) return;
+////        foreach (var btn in group.GetComponentsInChildren<InventorySlotButton>(true))
+////            btn.Init(soldierEquipment, this);
+////    }
+
+////    // ─── Tab / Show Logic ─────────────────────────────────────────────────────
 
 ////    private void ShowSlot(EquipmentSlot slot)
 ////    {
 ////        _activeSlot = slot;
 ////        UpdateTabColours();
-////        PopulateGrid(slot);
+////        ShowActiveGroup();
 ////    }
+
+////    private void ShowActiveGroup()
+////    {
+////        SetGroupActive(groupPlayer, _activeSlot == EquipmentSlot.BodyType);
+////        SetGroupActive(groupHead, _activeSlot == EquipmentSlot.Face);
+////        SetGroupActive(groupHair, _activeSlot == EquipmentSlot.Hair);
+////        SetGroupActive(groupHelmet, _activeSlot == EquipmentSlot.Helmet);
+////        SetGroupActive(groupArmor, _activeSlot == EquipmentSlot.Armor);
+////        SetGroupActive(groupWeapon, _activeSlot == EquipmentSlot.Weapon);
+////    }
+
+////    private static void SetGroupActive(GameObject group, bool active)
+////    {
+////        if (group != null) group.SetActive(active);
+////    }
+
+////    // ─── Tab Colours ──────────────────────────────────────────────────────────
 
 ////    private void UpdateTabColours()
 ////    {
-////        SetTabColour(tabBodyType, EquipmentSlot.BodyType);
-////        SetTabColour(tabFace, EquipmentSlot.Face);
+////        SetTabColour(tabPlayer, EquipmentSlot.BodyType);
+////        SetTabColour(tabHead, EquipmentSlot.Face);
 ////        SetTabColour(tabHair, EquipmentSlot.Hair);
 ////        SetTabColour(tabHelmet, EquipmentSlot.Helmet);
 ////        SetTabColour(tabArmor, EquipmentSlot.Armor);
@@ -130,45 +637,45 @@
 ////            img.color = (_activeSlot == slot) ? tabActiveColor : tabInactiveColor;
 ////    }
 
-////    // ─── Grid Population ──────────────────────────────────────────────────────
+////    // ─── Public Refresh (called by InventorySlotButton after equip) ───────────
 
-////    private void PopulateGrid(EquipmentSlot slot)
-////    {
-////        // Clear existing buttons
-////        foreach (var btn in _spawnedButtons)
-////            if (btn != null) Destroy(btn.gameObject);
-////        _spawnedButtons.Clear();
-
-////        // Spawn one button per item that matches this slot
-////        foreach (var item in allItems)
-////        {
-////            if (item == null || item.slot != slot) continue;
-
-////            var go = Instantiate(slotButtonPrefab, gridContent);
-////            var btn = go.GetComponent<InventorySlotButton>();
-////            if (btn != null)
-////            {
-////                btn.Setup(item, soldierEquipment, this);
-////                _spawnedButtons.Add(btn);
-////            }
-////        }
-////    }
-
-////    // ─── Button Refresh ───────────────────────────────────────────────────────
-
-////    /// <summary>Called by InventorySlotButton after any equip/unequip.</summary>
 ////    public void RefreshAllButtons()
 ////    {
-////        foreach (var btn in _spawnedButtons)
-////            btn?.RefreshSelection();
+////        var activeGroup = GetActiveGroup();
+////        if (activeGroup == null) return;
+
+////        foreach (var btn in activeGroup.GetComponentsInChildren<InventorySlotButton>(true))
+////            btn.RefreshSelection();
 
 ////        RefreshStats();
 ////    }
 
-////    // ─── Stats Preview ────────────────────────────────────────────────────────
+////    private GameObject GetActiveGroup() => _activeSlot switch
+////    {
+////        EquipmentSlot.BodyType => groupPlayer,
+////        EquipmentSlot.Face => groupHead,
+////        EquipmentSlot.Hair => groupHair,
+////        EquipmentSlot.Helmet => groupHelmet,
+////        EquipmentSlot.Armor => groupArmor,
+////        EquipmentSlot.Weapon => groupWeapon,
+////        _ => null
+////    };
 
-////    private void OnEquipmentChanged(EquipmentSlot slot, EquipmentItem item)
-////        => RefreshStats();
+////    // ─── Stats ────────────────────────────────────────────────────────────────
+
+////    private void SubscribeEquipment()
+////    {
+////        if (soldierEquipment != null)
+////            soldierEquipment.OnEquipmentChanged += OnEquipmentChanged;
+////    }
+
+////    private void UnsubscribeEquipment()
+////    {
+////        if (soldierEquipment != null)
+////            soldierEquipment.OnEquipmentChanged -= OnEquipmentChanged;
+////    }
+
+////    private void OnEquipmentChanged(EquipmentSlot slot, EquipmentItem item) => RefreshStats();
 
 ////    private void RefreshStats()
 ////    {
@@ -181,54 +688,60 @@
 ////        if (adText != null) adText.text = $"AD  {stats.AttackDamage:F0}";
 ////    }
 
-////    // ─── Open / Close (call from a button in the HUD) ────────────────────────
+////    // ─── Open / Close ─────────────────────────────────────────────────────────
 
 ////    public void Open() => gameObject.SetActive(true);
 ////    public void Close() => gameObject.SetActive(false);
 ////    public void Toggle() => gameObject.SetActive(!gameObject.activeSelf);
 ////}
 
+
+//using System.Collections.Generic;
 //using UnityEngine;
 //using UnityEngine.UI;
 //using TMPro;
 
 ///// <summary>
-///// AREA FORGE - InventoryPanel  (Pre-Placed Groups version)
+///// AREA FORGE - InventoryPanel
 /////
-///// Your item buttons already exist in the hierarchy as pre-placed GameObjects,
-///// organised into one group per slot:
+///// Manages the inventory UI and drives the player visual swapping via
+///// GameObject.SetActive().
 /////
-/////   Content
-/////     ├── GROUP_Player   ← all BodyType buttons live here
-/////     ├── GROUP_Head     ← all Face/Head buttons live here
-/////     ├── GROUP_Hair
-/////     ├── GROUP_Helmet
-/////     ├── GROUP_Armor
-/////     └── GROUP_Weapon
+///// ── How it works ─────────────────────────────────────────────────────────────
+/////   Each InventorySlotButton has a "playerVisualObject" field pointing to a
+/////   child GO on the Player (e.g. Armor1, Armor2, Hair1, Hair2 …).
 /////
-///// This script shows the active group and hides all others when a tab is clicked.
-///// It also injects the soldier reference into every InventorySlotButton child
-///// so they can equip items at runtime.
+/////   SelectButton(btn)  → btn.Select()   activates  btn.playerVisualObject
+/////                        all other buttons in the same group → Deselect()
+/////                        their playerVisualObjects are deactivated
+/////
+/////   DeselectButton(btn)→ btn.Deselect() deactivates btn.playerVisualObject
+/////                        (nothing equipped in that slot)
+/////
+///// ── Default first-item rule ───────────────────────────────────────────────────
+/////   When the panel opens, if no button in a group is selected, the FIRST
+/////   button is auto-selected so the player always looks correct.
 /////
 ///// ── Inspector wiring ────────────────────────────────────────────────────────
-/////   1. Drag each group GameObject into the matching Group field below.
-/////   2. Drag each tab Button into the matching Tab field.
-/////   3. Leave soldierEquipment EMPTY — found automatically at runtime.
-/////   4. On each pre-placed button GameObject, add InventorySlotButton and
-/////      drag the correct EquipmentItem asset into its "Item" field.
+/////   Groups  → drag the parent GO of each slot's buttons (GROUP_ARMOR etc.)
+/////   Tabs    → drag each tab Button
+/////   Soldier → leave empty (found at runtime via FindObjectOfType)
+/////
+/////   On each InventorySlotButton:
+/////     playerVisualObject → drag Player/Armor/Armor1  (or Armor2, Hair1 …)
 ///// </summary>
 //public class InventoryPanel : MonoBehaviour
 //{
-//    // ─── Inspector — Soldier ──────────────────────────────────────────────────
+//    // ─── Inspector — Soldier (optional, for stat bonuses) ─────────────────────
 
-//    [Header("Soldier (leave empty — found at runtime)")]
+//    [Header("Soldier — leave empty, found automatically at runtime")]
 //    [SerializeField] private CharacterEquipment soldierEquipment;
 
 //    // ─── Inspector — Item Groups ──────────────────────────────────────────────
 
-//    [Header("Item Groups — drag each slot's parent GameObject here")]
-//    [SerializeField] private GameObject groupPlayer;   // BodyType slot
-//    [SerializeField] private GameObject groupHead;     // Face slot
+//    [Header("Item Groups — drag each slot's button-parent GO here")]
+//    [SerializeField] private GameObject groupPlayer;    // BodyType slot
+//    [SerializeField] private GameObject groupHead;      // Face slot
 //    [SerializeField] private GameObject groupHair;
 //    [SerializeField] private GameObject groupHelmet;
 //    [SerializeField] private GameObject groupArmor;
@@ -248,12 +761,7 @@
 //    [SerializeField] private Color tabActiveColor = new Color(0.9f, 0.7f, 0.1f);
 //    [SerializeField] private Color tabInactiveColor = new Color(0.2f, 0.2f, 0.2f);
 
-//    // ─── Inspector — Front-View Preview (optional) ────────────────────────────
-
-//    [Header("Front-View Preview (optional)")]
-//    [SerializeField] private CharacterPreview characterPreview;
-
-//    // ─── Inspector — Stats Display (optional) ─────────────────────────────────
+//    // ─── Inspector — Stats (optional) ─────────────────────────────────────────
 
 //    [Header("Stats Display (optional)")]
 //    [SerializeField] private TextMeshProUGUI hpText;
@@ -263,6 +771,9 @@
 //    // ─── Private ──────────────────────────────────────────────────────────────
 
 //    private EquipmentSlot _activeSlot = EquipmentSlot.Armor;
+
+//    // Cached lists of buttons per group (built once in Init)
+//    private readonly Dictionary<EquipmentSlot, List<InventorySlotButton>> _groups = new();
 
 //    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
 
@@ -281,7 +792,6 @@
 //    private void OnDestroy()
 //    {
 //        GameManager.OnSoldierSpawned -= OnSoldierSpawned;
-//        UnsubscribeEquipment();
 //    }
 
 //    private void OnEnable()
@@ -289,58 +799,116 @@
 //        if (soldierEquipment == null)
 //            soldierEquipment = FindObjectOfType<CharacterEquipment>();
 
-//        SubscribeEquipment();
-//        characterPreview?.SetEquipmentSource(soldierEquipment);
+//        BuildGroupCache();
 //        InitAllButtons();
+//        AutoSelectFirstItems();
 //        ShowSlot(_activeSlot);
 //        RefreshStats();
 //    }
 
-//    private void OnDisable()
-//    {
-//        UnsubscribeEquipment();
-//    }
-
-//    // ─── Soldier Spawn Callback ───────────────────────────────────────────────
+//    // ─── Soldier Spawn ────────────────────────────────────────────────────────
 
 //    private void OnSoldierSpawned(GameObject soldierGO)
 //    {
 //        var eq = soldierGO.GetComponent<CharacterEquipment>();
 //        if (eq == null) return;
-
-//        UnsubscribeEquipment();
 //        soldierEquipment = eq;
-
 //        if (!gameObject.activeInHierarchy) return;
-
-//        SubscribeEquipment();
-//        characterPreview?.SetEquipmentSource(soldierEquipment);
 //        InitAllButtons();
-//        ShowSlot(_activeSlot);
+//        AutoSelectFirstItems();
 //        RefreshStats();
 //    }
 
-//    // ─── Button Initialisation ────────────────────────────────────────────────
+//    // ─── Group Cache ──────────────────────────────────────────────────────────
 
-//    /// <summary>
-//    /// Walks every group and calls Init() on every InventorySlotButton child
-//    /// so each button knows which soldier to equip onto.
-//    /// </summary>
-//    private void InitAllButtons()
+//    private void BuildGroupCache()
 //    {
-//        InitGroup(groupPlayer);
-//        InitGroup(groupHead);
-//        InitGroup(groupHair);
-//        InitGroup(groupHelmet);
-//        InitGroup(groupArmor);
-//        InitGroup(groupWeapon);
+//        _groups.Clear();
+//        AddToCache(EquipmentSlot.BodyType, groupPlayer);
+//        AddToCache(EquipmentSlot.Face, groupHead);
+//        AddToCache(EquipmentSlot.Hair, groupHair);
+//        AddToCache(EquipmentSlot.Helmet, groupHelmet);
+//        AddToCache(EquipmentSlot.Armor, groupArmor);
+//        AddToCache(EquipmentSlot.Weapon, groupWeapon);
 //    }
 
-//    private void InitGroup(GameObject group)
+//    private void AddToCache(EquipmentSlot slot, GameObject group)
 //    {
-//        if (group == null || soldierEquipment == null) return;
-//        foreach (var btn in group.GetComponentsInChildren<InventorySlotButton>(true))
-//            btn.Init(soldierEquipment, this);
+//        var list = new List<InventorySlotButton>();
+//        if (group != null)
+//            list.AddRange(group.GetComponentsInChildren<InventorySlotButton>(true));
+//        _groups[slot] = list;
+//    }
+
+//    // ─── Button Init ──────────────────────────────────────────────────────────
+
+//    private void InitAllButtons()
+//    {
+//        foreach (var kvp in _groups)
+//            foreach (var btn in kvp.Value)
+//                btn.Init(this, soldierEquipment);
+//    }
+
+//    // ─── Default First-Item ───────────────────────────────────────────────────
+
+//    /// <summary>
+//    /// For each slot, if nothing is selected yet, auto-select the first button.
+//    /// This activates the first playerVisualObject in each group by default.
+//    /// </summary>
+//    private void AutoSelectFirstItems()
+//    {
+//        foreach (var kvp in _groups)
+//        {
+//            var list = kvp.Value;
+//            if (list.Count == 0) continue;
+
+//            // Already something selected? Leave it.
+//            bool anySelected = false;
+//            foreach (var b in list) if (b.IsSelected) { anySelected = true; break; }
+
+//            if (!anySelected)
+//                SelectExclusive(list[0], list);
+//        }
+//    }
+
+//    // ─── Public: called by InventorySlotButton ────────────────────────────────
+
+//    /// <summary>
+//    /// Selects btn, deselects all others in the same slot group.
+//    /// This activates btn.playerVisualObject and deactivates the rest.
+//    /// </summary>
+//    public void SelectButton(InventorySlotButton btn)
+//    {
+//        var list = GetGroupForButton(btn);
+//        if (list == null) return;
+//        SelectExclusive(btn, list);
+//        RefreshStats();
+//    }
+
+//    /// <summary>
+//    /// Deselects btn only — no other button is auto-selected.
+//    /// The player will have nothing equipped in that slot.
+//    /// </summary>
+//    public void DeselectButton(InventorySlotButton btn)
+//    {
+//        btn.Deselect();
+//        RefreshStats();
+//    }
+
+//    // ─── Core Exclusive-Activate Logic ───────────────────────────────────────
+
+//    /// <summary>
+//    /// Activates target's playerVisualObject, deactivates all others in the list.
+//    /// </summary>
+//    private void SelectExclusive(InventorySlotButton target, List<InventorySlotButton> group)
+//    {
+//        foreach (var btn in group)
+//        {
+//            if (btn == target)
+//                btn.Select();     // SetActive(true) on its playerVisualObject
+//            else
+//                btn.Deselect();   // SetActive(false) on its playerVisualObject
+//        }
 //    }
 
 //    // ─── Tab / Show Logic ─────────────────────────────────────────────────────
@@ -349,20 +917,17 @@
 //    {
 //        _activeSlot = slot;
 //        UpdateTabColours();
-//        ShowActiveGroup();
+
+//        // Show only the active group's button panel
+//        SetGroupUIActive(groupPlayer, slot == EquipmentSlot.BodyType);
+//        SetGroupUIActive(groupHead, slot == EquipmentSlot.Face);
+//        SetGroupUIActive(groupHair, slot == EquipmentSlot.Hair);
+//        SetGroupUIActive(groupHelmet, slot == EquipmentSlot.Helmet);
+//        SetGroupUIActive(groupArmor, slot == EquipmentSlot.Armor);
+//        SetGroupUIActive(groupWeapon, slot == EquipmentSlot.Weapon);
 //    }
 
-//    private void ShowActiveGroup()
-//    {
-//        SetGroupActive(groupPlayer, _activeSlot == EquipmentSlot.BodyType);
-//        SetGroupActive(groupHead, _activeSlot == EquipmentSlot.Face);
-//        SetGroupActive(groupHair, _activeSlot == EquipmentSlot.Hair);
-//        SetGroupActive(groupHelmet, _activeSlot == EquipmentSlot.Helmet);
-//        SetGroupActive(groupArmor, _activeSlot == EquipmentSlot.Armor);
-//        SetGroupActive(groupWeapon, _activeSlot == EquipmentSlot.Weapon);
-//    }
-
-//    private static void SetGroupActive(GameObject group, bool active)
+//    private static void SetGroupUIActive(GameObject group, bool active)
 //    {
 //        if (group != null) group.SetActive(active);
 //    }
@@ -387,52 +952,23 @@
 //            img.color = (_activeSlot == slot) ? tabActiveColor : tabInactiveColor;
 //    }
 
-//    // ─── Public Refresh (called by InventorySlotButton after equip) ───────────
+//    // ─── Helpers ──────────────────────────────────────────────────────────────
 
-//    public void RefreshAllButtons()
+//    private List<InventorySlotButton> GetGroupForButton(InventorySlotButton target)
 //    {
-//        var activeGroup = GetActiveGroup();
-//        if (activeGroup == null) return;
-
-//        foreach (var btn in activeGroup.GetComponentsInChildren<InventorySlotButton>(true))
-//            btn.RefreshSelection();
-
-//        RefreshStats();
+//        foreach (var kvp in _groups)
+//            foreach (var btn in kvp.Value)
+//                if (btn == target) return kvp.Value;
+//        return null;
 //    }
-
-//    private GameObject GetActiveGroup() => _activeSlot switch
-//    {
-//        EquipmentSlot.BodyType => groupPlayer,
-//        EquipmentSlot.Face => groupHead,
-//        EquipmentSlot.Hair => groupHair,
-//        EquipmentSlot.Helmet => groupHelmet,
-//        EquipmentSlot.Armor => groupArmor,
-//        EquipmentSlot.Weapon => groupWeapon,
-//        _ => null
-//    };
 
 //    // ─── Stats ────────────────────────────────────────────────────────────────
-
-//    private void SubscribeEquipment()
-//    {
-//        if (soldierEquipment != null)
-//            soldierEquipment.OnEquipmentChanged += OnEquipmentChanged;
-//    }
-
-//    private void UnsubscribeEquipment()
-//    {
-//        if (soldierEquipment != null)
-//            soldierEquipment.OnEquipmentChanged -= OnEquipmentChanged;
-//    }
-
-//    private void OnEquipmentChanged(EquipmentSlot slot, EquipmentItem item) => RefreshStats();
 
 //    private void RefreshStats()
 //    {
 //        if (soldierEquipment == null) return;
 //        var stats = soldierEquipment.GetComponent<SoldierStats>();
 //        if (stats == null) return;
-
 //        if (hpText != null) hpText.text = $"HP  {stats.MaxHealth:F0}";
 //        if (apText != null) apText.text = $"AP  {stats.AbilityPower:F0}";
 //        if (adText != null) adText.text = $"AD  {stats.AttackDamage:F0}";
@@ -445,53 +981,43 @@
 //    public void Toggle() => gameObject.SetActive(!gameObject.activeSelf);
 //}
 
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// AREA FORGE - InventoryPanel  (Pre-Placed Groups version)
+/// AREA FORGE - InventoryPanel
 ///
-/// Your item buttons already exist in the hierarchy as pre-placed GameObjects,
-/// organised into one group per slot:
-///
-///   Content
-///     ├── GROUP_Player   ← all BodyType buttons live here
-///     ├── GROUP_Head     ← all Face/Head buttons live here
-///     ├── GROUP_Hair
-///     ├── GROUP_Helmet
-///     ├── GROUP_Armor
-///     └── GROUP_Weapon
-///
-/// This script shows the active group and hides all others when a tab is clicked.
-/// It also injects the soldier reference into every InventorySlotButton child
-/// so they can equip items at runtime.
+/// ── Key fix ──────────────────────────────────────────────────────────────────
+///   All slot groups are FORCED ACTIVE before Init so that
+///   InventorySlotButton.Init() can run on every button (including ones in
+///   hidden groups). After Init, ShowSlot() hides the non-active groups again.
 ///
 /// ── Inspector wiring ────────────────────────────────────────────────────────
-///   1. Drag each group GameObject into the matching Group field below.
-///   2. Drag each tab Button into the matching Tab field.
-///   3. Leave soldierEquipment EMPTY — found automatically at runtime.
-///   4. On each pre-placed button GameObject, add InventorySlotButton and
-///      drag the correct EquipmentItem asset into its "Item" field.
+///   groupArmor  → drag the parent GO of all Armor buttons   (e.g. Content/ARMOR)
+///   groupHair   → drag the parent GO of all Hair buttons    (e.g. Content/HAIR)
+///   … and so on for Head, Helmet, Player, Weapon
+///   Tab buttons → drag each tab Button
 /// </summary>
 public class InventoryPanel : MonoBehaviour
 {
     // ─── Inspector — Soldier ──────────────────────────────────────────────────
 
-    [Header("Soldier (leave empty — found at runtime)")]
+    [Header("Soldier — leave empty, found automatically")]
     [SerializeField] private CharacterEquipment soldierEquipment;
 
     // ─── Inspector — Item Groups ──────────────────────────────────────────────
 
-    [Header("Item Groups — drag each slot's parent GameObject here")]
-    [SerializeField] private GameObject groupPlayer;   // BodyType slot
-    [SerializeField] private GameObject groupHead;     // Face slot
+    [Header("Item Groups — one parent GO per slot")]
+    [SerializeField] private GameObject groupPlayer;
+    [SerializeField] private GameObject groupHead;
     [SerializeField] private GameObject groupHair;
     [SerializeField] private GameObject groupHelmet;
     [SerializeField] private GameObject groupArmor;
     [SerializeField] private GameObject groupWeapon;
 
-    // ─── Inspector — Tab Buttons ──────────────────────────────────────────────
+    // ─── Inspector — Tabs ─────────────────────────────────────────────────────
 
     [Header("Tab Buttons")]
     [SerializeField] private Button tabPlayer;
@@ -505,7 +1031,7 @@ public class InventoryPanel : MonoBehaviour
     [SerializeField] private Color tabActiveColor = new Color(0.9f, 0.7f, 0.1f);
     [SerializeField] private Color tabInactiveColor = new Color(0.2f, 0.2f, 0.2f);
 
-    // ─── Inspector — Stats Display (optional) ─────────────────────────────────
+    // ─── Inspector — Stats ────────────────────────────────────────────────────
 
     [Header("Stats Display (optional)")]
     [SerializeField] private TextMeshProUGUI hpText;
@@ -515,6 +1041,7 @@ public class InventoryPanel : MonoBehaviour
     // ─── Private ──────────────────────────────────────────────────────────────
 
     private EquipmentSlot _activeSlot = EquipmentSlot.Armor;
+    private readonly Dictionary<EquipmentSlot, List<InventorySlotButton>> _groups = new();
 
     // ─── Unity Lifecycle ──────────────────────────────────────────────────────
 
@@ -533,7 +1060,6 @@ public class InventoryPanel : MonoBehaviour
     private void OnDestroy()
     {
         GameManager.OnSoldierSpawned -= OnSoldierSpawned;
-        UnsubscribeEquipment();
     }
 
     private void OnEnable()
@@ -541,56 +1067,107 @@ public class InventoryPanel : MonoBehaviour
         if (soldierEquipment == null)
             soldierEquipment = FindObjectOfType<CharacterEquipment>();
 
-        SubscribeEquipment();
+        // ── CRITICAL: activate ALL groups first so Init() reaches every button ──
+        // (buttons inside inactive GOs never have Awake/Start called)
+        ForceAllGroupsActive(true);
+
+        BuildGroupCache();
         InitAllButtons();
+        AutoSelectFirstItems();
+
+        // Now hide the non-active groups
         ShowSlot(_activeSlot);
         RefreshStats();
     }
 
-    private void OnDisable()
-    {
-        UnsubscribeEquipment();
-    }
-
-    // ─── Soldier Spawn Callback ───────────────────────────────────────────────
+    // ─── Soldier Spawn ────────────────────────────────────────────────────────
 
     private void OnSoldierSpawned(GameObject soldierGO)
     {
         var eq = soldierGO.GetComponent<CharacterEquipment>();
         if (eq == null) return;
-
-        UnsubscribeEquipment();
         soldierEquipment = eq;
-
         if (!gameObject.activeInHierarchy) return;
 
-        SubscribeEquipment();
+        ForceAllGroupsActive(true);
         InitAllButtons();
+        AutoSelectFirstItems();
         ShowSlot(_activeSlot);
         RefreshStats();
     }
 
-    // ─── Button Initialisation ────────────────────────────────────────────────
+    // ─── Group Cache ──────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Walks every group and calls Init() on every InventorySlotButton child
-    /// so each button knows which soldier to equip onto.
-    /// </summary>
-    private void InitAllButtons()
+    private void BuildGroupCache()
     {
-        InitGroup(groupPlayer);
-        InitGroup(groupHead);
-        InitGroup(groupHair);
-        InitGroup(groupHelmet);
-        InitGroup(groupArmor);
-        InitGroup(groupWeapon);
+        _groups.Clear();
+        Cache(EquipmentSlot.BodyType, groupPlayer);
+        Cache(EquipmentSlot.Face, groupHead);
+        Cache(EquipmentSlot.Hair, groupHair);
+        Cache(EquipmentSlot.Helmet, groupHelmet);
+        Cache(EquipmentSlot.Armor, groupArmor);
+        Cache(EquipmentSlot.Weapon, groupWeapon);
     }
 
-    private void InitGroup(GameObject group)
+    private void Cache(EquipmentSlot slot, GameObject group)
     {
-        if (group == null || soldierEquipment == null) return;
-        foreach (var btn in group.GetComponentsInChildren<InventorySlotButton>(true))
-            btn.Init(soldierEquipment, this);
+        var list = new List<InventorySlotButton>();
+        if (group != null)
+            list.AddRange(group.GetComponentsInChildren<InventorySlotButton>(true));
+        _groups[slot] = list;
+    }
+
+    // ─── Button Init ──────────────────────────────────────────────────────────
+
+    private void InitAllButtons()
+    {
+        foreach (var kvp in _groups)
+            foreach (var btn in kvp.Value)
+                btn.Init(this, soldierEquipment);
+    }
+
+    // ─── Default First-Item ───────────────────────────────────────────────────
+
+    private void AutoSelectFirstItems()
+    {
+        foreach (var kvp in _groups)
+        {
+            var list = kvp.Value;
+            if (list.Count == 0) continue;
+
+            bool anySelected = false;
+            foreach (var b in list) if (b.IsSelected) { anySelected = true; break; }
+
+            if (!anySelected)
+                Activate(list[0], list);
+        }
+    }
+
+    // ─── Public: called by InventorySlotButton ────────────────────────────────
+
+    public void SelectButton(InventorySlotButton btn)
+    {
+        var list = FindGroup(btn);
+        if (list == null) return;
+        Activate(btn, list);
+        RefreshStats();
+    }
+
+    public void DeselectButton(InventorySlotButton btn)
+    {
+        btn.Deselect();
+        RefreshStats();
+    }
+
+    // ─── Exclusive Activate ───────────────────────────────────────────────────
+
+    private void Activate(InventorySlotButton target, List<InventorySlotButton> group)
+    {
+        foreach (var btn in group)
+        {
+            if (btn == target) btn.Select();
+            else btn.Deselect();
+        }
     }
 
     // ─── Tab / Show Logic ─────────────────────────────────────────────────────
@@ -599,37 +1176,43 @@ public class InventoryPanel : MonoBehaviour
     {
         _activeSlot = slot;
         UpdateTabColours();
-        ShowActiveGroup();
+
+        SetActive(groupPlayer, slot == EquipmentSlot.BodyType);
+        SetActive(groupHead, slot == EquipmentSlot.Face);
+        SetActive(groupHair, slot == EquipmentSlot.Hair);
+        SetActive(groupHelmet, slot == EquipmentSlot.Helmet);
+        SetActive(groupArmor, slot == EquipmentSlot.Armor);
+        SetActive(groupWeapon, slot == EquipmentSlot.Weapon);
     }
 
-    private void ShowActiveGroup()
+    private void ForceAllGroupsActive(bool active)
     {
-        SetGroupActive(groupPlayer, _activeSlot == EquipmentSlot.BodyType);
-        SetGroupActive(groupHead, _activeSlot == EquipmentSlot.Face);
-        SetGroupActive(groupHair, _activeSlot == EquipmentSlot.Hair);
-        SetGroupActive(groupHelmet, _activeSlot == EquipmentSlot.Helmet);
-        SetGroupActive(groupArmor, _activeSlot == EquipmentSlot.Armor);
-        SetGroupActive(groupWeapon, _activeSlot == EquipmentSlot.Weapon);
+        SetActive(groupPlayer, active);
+        SetActive(groupHead, active);
+        SetActive(groupHair, active);
+        SetActive(groupHelmet, active);
+        SetActive(groupArmor, active);
+        SetActive(groupWeapon, active);
     }
 
-    private static void SetGroupActive(GameObject group, bool active)
+    private static void SetActive(GameObject go, bool active)
     {
-        if (group != null) group.SetActive(active);
+        if (go != null) go.SetActive(active);
     }
 
     // ─── Tab Colours ──────────────────────────────────────────────────────────
 
     private void UpdateTabColours()
     {
-        SetTabColour(tabPlayer, EquipmentSlot.BodyType);
-        SetTabColour(tabHead, EquipmentSlot.Face);
-        SetTabColour(tabHair, EquipmentSlot.Hair);
-        SetTabColour(tabHelmet, EquipmentSlot.Helmet);
-        SetTabColour(tabArmor, EquipmentSlot.Armor);
-        SetTabColour(tabWeapon, EquipmentSlot.Weapon);
+        Tint(tabPlayer, EquipmentSlot.BodyType);
+        Tint(tabHead, EquipmentSlot.Face);
+        Tint(tabHair, EquipmentSlot.Hair);
+        Tint(tabHelmet, EquipmentSlot.Helmet);
+        Tint(tabArmor, EquipmentSlot.Armor);
+        Tint(tabWeapon, EquipmentSlot.Weapon);
     }
 
-    private void SetTabColour(Button btn, EquipmentSlot slot)
+    private void Tint(Button btn, EquipmentSlot slot)
     {
         if (btn == null) return;
         var img = btn.GetComponent<Image>();
@@ -637,58 +1220,25 @@ public class InventoryPanel : MonoBehaviour
             img.color = (_activeSlot == slot) ? tabActiveColor : tabInactiveColor;
     }
 
-    // ─── Public Refresh (called by InventorySlotButton after equip) ───────────
+    // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    public void RefreshAllButtons()
+    private List<InventorySlotButton> FindGroup(InventorySlotButton target)
     {
-        var activeGroup = GetActiveGroup();
-        if (activeGroup == null) return;
-
-        foreach (var btn in activeGroup.GetComponentsInChildren<InventorySlotButton>(true))
-            btn.RefreshSelection();
-
-        RefreshStats();
+        foreach (var kvp in _groups)
+            foreach (var btn in kvp.Value)
+                if (btn == target) return kvp.Value;
+        return null;
     }
-
-    private GameObject GetActiveGroup() => _activeSlot switch
-    {
-        EquipmentSlot.BodyType => groupPlayer,
-        EquipmentSlot.Face => groupHead,
-        EquipmentSlot.Hair => groupHair,
-        EquipmentSlot.Helmet => groupHelmet,
-        EquipmentSlot.Armor => groupArmor,
-        EquipmentSlot.Weapon => groupWeapon,
-        _ => null
-    };
-
-    // ─── Stats ────────────────────────────────────────────────────────────────
-
-    private void SubscribeEquipment()
-    {
-        if (soldierEquipment != null)
-            soldierEquipment.OnEquipmentChanged += OnEquipmentChanged;
-    }
-
-    private void UnsubscribeEquipment()
-    {
-        if (soldierEquipment != null)
-            soldierEquipment.OnEquipmentChanged -= OnEquipmentChanged;
-    }
-
-    private void OnEquipmentChanged(EquipmentSlot slot, EquipmentItem item) => RefreshStats();
 
     private void RefreshStats()
     {
         if (soldierEquipment == null) return;
-        var stats = soldierEquipment.GetComponent<SoldierStats>();
-        if (stats == null) return;
-
-        if (hpText != null) hpText.text = $"HP  {stats.MaxHealth:F0}";
-        if (apText != null) apText.text = $"AP  {stats.AbilityPower:F0}";
-        if (adText != null) adText.text = $"AD  {stats.AttackDamage:F0}";
+        var s = soldierEquipment.GetComponent<SoldierStats>();
+        if (s == null) return;
+        if (hpText != null) hpText.text = $"HP  {s.MaxHealth:F0}";
+        if (apText != null) apText.text = $"AP  {s.AbilityPower:F0}";
+        if (adText != null) adText.text = $"AD  {s.AttackDamage:F0}";
     }
-
-    // ─── Open / Close ─────────────────────────────────────────────────────────
 
     public void Open() => gameObject.SetActive(true);
     public void Close() => gameObject.SetActive(false);

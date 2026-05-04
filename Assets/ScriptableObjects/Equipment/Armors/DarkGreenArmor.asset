@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
   itemName: DarkGreenArmor
   slot: 4
-  inventoryIcon: {fileID: 21300000, guid: f2091a0c8f921fc4f8aced77f2ce627d, type: 3}
+  inventoryIcon: {fileID: 21300000, guid: 9042e91be1108a74d95196f039921f6a, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
   healthBonus: 40
   abilityBonus: 35

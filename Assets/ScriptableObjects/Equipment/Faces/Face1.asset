@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
-  m_Name: LiteWhite
+  m_Name: Face1
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
   itemName: LiteWhite
   slot: 1
