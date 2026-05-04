@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
   itemName: GoldenArmor
   slot: 4
-  inventoryIcon: {fileID: 21300000, guid: de8a748e75a7930448656cb491a12a79, type: 3}
+  inventoryIcon: {fileID: 21300000, guid: a7ce187ffc7439340a06a4e990b369c7, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
   healthBonus: 0
   abilityBonus: 0

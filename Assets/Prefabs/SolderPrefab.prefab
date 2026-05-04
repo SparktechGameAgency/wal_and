@@ -319,6 +319,7 @@ GameObject:
   - component: {fileID: 2943540191941807523}
   - component: {fileID: 5261921174585227437}
   - component: {fileID: 1719591651901012661}
+  - component: {fileID: 6098266101483220485}
   m_Layer: 0
   m_Name: SolderPrefab
   m_TagString: Untagged
@@ -502,7 +503,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6977c426bacb5c14ba64efd68b15b79a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterEquipment
-  defaultLoadout: {fileID: 0}
+  defaultLoadout: {fileID: 11400000, guid: ae4c15af6dad5204e8fb290d86e18c3f, type: 2}
 --- !u!114 &1719591651901012661
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -516,6 +517,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteLayerAnimator
   fps: 8
+--- !u!114 &6098266101483220485
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4226479539583937247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 031d5aba292cef34aa89f8b03a1bdb1b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SoldierHUD
+  healthBarFill: {fileID: 7347177827865922305}
+  abilityBarFill: {fileID: 0}
+  damageBarFill: {fileID: 0}
+  healthText: {fileID: 2826784245770654136}
+  abilityText: {fileID: 0}
+  damageText: {fileID: 0}
+  nameText: {fileID: 0}
+  maxAbilityDisplay: 100
+  maxDamageDisplay: 100
+  colorHealthy: {r: 0.2, g: 0.8, b: 0.2, a: 1}
+  colorDanger: {r: 0.85, g: 0.15, b: 0.15, a: 1}
 --- !u!1 &4316971333734999063
 GameObject:
   m_ObjectHideFlags: 0
@@ -743,10 +767,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SoldierHUD
   healthBarFill: {fileID: 7347177827865922305}
+  abilityBarFill: {fileID: 0}
+  damageBarFill: {fileID: 0}
   healthText: {fileID: 2826784245770654136}
   abilityText: {fileID: 0}
   damageText: {fileID: 0}
   nameText: {fileID: 0}
+  maxAbilityDisplay: 100
+  maxDamageDisplay: 100
   colorHealthy: {r: 0.2, g: 0.8, b: 0.2, a: 1}
   colorDanger: {r: 0.85, g: 0.15, b: 0.15, a: 1}
 --- !u!1 &6192550264370433290

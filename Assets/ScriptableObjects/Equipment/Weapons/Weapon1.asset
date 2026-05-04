@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
   m_Name: Weapon1
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
-  itemName: ShortAxe
+  itemName: Waepon1
   slot: 5
   inventoryIcon: {fileID: 21300000, guid: 2353589d7122ae34aa3fdf62dbd7c04a, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
-  healthBonus: 0
-  abilityBonus: 0
-  damageBonus: 0
+  healthBonus: 20
+  abilityBonus: 30
+  damageBonus: 40
   walkSprites: []
   idleSprites: []
   deathSprites: []

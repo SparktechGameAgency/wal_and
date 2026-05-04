@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
   m_Name: Weapon8
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
-  itemName: LongSword
+  itemName: Waepon8
   slot: 5
   inventoryIcon: {fileID: 21300000, guid: 644dafd81369bab4eaa402f3cfbdac0b, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
