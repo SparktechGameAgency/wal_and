@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
-  m_Name: RoundMaces
+  m_Name: Weapon2
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
-  itemName: RoundMaces
+  itemName: DoubleAxe
   slot: 5
-  inventoryIcon: {fileID: 21300000, guid: b749c996f81cbae47a6eeaa6c8eecbe8, type: 3}
+  inventoryIcon: {fileID: 21300000, guid: 57e9d2f28ab634e4e887f874a2b54dbe, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
   healthBonus: 0
   abilityBonus: 0
