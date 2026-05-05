@@ -791,7 +791,7 @@ public class SoldierHUD : MonoBehaviour
 
     [Header("Bar Max Reference Values")]
     [Tooltip("MaxHealth value that fills the health bar to 100%. E.g. if max possible HP is 200, set 200.")]
-    [SerializeField] private float maxHealthDisplay = 200f;
+    [SerializeField] private float maxHealthDisplay = 100f;
     [Tooltip("AbilityPower value that fills the ability bar to 100%.")]
     [SerializeField] private float maxAbilityDisplay = 100f;
     [Tooltip("AttackDamage value that fills the damage bar to 100%.")]
@@ -848,7 +848,8 @@ public class SoldierHUD : MonoBehaviour
 
         if (_stats == null)
         {
-            _stats = FindObjectOfType<SoldierStats>();
+            // AFTER (fix):
+            _stats = FindFirstObjectByType<SoldierStats>();
             if (_stats != null)
                 Debug.LogWarning("[SoldierHUD] Found SoldierStats via FindObjectOfType — fallback mode.");
         }
@@ -911,7 +912,7 @@ public class SoldierHUD : MonoBehaviour
         if (healthBarFill != null)
         {
             healthBarFill.fillAmount = hpFill;
-            healthBarFill.color = hpFill > 0.5f ? colorHealthy : colorDanger;
+            //healthBarFill.color = hpFill > 0.5f ? colorHealthy : colorDanger;
         }
         if (healthText != null)
             healthText.text = Mathf.RoundToInt(stats.MaxHealth).ToString();
@@ -947,7 +948,8 @@ public class SoldierHUD : MonoBehaviour
     [ContextMenu("Force Refresh HUD")]
     private void EditorForceRefresh()
     {
-        if (_stats == null) _stats = FindObjectOfType<SoldierStats>();
+        // AFTER:
+        if (_stats == null) _stats = FindFirstObjectByType<SoldierStats>();
         if (_stats != null) RefreshHUD(_stats);
         else Debug.LogWarning("[SoldierHUD] No SoldierStats found to refresh.");
     }

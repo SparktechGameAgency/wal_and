@@ -16,28 +16,28 @@ MonoBehaviour:
   slot: 4
   inventoryIcon: {fileID: 21300000, guid: a7ce187ffc7439340a06a4e990b369c7, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
-  healthBonus: 0
-  abilityBonus: 0
-  damageBonus: 0
+  healthBonus: 40
+  abilityBonus: 35
+  damageBonus: 40
   walkSprites:
-  - {fileID: 21300000, guid: d2da9a333da23bb41b5bd4cc2a375d9e, type: 3}
-  - {fileID: 21300000, guid: 12e07d783a2a9fe489745cbe604f4638, type: 3}
-  - {fileID: 21300000, guid: 3d6c1e3136da3704a80b9a5523dc9bc7, type: 3}
-  - {fileID: 21300000, guid: 3f060769e2014db44ab89a86e3839809, type: 3}
-  - {fileID: 21300000, guid: 361242af395ca2f4591080e04343c6b0, type: 3}
-  - {fileID: 21300000, guid: 1445dae4a2623cd42b34ef5814ebf0ac, type: 3}
-  - {fileID: 21300000, guid: c080b989c62e84c41831932cb02d26ce, type: 3}
+  - {fileID: 21300000, guid: d57924510188f3a4e9c5d8a94d30616c, type: 3}
+  - {fileID: 21300000, guid: d2e01a586cdd6024d82a20d280eff083, type: 3}
+  - {fileID: 21300000, guid: 3d26d11bf509e4b4291e559a79a74eee, type: 3}
+  - {fileID: 21300000, guid: 2c7bdfdc0a2956248b035dbb5c5d221f, type: 3}
+  - {fileID: 21300000, guid: 90fe030cc089883429c6e66be666a611, type: 3}
+  - {fileID: 21300000, guid: d807e3f5c16ef5b43a0ebc058cc8e9b3, type: 3}
+  - {fileID: 21300000, guid: 61eee1895182fe444b9cdca1595a8947, type: 3}
   idleSprites:
-  - {fileID: 21300000, guid: 2161c4885e8f5e044b88a3b282860bdd, type: 3}
-  - {fileID: 21300000, guid: b119b6ce2065dfa49aae6758c27f5ba5, type: 3}
-  - {fileID: 21300000, guid: 33e104cb452971e479beb82036449f03, type: 3}
-  - {fileID: 21300000, guid: 3dae26b2e8cde0a4ebecd233381c9b77, type: 3}
+  - {fileID: 21300000, guid: 3a09c5779e0950149a286b7d93a5642f, type: 3}
+  - {fileID: 21300000, guid: 2227bd84d699d2349b899135f22edb46, type: 3}
+  - {fileID: 21300000, guid: 7b3fd92124767534bbf41c71e0d063d7, type: 3}
+  - {fileID: 21300000, guid: b95198968face7e4383f66cfc2af1010, type: 3}
   deathSprites:
-  - {fileID: 21300000, guid: 5732a59c4e92b644bbf81cc83bba7c9f, type: 3}
-  - {fileID: 21300000, guid: ca6c2ca19c6c8204b8e5cd68c83e5089, type: 3}
-  - {fileID: 21300000, guid: 4254eb529482f50468ea6d71fe98cc2f, type: 3}
-  - {fileID: 21300000, guid: ec3b5a8112f670d4ca1a155f961d5cd1, type: 3}
-  - {fileID: 21300000, guid: a5817301ec4320f4484190524a6b0036, type: 3}
-  - {fileID: 21300000, guid: e7aa5ef34cef3334b972531ee3467a18, type: 3}
-  - {fileID: 21300000, guid: aa9e7d86ddb42674ab5f73ec24c8208c, type: 3}
+  - {fileID: 21300000, guid: 60bd0de25472e1243b45c39dc2c91ac4, type: 3}
+  - {fileID: 21300000, guid: 742bc55d65b8b8d468fd8b8cbe488226, type: 3}
+  - {fileID: 21300000, guid: ff3a29c7e58fd9742ac8eda10480ed72, type: 3}
+  - {fileID: 21300000, guid: fbbc0a5207e04bc4da0c70ca2ad85002, type: 3}
+  - {fileID: 21300000, guid: 151a4dcd0323dc34290fa60a9109d77d, type: 3}
+  - {fileID: 21300000, guid: 73b55aef6987bc4498cf6a0278c52a56, type: 3}
+  - {fileID: 21300000, guid: 9262192f40589244c9158ba51c1d54a3, type: 3}
   bodyTypeVariants: []

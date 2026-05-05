@@ -16,17 +16,15 @@ MonoBehaviour:
   slot: 4
   inventoryIcon: {fileID: 21300000, guid: 5c6b90d9243fc3f47b528c1f34d74eca, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
-  healthBonus: 30
-  abilityBonus: 20
-  damageBonus: 30
+  healthBonus: 19
+  abilityBonus: 14
+  damageBonus: 16
   walkSprites:
   - {fileID: 21300000, guid: f933c7e685d8d404ca6ced42c2c6cfbc, type: 3}
   - {fileID: 21300000, guid: 4a7a1a1fff5318243a3cd973b909d268, type: 3}
   - {fileID: 21300000, guid: 631f5409c982ecb45a422e6bea283150, type: 3}
   - {fileID: 21300000, guid: 1257ba707e7fad74593291b9cc9f6b68, type: 3}
   - {fileID: 21300000, guid: d772c3650d6815f4ba7d92e637e52c72, type: 3}
-  - {fileID: 21300000, guid: d60f30aa35204574aa2d58c1afab6ad7, type: 3}
-  - {fileID: 21300000, guid: 3f19a89e1326c41428ac5622c279a005, type: 3}
   idleSprites:
   - {fileID: 21300000, guid: aae3baaf38bc99c40b2e255ac3a4e47f, type: 3}
   - {fileID: 21300000, guid: 25333490c5ea38a4b8aed52d0081198d, type: 3}
