@@ -380,9 +380,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 55c004deebc9c974ab968b10620c82ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SoldierController
-  patrolLeftX: -4
-  patrolRightX: 2
-  moveSpeed: 0.5
+  destinationX: 300
+  moveSpeed: 30
   restIntervalMin: 3
   restIntervalMax: 7
   restDurationMin: 1.5

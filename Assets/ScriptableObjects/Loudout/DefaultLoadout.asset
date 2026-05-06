@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f048f1daae3fda54cb0333109b76c49f, type: 3}
   m_Name: DefaultLoadout
   m_EditorClassIdentifier: Assembly-CSharp::CharacterLoadout
-  defaultBodyType: {fileID: 0}
+  defaultBodyType: {fileID: 11400000, guid: 33ba77f5451745042ace9addad95d616, type: 2}
   defaultFace: {fileID: 11400000, guid: 9a70ececceb1cd747ac82a08ad6f12d3, type: 2}
   defaultHair: {fileID: 11400000, guid: 695d990b50dddef478756749a9d1c6d2, type: 2}
   defaultHelmet: {fileID: 0}
-  defaultArmor: {fileID: 11400000, guid: a4698c16484c00942a6c68ab43bb79ff, type: 2}
+  defaultArmor: {fileID: 0}
   defaultWeapon: {fileID: 0}

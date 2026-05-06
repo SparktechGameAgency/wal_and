@@ -1503,5 +1503,9 @@ public class InventorySlotButton : MonoBehaviour
     {
         if (selectedBorder != null)
             selectedBorder.enabled = IsSelected;
+
+        // FIX: sync the player's armor visual layer every time selection changes
+        if (playerVisualObject != null)
+            playerVisualObject.SetActive(IsSelected);
     }
 }

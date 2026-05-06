@@ -4325,7 +4325,6 @@ GameObject:
   m_Component:
   - component: {fileID: 154489670}
   - component: {fileID: 154489672}
-  - component: {fileID: 154489671}
   m_Layer: 0
   m_Name: Hair
   m_TagString: Untagged
@@ -4358,36 +4357,6 @@ RectTransform:
   m_AnchoredPosition: {x: -2.9000015, y: 20.800003}
   m_SizeDelta: {x: 110.6, y: 102.11}
   m_Pivot: {x: 0.5, y: 1}
---- !u!114 &154489671
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 154489669}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 1c0972b49b705cf47a8d1191d35b5f89, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &154489672
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -10640,10 +10609,10 @@ RectTransform:
   - {fileID: 398504011}
   m_Father: {fileID: 784797198}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 375, y: -25}
-  m_SizeDelta: {x: 150, y: 150}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &424153027
 MonoBehaviour:
@@ -14674,10 +14643,10 @@ RectTransform:
   - {fileID: 454978101}
   m_Father: {fileID: 784797198}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 25, y: -300}
-  m_SizeDelta: {x: 150, y: 150}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &521004408
 MonoBehaviour:
@@ -15272,7 +15241,6 @@ GameObject:
   m_Component:
   - component: {fileID: 540801839}
   - component: {fileID: 540801841}
-  - component: {fileID: 540801840}
   m_Layer: 0
   m_Name: Weapon
   m_TagString: Untagged
@@ -15307,36 +15275,6 @@ RectTransform:
   m_AnchoredPosition: {x: -39, y: -73}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &540801840
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 540801838}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 2353589d7122ae34aa3fdf62dbd7c04a, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &540801841
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -18925,10 +18863,10 @@ RectTransform:
   - {fileID: 1365068078}
   m_Father: {fileID: 784797198}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 25, y: -25}
-  m_SizeDelta: {x: 150, y: 150}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &668555905
 MonoBehaviour:
@@ -19677,6 +19615,7 @@ MonoBehaviour:
   coinText: {fileID: 1925519960}
   retrieveButton: {fileID: 2085353515}
   dropHighlight: {fileID: 921916349}
+  soldierSpawnParent: {fileID: 0}
 --- !u!1 &691133807
 GameObject:
   m_ObjectHideFlags: 0
@@ -22201,7 +22140,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &789865402
 RectTransform:
   m_ObjectHideFlags: 0
@@ -26558,7 +26497,6 @@ GameObject:
   m_Component:
   - component: {fileID: 944424434}
   - component: {fileID: 944424436}
-  - component: {fileID: 944424435}
   m_Layer: 0
   m_Name: Armor
   m_TagString: Untagged
@@ -26591,36 +26529,6 @@ RectTransform:
   m_AnchoredPosition: {x: -2.9000015, y: -44.7}
   m_SizeDelta: {x: 180, y: 299.17}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &944424435
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 944424433}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 337c04234ba32e64db72f8c3f66bb544, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &944424436
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -29818,7 +29726,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1076050724}
   - component: {fileID: 1076050725}
-  - component: {fileID: 1076050726}
   m_Layer: 0
   m_Name: Helmet
   m_TagString: Untagged
@@ -29859,36 +29766,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1076050723}
   m_CullTransparentMesh: 1
---- !u!114 &1076050726
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1076050723}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 4cf2a826653e4fe469f72c0b1192934b, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &1081774339
 GameObject:
   m_ObjectHideFlags: 0
@@ -30898,12 +30775,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c842f942cda0c4e46be4a75960cbb514, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterVisuals
-  bodyImage: {fileID: 1249930900}
-  faceImage: {fileID: 1771241711}
-  hairImage: {fileID: 154489671}
-  armorImage: {fileID: 944424435}
-  helmetImage: {fileID: 1076050726}
-  weaponImage: {fileID: 540801840}
+  bodyImage: {fileID: 0}
+  faceImage: {fileID: 0}
+  hairImage: {fileID: 0}
+  armorImage: {fileID: 0}
+  helmetImage: {fileID: 0}
+  weaponImage: {fileID: 0}
   CurrentState: 0
 --- !u!114 &1103333753
 MonoBehaviour:
@@ -33890,7 +33767,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1249930899}
   - component: {fileID: 1249930901}
-  - component: {fileID: 1249930900}
   m_Layer: 0
   m_Name: Body
   m_TagString: Untagged
@@ -33918,36 +33794,6 @@ RectTransform:
   m_AnchoredPosition: {x: -2.9000015, y: -44.7}
   m_SizeDelta: {x: 180, y: 299.17}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1249930900
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1249930898}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 337c04234ba32e64db72f8c3f66bb544, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &1249930901
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -36393,7 +36239,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1383577958
 RectTransform:
   m_ObjectHideFlags: 0
@@ -43946,7 +43792,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1771241710}
   - component: {fileID: 1771241712}
-  - component: {fileID: 1771241711}
   m_Layer: 0
   m_Name: Face
   m_TagString: Untagged
@@ -43979,36 +43824,6 @@ RectTransform:
   m_AnchoredPosition: {x: -0.0000076293945, y: -17.100006}
   m_SizeDelta: {x: 93.01, y: 105.48}
   m_Pivot: {x: 0.5, y: 1}
---- !u!114 &1771241711
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1771241709}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e6af1cfe3d0487d4cb4be41eb10cfc8a, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &1771241712
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -48277,7 +48092,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -18, y: -52}
+  m_AnchoredPosition: {x: -18, y: -64}
   m_SizeDelta: {x: 300, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1997638153

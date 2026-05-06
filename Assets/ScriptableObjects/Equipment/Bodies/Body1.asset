@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
+  m_Name: Body1
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
+  itemName: Body
+  slot: 4
+  inventoryIcon: {fileID: 21300000, guid: 337c04234ba32e64db72f8c3f66bb544, type: 3}
+  rarityColour: {r: 1, g: 1, b: 1, a: 1}
+  healthBonus: 0
+  abilityBonus: 0
+  damageBonus: 0
+  walkSprites:
+  - {fileID: 21300000, guid: 9a255f174102b62479570d47e7b852f8, type: 3}
+  - {fileID: 21300000, guid: 4f81ab62f80df0a44b20f5a46ad022c6, type: 3}
+  - {fileID: 21300000, guid: a87e3b09abdb2a549809c4df0d9be787, type: 3}
+  - {fileID: 21300000, guid: 32e4eae4f1e55f34fbd04097bf7a1baf, type: 3}
+  - {fileID: 21300000, guid: f144864af9bc97a4b87621590105464f, type: 3}
+  - {fileID: 21300000, guid: d5441c740f04f2b4b8d93e14215726e1, type: 3}
+  - {fileID: 21300000, guid: 4e725d0a37263464d8b67c2559894da0, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: a767fce3778526a439884204244bdf9e, type: 3}
+  - {fileID: 21300000, guid: 8ad5860de816a8741bb9931dc90f878b, type: 3}
+  - {fileID: 21300000, guid: 30c900e9eb6230447a2b114da8d45857, type: 3}
+  - {fileID: 21300000, guid: 5dc85382b41a978458bea9918cacd8b7, type: 3}
+  deathSprites: []
+  bodyTypeVariants: []
