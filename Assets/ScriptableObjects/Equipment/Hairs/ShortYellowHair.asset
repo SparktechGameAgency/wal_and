@@ -12,14 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
   m_Name: ShortYellowHair
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
-  itemName: LongYellowHair
+  itemName: ShortYellowHair
   slot: 2
-  inventoryIcon: {fileID: 21300000, guid: 573bc6a6c741e5947a3c919e67790be2, type: 3}
+  inventoryIcon: {fileID: 21300000, guid: 1c0972b49b705cf47a8d1191d35b5f89, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
   healthBonus: 0
   abilityBonus: 0
   damageBonus: 0
-  walkSprites: []
-  idleSprites: []
+  walkSprites:
+  - {fileID: 21300000, guid: 772b17ee9c5354a4181fc3dc73f7d96f, type: 3}
+  - {fileID: 21300000, guid: 44b54717a13c5b34ab9be53ab64bcb01, type: 3}
+  - {fileID: 21300000, guid: 26d2ac788509ee242989c3c1f3ec24f1, type: 3}
+  - {fileID: 21300000, guid: 2a9cec0c86ef7694fa76a9e8f4f1b8ca, type: 3}
+  - {fileID: 21300000, guid: 771d33478bd4fc2419cb5cf2bbb0fb25, type: 3}
+  - {fileID: 21300000, guid: e0281223183888845bd9ca4c500fde91, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: c89aca67022a7504d94fe122ec981318, type: 3}
+  - {fileID: 21300000, guid: 34034166e4740284a95ff0d26cc89d53, type: 3}
+  - {fileID: 21300000, guid: d786cea95658bf8499d530ed401d865c, type: 3}
+  - {fileID: 21300000, guid: b861a86d00fc3cb438b1d972c533d4c6, type: 3}
   deathSprites: []
   bodyTypeVariants: []

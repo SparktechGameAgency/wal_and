@@ -19,7 +19,25 @@ MonoBehaviour:
   healthBonus: 0
   abilityBonus: 9
   damageBonus: 12
-  walkSprites: []
-  idleSprites: []
-  deathSprites: []
+  walkSprites:
+  - {fileID: 21300000, guid: b41873e9006801c41a0233a97a124477, type: 3}
+  - {fileID: 21300000, guid: 4599644f1496e5a449fd3652152d6a0b, type: 3}
+  - {fileID: 21300000, guid: 059d084fef91cb74ea62a0b6d93b182d, type: 3}
+  - {fileID: 21300000, guid: 79c1d547da03a2a4bafcdc42ae68b159, type: 3}
+  - {fileID: 21300000, guid: fa99834b4bb3a5c4f8ca4d3bd3f20b5c, type: 3}
+  - {fileID: 21300000, guid: f9756b5f299b1814ba56aea3ec566dac, type: 3}
+  - {fileID: 21300000, guid: 10abee22e64d33e4dbd0d543e85f3f46, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: bfd7583313f854349ac285c352592745, type: 3}
+  - {fileID: 21300000, guid: 3054ca2012b91fd4b8e994e902675d15, type: 3}
+  - {fileID: 21300000, guid: a267613f052a7ab4fbaadb44cea591f6, type: 3}
+  - {fileID: 21300000, guid: 1d88a194187167f469b15a99066ec7f2, type: 3}
+  deathSprites:
+  - {fileID: 21300000, guid: 9cf0f6f24695a004aa4d352237e6cbb0, type: 3}
+  - {fileID: 21300000, guid: e9efc79dec316144aaa63810b213aaa3, type: 3}
+  - {fileID: 21300000, guid: 31c842ee63bd4484eb968b17f820b91c, type: 3}
+  - {fileID: 21300000, guid: 04b1c30520c495841b0662c7977ac955, type: 3}
+  - {fileID: 21300000, guid: 8ceb8ae3c7c9d444e9a0d88618f157df, type: 3}
+  - {fileID: 21300000, guid: 45ced1098007c724c904d99809a283e9, type: 3}
+  - {fileID: 21300000, guid: bcedef85cd32ccc45802d246746c9754, type: 3}
   bodyTypeVariants: []

@@ -1,3 +1,208 @@
+//using UnityEngine;
+//using UnityEngine.UI;
+//using TMPro;
+
+///// <summary>
+///// AREA FORGE - InventorySlotButton
+/////
+///// One pre-placed item button in the customize panel.
+///// Attach to each slot button GO (e.g. Armor1, Armor2, GoldenHelmet…).
+/////
+///// Hierarchy expected:
+/////   Armor1  (Button + InventorySlotButton)
+/////     ├── Selected   (Image — gold highlight border, hidden by default)
+/////     └── [any Image child]   (item preview sprite — optional)
+/////
+///// ── Inspector fields ──────────────────────────────────────────────────────────
+/////   playerVisualObject → drag the child GO inside the PLAYER preview whose
+/////                         Image shows this item on the character
+/////   item               → drag the matching EquipmentItem ScriptableObject
+/////   selectedBorder     → drag the "Selected" Image child
+/////   isDefault          → tick ONLY on the one button that must always stay
+/////                         selected (e.g. default body type)
+/////
+///// ── Key methods ───────────────────────────────────────────────────────────────
+/////   Select()       — highlights button, shows playerVisualObject, equips item
+/////   Deselect()     — only unequips if this item still owns the slot (bug fix)
+/////   ForceDeselect() — silently clears highlight without calling Unequip
+/////                     (used by InventoryPanel.ApplyItemsToSoldier to sync
+/////                      button visuals without double-removing bonuses)
+///// </summary>
+//public class InventorySlotButton : MonoBehaviour
+//{
+//    // ─── Inspector ────────────────────────────────────────────────────────────
+
+//    [Header("Player Visual — child GO whose Image represents this item on the character")]
+//    [SerializeField] private GameObject playerVisualObject;
+
+//    [Header("UI Visuals")]
+//    [SerializeField] private Image iconImage;
+//    [SerializeField] private Image selectedBorder;
+//    [SerializeField] private TextMeshProUGUI nameText;
+
+//    [Header("Settings")]
+//    [Tooltip("Tick ON for the one button that must always stay selected (e.g. default body).")]
+//    [SerializeField] private bool isDefault = false;
+
+//    [Header("Equipment Item")]
+//    [Tooltip("Drag the EquipmentItem ScriptableObject for this button. " +
+//             "Make sure idleSprites[] and walkSprites[] are filled so the " +
+//             "animation plays on the preview player and spawned soldier.")]
+//    [SerializeField] private EquipmentItem item;
+
+//    // ─── Runtime ──────────────────────────────────────────────────────────────
+
+//    private InventoryPanel _panel;
+//    private CharacterEquipment _equipment;
+//    private bool _clickWired;
+
+//    // ─── Public accessors ─────────────────────────────────────────────────────
+
+//    public bool IsSelected { get; private set; }
+//    public bool IsDefault => isDefault;
+//    public EquipmentItem Item => item;
+//    public GameObject PlayerVisualObject => playerVisualObject;
+
+//    // ─── Unity ────────────────────────────────────────────────────────────────
+
+//    private void OnDestroy()
+//    {
+//        if (_equipment != null)
+//            _equipment.OnEquipmentChanged -= OnEquipmentChanged;
+//    }
+
+//    // ─── Init (called by InventoryPanel.InitAllButtons) ──────────────────────
+
+//    public void Init(InventoryPanel panel, CharacterEquipment equipment = null)
+//    {
+//        _panel = panel;
+
+//        // Swap soldier reference
+//        if (_equipment != null) _equipment.OnEquipmentChanged -= OnEquipmentChanged;
+//        _equipment = equipment;
+//        if (_equipment != null) _equipment.OnEquipmentChanged += OnEquipmentChanged;
+
+//        // Wire click once only
+//        if (!_clickWired)
+//        {
+//            var btn = GetComponent<Button>();
+//            if (btn != null)
+//            {
+//                btn.onClick.RemoveListener(OnClick);
+//                btn.onClick.AddListener(OnClick);
+//                _clickWired = true;
+//            }
+//        }
+
+//        // Set icon from inventoryIcon, fall back to idleSprites[0]
+//        if (iconImage != null && item != null)
+//        {
+//            Sprite spr = item.inventoryIcon
+//                      ?? (item.idleSprites?.Length > 0 ? item.idleSprites[0] : null);
+//            iconImage.sprite = spr;
+//            iconImage.enabled = spr != null;
+//        }
+
+//        if (nameText != null && item != null) nameText.text = item.itemName;
+//        if (selectedBorder != null && item != null) selectedBorder.color = item.rarityColour;
+
+//        RefreshVisual();
+//    }
+
+//    // ─── Click ───────────────────────────────────────────────────────────────
+
+//    private void OnClick()
+//    {
+//        if (_panel == null) return;
+//        if (isDefault) return;   // default item is always locked
+
+//        if (IsSelected) _panel.DeselectButton(this);
+//        else _panel.SelectButton(this);
+//    }
+
+//    // ─── Select / Deselect ────────────────────────────────────────────────────
+
+//    /// <summary>
+//    /// Highlights this button, shows its playerVisualObject, and equips the item
+//    /// on the preview Player (updating sprite + stat bonuses).
+//    /// </summary>
+//    public void Select()
+//    {
+//        IsSelected = true;
+
+//        if (playerVisualObject != null)
+//            playerVisualObject.SetActive(true);
+
+//        // CharacterEquipment.Equip():
+//        //   • removes old item in this slot (reverses its bonuses)
+//        //   • applies this item's idleSprites[0] to the preview Player Image
+//        //   • applies this item's stat bonuses
+//        if (_equipment != null && item != null)
+//            _equipment.Equip(item);
+
+//        RefreshVisual();
+//    }
+
+//    /// <summary>
+//    /// Hides playerVisualObject and removes stat bonuses — but ONLY if this item
+//    /// still owns the slot. Prevents accidentally removing the NEW item's bonuses
+//    /// when the panel calls Deselect on the OLD button after Select() on the new one.
+//    /// </summary>
+//    public void Deselect()
+//    {
+//        if (isDefault) return;
+
+//        IsSelected = false;
+
+//        if (playerVisualObject != null)
+//            playerVisualObject.SetActive(false);
+
+//        // KEY FIX: only unequip if this item is still the equipped one.
+//        // If Select() on another button has already replaced it, skip.
+//        if (_equipment != null && item != null && _equipment.IsEquipped(item))
+//            _equipment.Unequip(item.slot);
+
+//        RefreshVisual();
+//    }
+
+//    /// <summary>
+//    /// Silently clears the IsSelected highlight WITHOUT calling Unequip.
+//    /// Used by InventoryPanel.ApplyItemsToSoldier() to sync button visuals
+//    /// after it has already equipped the correct item — avoids double-removal
+//    /// of stat bonuses.
+//    /// </summary>
+//    public void ForceDeselect()
+//    {
+//        if (isDefault) return;
+//        IsSelected = false;
+//        if (playerVisualObject != null) playerVisualObject.SetActive(false);
+//        RefreshVisual();
+//    }
+
+//    // ─── Equipment change callback ────────────────────────────────────────────
+
+//    private void OnEquipmentChanged(EquipmentSlot slot, EquipmentItem changed)
+//    {
+//        if (item != null && slot == item.slot)
+//        {
+//            IsSelected = changed == item;
+//            RefreshVisual();
+//        }
+//    }
+
+//    // ─── Visual ───────────────────────────────────────────────────────────────
+
+//    public void RefreshVisual()
+//    {
+//        if (selectedBorder != null)
+//            selectedBorder.enabled = IsSelected;
+
+//        // FIX: sync the player's armor visual layer every time selection changes
+//        if (playerVisualObject != null)
+//            playerVisualObject.SetActive(IsSelected);
+//    }
+//}
+
 //////////////////using UnityEngine;
 //////////////////using UnityEngine.UI;
 //////////////////using TMPro;
@@ -1455,20 +1660,21 @@ public class InventorySlotButton : MonoBehaviour
     /// still owns the slot. Prevents accidentally removing the NEW item's bonuses
     /// when the panel calls Deselect on the OLD button after Select() on the new one.
     /// </summary>
+    /// <summary>
+    /// Clears the IsSelected highlight and hides playerVisualObject.
+    /// NEVER calls Unequip — that is the caller's responsibility.
+    ///
+    /// Why: Deselect() is called from panel resets (ApplyDefaultSelections,
+    /// SelectButton) and from coroutines — none of those should unequip items
+    /// from already-deployed soldiers. Unequip is only triggered by the player
+    /// explicitly removing an item, which goes through InventoryPanel.DeselectButton.
+    /// </summary>
     public void Deselect()
     {
         if (isDefault) return;
-
         IsSelected = false;
-
         if (playerVisualObject != null)
             playerVisualObject.SetActive(false);
-
-        // KEY FIX: only unequip if this item is still the equipped one.
-        // If Select() on another button has already replaced it, skip.
-        if (_equipment != null && item != null && _equipment.IsEquipped(item))
-            _equipment.Unequip(item.slot);
-
         RefreshVisual();
     }
 

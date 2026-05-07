@@ -16,8 +16,8 @@ public enum EquipmentSlot
 
 public enum BodyType
 {
+    Normal,     // ← FIRST so new BodyTypeVariants default to Normal in the Inspector
     Skinny,
-    Normal,
     Chubby,
     Muscular
 }

@@ -8397,7 +8397,7 @@ MonoBehaviour:
   selectedBorder: {fileID: 788840603}
   nameText: {fileID: 1066887866}
   isDefault: 1
-  item: {fileID: 0}
+  item: {fileID: 11400000, guid: 33ba77f5451745042ace9addad95d616, type: 2}
 --- !u!114 &335483789
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11304,7 +11304,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &443947368
 RectTransform:
   m_ObjectHideFlags: 0
@@ -22140,7 +22140,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &789865402
 RectTransform:
   m_ObjectHideFlags: 0
@@ -24471,7 +24471,7 @@ MonoBehaviour:
   selectedBorder: {fileID: 1339221583}
   nameText: {fileID: 547044064}
   isDefault: 0
-  item: {fileID: 11400000, guid: 96731704254c2c6438a86f53c8a5484d, type: 2}
+  item: {fileID: 0}
 --- !u!114 &866956993
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25964,7 +25964,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &930562511
 RectTransform:
   m_ObjectHideFlags: 0
@@ -32342,7 +32342,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 125288328fd05074aa4a732a72e88591, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InventoryPanel
-  soldierEquipment: {fileID: 0}
+  previewSoldierEquipment: {fileID: 1103333748}
   groupPlayer: {fileID: 443947367}
   groupHead: {fileID: 704617206}
   groupHair: {fileID: 648781285}
@@ -41582,7 +41582,7 @@ MonoBehaviour:
   selectedBorder: {fileID: 1796529677}
   nameText: {fileID: 312497279}
   isDefault: 0
-  item: {fileID: 11400000, guid: 77aa5cafa409d0243b64fe39410d3e33, type: 2}
+  item: {fileID: 0}
 --- !u!114 &1647160917
 MonoBehaviour:
   m_ObjectHideFlags: 0
