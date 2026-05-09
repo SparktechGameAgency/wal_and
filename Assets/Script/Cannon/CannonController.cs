@@ -1,0 +1,60 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+/// <summary>
+/// CANNON PANEL — CannonController
+///
+/// Attach to the cannon prefab (the GameObject that gets instantiated
+/// inside a CannonSlot when a cannon is placed on the castle).
+///
+/// Plays an idle animation through the UI Image component.
+/// Does NOT call SetNativeSize — the prefab's RectTransform size is used as-is.
+/// </summary>
+[RequireComponent(typeof(Image))]
+public class CannonController : MonoBehaviour
+{
+    private Image _image;
+    private CannonData _data;
+    private float _timer = 0f;
+    private int _frame = 0;
+    private bool _playing = false;
+
+    private void Awake() => _image = GetComponent<Image>();
+
+    private void Update()
+    {
+        if (!_playing || _data?.idleSprites == null || _data.idleSprites.Length <= 1) return;
+
+        _timer += Time.deltaTime;
+        if (_timer < 1f / _data.idleFPS) return;
+
+        _timer = 0f;
+        _frame = (_frame + 1) % _data.idleSprites.Length;
+        _image.sprite = _data.idleSprites[_frame];
+    }
+
+    /// <summary>
+    /// Call right after instantiating the prefab.
+    /// Shows the first frame immediately and starts the idle loop.
+    /// </summary>
+    public void Setup(CannonData data)
+    {
+        _data = data;
+        _frame = 0;
+        _timer = 0f;
+        _playing = true;
+
+        if (data.idleSprites != null && data.idleSprites.Length > 0)
+        {
+            _image.sprite = data.idleSprites[0];
+            _image.enabled = true;
+            // Do NOT call SetNativeSize — it blows the sprite to raw pixel dimensions.
+            // The prefab's RectTransform size is used as-is.
+        }
+    }
+
+    public void StopAnimation() => _playing = false;
+    public void PlayAnimation() => _playing = true;
+
+    public CannonData Data => _data;
+}
