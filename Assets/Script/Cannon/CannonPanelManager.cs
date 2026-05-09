@@ -1,674 +1,3 @@
-//using System.Collections.Generic;
-//using UnityEngine;
-//using UnityEngine.UI;
-//using TMPro;
-
-///// <summary>
-///// CANNON PANEL — CannonPanelManager
-/////
-///// Single manager that owns everything: inventory, gold, buy flow,
-///// upgrade flow, and UI state. No separate "CannonArea" is needed.
-/////
-///// TWO MODES ───────────────────────────────────────────────────────────
-/////   Buy Mode       : shows 3 fixed cannon-type cards. Player selects one
-/////                    and clicks Buy to purchase a copy with coins.
-/////   Inventory Mode : shows one dynamic card per owned cannon copy.
-/////                    Player selects a card and clicks Upgrade (max 3 times).
-/////                    Cannons can be drag-dropped onto castle CannonSlots.
-/////
-///// DETAILS SECTION (shared, always visible) ────────────────────────────
-/////   Shows the selected cannon's: Name, Cost, Range.
-/////   In Inventory mode Range shows the current upgraded value.
-/////
-///// UPGRADES ────────────────────────────────────────────────────────────
-/////   Each owned copy has its own upgrade counter (0–3).
-/////   Upgrading cannon A never affects cannon B.
-/////   Upgrade timers tick in Update() even while the panel is closed.
-/////
-///// HIERARCHY GUIDE ─────────────────────────────────────────────────────
-/////   CannonPanel
-/////   ├── TabBar
-/////   │   ├── TabBuyButton
-/////   │   └── TabInventoryButton
-/////   ├── BuyView
-/////   │   ├── BuyCard_0  (CannonCard)
-/////   │   ├── BuyCard_1  (CannonCard)
-/////   │   └── BuyCard_2  (CannonCard)
-/////   ├── InventoryView
-/////   │   └── ScrollRect → InventoryCardContainer
-/////   ├── DetailsSection
-/////   │   ├── DetailsNameText
-/////   │   ├── DetailsCostText
-/////   │   └── DetailsRangeText
-/////   ├── HUDSection
-/////   │   ├── HealthBar (Image Filled) + HealthText
-/////   │   ├── DamageBar                + DamageText
-/////   │   └── RangeBar                 + RangeText
-/////   ├── UpgradeProgressBarBackground
-/////   │   └── UpgradeProgressBar  (Image Filled Horizontal Left)
-/////   ├── UpgradeTimerText
-/////   ├── BuyButton
-/////   ├── UpdateButton
-/////   ├── CoinText
-/////   └── WarningText
-///// </summary>
-//public class CannonPanelManager : MonoBehaviour
-//{
-//    public static CannonPanelManager Instance { get; private set; }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // INSPECTOR FIELDS
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    [Header("Cannon Types (3 entries: Iron, Bronze, Golden)")]
-//    [SerializeField] private CannonData[] cannonTypes;
-
-//    // ─── Buy Mode ─────────────────────────────────────────────────────────────
-//    [Header("Buy Mode")]
-//    [SerializeField] private GameObject buyView;
-//    [Tooltip("3 pre-placed CannonCard components in BuyView, same order as cannonTypes")]
-//    [SerializeField] private CannonCard[] buyCards;
-
-//    // ─── Inventory Mode ───────────────────────────────────────────────────────
-//    [Header("Inventory Mode")]
-//    [SerializeField] private GameObject inventoryView;
-//    [Tooltip("Prefab used to spawn one card per owned cannon copy")]
-//    [SerializeField] private CannonCard inventoryCardPrefab;
-//    [Tooltip("Content transform of the ScrollRect")]
-//    [SerializeField] private Transform inventoryCardContainer;
-
-//    // ─── Details Section ──────────────────────────────────────────────────────
-//    [Header("Details Section (shared)")]
-//    [SerializeField] private TextMeshProUGUI detailsNameText;
-//    [SerializeField] private TextMeshProUGUI detailsCostText;
-//    [SerializeField] private TextMeshProUGUI detailsRangeText;
-
-//    // ─── HUD Stat Bars ────────────────────────────────────────────────────────
-//    [Header("HUD Stat Bars (Image Type = Filled, Horizontal, Fill Origin = Left)")]
-//    [SerializeField] private Image healthBar;
-//    [SerializeField] private TextMeshProUGUI healthText;
-//    [SerializeField] private Image damageBar;
-//    [SerializeField] private TextMeshProUGUI damageText;
-//    [SerializeField] private Image rangeBar;
-//    [SerializeField] private TextMeshProUGUI rangeText;
-
-//    [Header("Max stat values used for bar fill ratio")]
-//    [SerializeField] private float maxHealth = 200f;
-//    [SerializeField] private float maxDamage = 150f;
-//    [SerializeField] private float maxRange = 200f;
-
-//    // ─── Upgrade UI ───────────────────────────────────────────────────────────
-//    [Header("Upgrade UI")]
-//    [Tooltip("Parent of the progress bar — shown/hidden as upgrade starts/ends")]
-//    [SerializeField] private GameObject upgradeProgressBarBG;
-//    [Tooltip("Image (Filled, Horizontal, Left) — fillAmount driven in Update()")]
-//    [SerializeField] private Image upgradeProgressBar;
-//    [Tooltip("Shows '7.3s' countdown while upgrading")]
-//    [SerializeField] private TextMeshProUGUI upgradeTimerText;
-
-//    // ─── Buttons ──────────────────────────────────────────────────────────────
-//    [Header("Buttons")]
-//    [SerializeField] private Button buyButton;
-//    [SerializeField] private TextMeshProUGUI buyButtonText;
-//    [SerializeField] private Button updateButton;
-//    [SerializeField] private TextMeshProUGUI updateButtonText;   // "Upgrade (1/3)" / "MAX"
-
-//    [Header("Tab Buttons")]
-//    [SerializeField] private Button tabBuyButton;
-//    [SerializeField] private Button tabInventoryButton;
-
-//    // ─── Coin ─────────────────────────────────────────────────────────────────
-//    [Header("Coin")]
-//    [SerializeField] private TextMeshProUGUI coinText;
-//    [SerializeField] private int startingGold = 300;
-
-//    // ─── Warning / Feedback ───────────────────────────────────────────────────
-//    [Header("Warning / Feedback Text")]
-//    [SerializeField] private TextMeshProUGUI warningText;
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // PRIVATE STATE
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    private readonly List<CannonInventoryEntry> _inventory = new List<CannonInventoryEntry>();
-//    private int _nextId = 0;
-//    private int _gold;
-
-//    private enum PanelMode { Buy, Inventory }
-//    private PanelMode _mode = PanelMode.Buy;
-
-//    // ── Buy mode selection ────────────────────────────────────────────────────
-//    private CannonData _selectedBuyData;
-//    private CannonCard _selectedBuyCard;
-
-//    // ── Inventory mode selection ──────────────────────────────────────────────
-//    private int _selectedInventoryId = -1;
-
-//    private CannonInventoryEntry SelectedEntry =>
-//        _inventory.Find(e => e.inventoryId == _selectedInventoryId);
-
-//    // Tracks the currently displayed inventory card for badge refreshing
-//    private readonly List<CannonCard> _spawnedInventoryCards = new List<CannonCard>();
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // UNITY LIFECYCLE
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    private void Awake()
-//    {
-//        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-//        Instance = this;
-//        _gold = startingGold;
-//    }
-
-//    private void Start()
-//    {
-//        // Tab buttons
-//        tabBuyButton?.onClick.AddListener(OpenBuyMode);
-//        tabInventoryButton?.onClick.AddListener(OpenInventoryMode);
-
-//        // Action buttons
-//        buyButton?.onClick.AddListener(OnBuyClicked);
-//        updateButton?.onClick.AddListener(OnUpdateClicked);
-
-//        // Initialise the 3 static buy cards
-//        if (buyCards != null)
-//            for (int i = 0; i < buyCards.Length && i < cannonTypes.Length; i++)
-//                buyCards[i].SetupBuyCard(cannonTypes[i]);
-
-//        RefreshCoinText();
-//        HideProgressBar();
-
-//        // Open buy mode on start
-//        OpenBuyMode();
-//    }
-
-//    private void Update()
-//    {
-//        TickAllUpgrades();
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // MODE SWITCHING
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    public void OpenBuyMode()
-//    {
-//        _mode = PanelMode.Buy;
-//        buyView?.SetActive(true);
-//        inventoryView?.SetActive(false);
-
-//        buyButton?.gameObject.SetActive(true);
-//        updateButton?.gameObject.SetActive(false);
-
-//        HideProgressBar();
-
-//        // Auto-select first type
-//        if (cannonTypes != null && cannonTypes.Length > 0)
-//            SelectBuyCard(buyCards[0], cannonTypes[0]);
-
-//        ClearWarning();
-//    }
-
-//    public void OpenInventoryMode()
-//    {
-//        _mode = PanelMode.Inventory;
-//        buyView?.SetActive(false);
-//        inventoryView?.SetActive(true);
-
-//        buyButton?.gameObject.SetActive(false);
-//        updateButton?.gameObject.SetActive(true);
-
-//        PopulateInventoryCards();
-
-//        if (_inventory.Count > 0)
-//        {
-//            // Auto-select first owned cannon
-//            _selectedInventoryId = _inventory[0].inventoryId;
-//            ShowInventoryDetails(_inventory[0]);
-//            RefreshUpdateButton(_inventory[0]);
-//            RefreshProgressBarForSelected();
-//        }
-//        else
-//        {
-//            _selectedInventoryId = -1;
-//            ClearDetails();
-//            updateButton.interactable = false;
-//            if (updateButtonText != null) updateButtonText.text = "No Cannons";
-//            HideProgressBar();
-//        }
-
-//        ClearWarning();
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // CARD SELECTION (called by CannonCard.OnClick)
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    public void OnCardSelected(CannonCard card)
-//    {
-//        if (_mode == PanelMode.Buy)
-//        {
-//            SelectBuyCard(card, card.Data);
-//        }
-//        else
-//        {
-//            // Deselect all inventory cards
-//            foreach (CannonCard c in _spawnedInventoryCards)
-//                c.SetSelected(false);
-//            card.SetSelected(true);
-
-//            _selectedInventoryId = card.InventoryId;
-//            CannonInventoryEntry entry = SelectedEntry;
-//            if (entry == null) return;
-
-//            ShowInventoryDetails(entry);
-//            RefreshUpdateButton(entry);
-//            RefreshProgressBarForSelected();
-//        }
-//        ClearWarning();
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // BUY FLOW
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    private void SelectBuyCard(CannonCard card, CannonData data)
-//    {
-//        // Clear previous selection highlight
-//        if (_selectedBuyCard != null) _selectedBuyCard.SetSelected(false);
-
-//        _selectedBuyData = data;
-//        _selectedBuyCard = card;
-//        card?.SetSelected(true);
-
-//        ShowBuyDetails(data);
-//        RefreshBuyButton();
-//    }
-
-//    private void OnBuyClicked()
-//    {
-//        if (_selectedBuyData == null)
-//        {
-//            ShowWarning("Select a cannon first.");
-//            return;
-//        }
-//        if (_gold < _selectedBuyData.cost)
-//        {
-//            ShowWarning("Not enough coins!");
-//            return;
-//        }
-
-//        // Deduct cost
-//        _gold -= _selectedBuyData.cost;
-//        RefreshCoinText();
-
-//        // Create inventory entry
-//        var entry = new CannonInventoryEntry
-//        {
-//            data = _selectedBuyData,
-//            inventoryId = _nextId++,
-//            upgradeCount = 0,
-//            isUpgrading = false,
-//            isPlacedOnCastle = false,
-//            occupiedSlot = null
-//        };
-//        _inventory.Add(entry);
-
-//        ShowWarning($"Purchased {_selectedBuyData.cannonName}!");
-//        RefreshBuyButton();
-
-//        Debug.Log($"[CannonPanel] Bought '{_selectedBuyData.cannonName}' " +
-//                  $"(id={entry.inventoryId}). Total owned: {CountOwned(_selectedBuyData)}x.");
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // DETAILS SECTION
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    /// <summary>Buy mode — shows base stats from the ScriptableObject.</summary>
-//    private void ShowBuyDetails(CannonData data)
-//    {
-//        if (detailsNameText != null) detailsNameText.text = data.cannonName;
-//        if (detailsCostText != null) detailsCostText.text = $"Cost: {data.cost}";
-//        if (detailsRangeText != null) detailsRangeText.text = $"Range: {data.range:F0}";
-
-//        RefreshHUDBars(data.health, data.damage, data.range);
-//    }
-
-//    /// <summary>Inventory mode — shows current upgraded stats.</summary>
-//    private void ShowInventoryDetails(CannonInventoryEntry entry)
-//    {
-//        if (detailsNameText != null) detailsNameText.text = entry.data.cannonName;
-//        if (detailsCostText != null) detailsCostText.text = $"Cost: {entry.data.cost}";
-//        if (detailsRangeText != null) detailsRangeText.text = $"Range: {entry.CurrentRange:F0}";
-
-//        RefreshHUDBars(entry.CurrentHealth, entry.CurrentDamage, entry.CurrentRange);
-//    }
-
-//    private void ClearDetails()
-//    {
-//        if (detailsNameText != null) detailsNameText.text = "—";
-//        if (detailsCostText != null) detailsCostText.text = "";
-//        if (detailsRangeText != null) detailsRangeText.text = "";
-//        RefreshHUDBars(0f, 0f, 0f);
-//    }
-
-//    private void RefreshHUDBars(float health, float damage, float range)
-//    {
-//        if (healthBar != null) healthBar.fillAmount = Mathf.Clamp01(health / maxHealth);
-//        if (damageBar != null) damageBar.fillAmount = Mathf.Clamp01(damage / maxDamage);
-//        if (rangeBar != null) rangeBar.fillAmount = Mathf.Clamp01(range / maxRange);
-
-//        if (healthText != null) healthText.text = $"{health:F0}";
-//        if (damageText != null) damageText.text = $"{damage:F0}";
-//        if (rangeText != null) rangeText.text = $"{range:F0}";
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // INVENTORY CARDS
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    private void PopulateInventoryCards()
-//    {
-//        // Destroy old cards
-//        _spawnedInventoryCards.Clear();
-//        if (inventoryCardContainer != null)
-//            foreach (Transform child in inventoryCardContainer)
-//                Destroy(child.gameObject);
-
-//        if (inventoryCardPrefab == null) return;
-
-//        foreach (CannonInventoryEntry entry in _inventory)
-//        {
-//            // Only show cannons that are NOT currently placed on the castle
-//            // (placed cannons are on the castle — they don't need to show in the list)
-//            // Remove the "if" below if you want placed cannons to still show
-//            if (entry.isPlacedOnCastle) continue;
-
-//            CannonCard card = Instantiate(inventoryCardPrefab, inventoryCardContainer);
-//            card.SetupInventoryCard(entry);
-
-//            // Restore selection highlight
-//            if (entry.inventoryId == _selectedInventoryId)
-//                card.SetSelected(true);
-
-//            _spawnedInventoryCards.Add(card);
-//        }
-//    }
-
-//    private void RefreshInventoryCardBadges()
-//    {
-//        foreach (CannonCard card in _spawnedInventoryCards)
-//        {
-//            if (card == null) continue;
-//            CannonInventoryEntry entry = _inventory.Find(e => e.inventoryId == card.InventoryId);
-//            if (entry != null) card.RefreshUpgradeBadge(entry);
-//        }
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // UPGRADE FLOW
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    private void OnUpdateClicked()
-//    {
-//        CannonInventoryEntry entry = SelectedEntry;
-
-//        if (entry == null)
-//        {
-//            ShowWarning("Select a cannon first.");
-//            return;
-//        }
-//        if (entry.upgradeCount >= CannonInventoryEntry.MAX_UPGRADES)
-//        {
-//            ShowWarning("Already at maximum level!");
-//            return;
-//        }
-//        if (entry.isUpgrading)
-//        {
-//            ShowWarning("Upgrade already in progress.");
-//            return;
-//        }
-
-//        // Start the upgrade timer
-//        entry.isUpgrading = true;
-//        entry.upgradeEndTime = Time.time + entry.data.upgradeDuration;
-
-//        RefreshUpdateButton(entry);
-//        ShowProgressBar();
-//        RefreshInventoryCardBadges();
-
-//        Debug.Log($"[CannonPanel] Upgrade started for '{entry.data.cannonName}' " +
-//                  $"(id={entry.inventoryId}, upgrade {entry.upgradeCount + 1}/{CannonInventoryEntry.MAX_UPGRADES})");
-//    }
-
-//    private void RefreshUpdateButton(CannonInventoryEntry entry)
-//    {
-//        if (updateButton == null) return;
-
-//        if (entry == null)
-//        {
-//            updateButton.interactable = false;
-//            if (updateButtonText != null) updateButtonText.text = "No Cannons";
-//            return;
-//        }
-
-//        if (entry.upgradeCount >= CannonInventoryEntry.MAX_UPGRADES)
-//        {
-//            if (updateButtonText != null) updateButtonText.text = "MAX";
-//            updateButton.interactable = false;
-//        }
-//        else if (entry.isUpgrading)
-//        {
-//            if (updateButtonText != null) updateButtonText.text = "Upgrading...";
-//            updateButton.interactable = false;
-//        }
-//        else
-//        {
-//            if (updateButtonText != null)
-//                updateButtonText.text = $"Upgrade ({entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES})";
-//            updateButton.interactable = true;
-//        }
-//    }
-
-//    // ─── Upgrade tick (called every frame in Update) ───────────────────────
-
-//    private void TickAllUpgrades()
-//    {
-//        // All entries tick in the background even while the panel is closed
-//        foreach (CannonInventoryEntry entry in _inventory)
-//        {
-//            if (!entry.isUpgrading) continue;
-
-//            float remaining = entry.upgradeEndTime - Time.time;
-
-//            // Only drive the progress bar UI for the currently selected entry
-//            if (_mode == PanelMode.Inventory && entry.inventoryId == _selectedInventoryId)
-//            {
-//                float total = Mathf.Max(0.001f, entry.data.upgradeDuration);
-//                float progress = 1f - Mathf.Clamp01(remaining / total);
-
-//                if (upgradeProgressBar != null) upgradeProgressBar.fillAmount = progress;
-//                if (upgradeTimerText != null) upgradeTimerText.text = $"{Mathf.Max(0f, remaining):F1}s";
-//            }
-
-//            if (remaining <= 0f)
-//                CompleteUpgrade(entry);
-//        }
-//    }
-
-//    private void CompleteUpgrade(CannonInventoryEntry entry)
-//    {
-//        entry.upgradeCount++;
-//        entry.isUpgrading = false;
-
-//        Debug.Log($"[CannonPanel] Upgrade complete for '{entry.data.cannonName}' " +
-//                  $"(id={entry.inventoryId}). " +
-//                  $"Level now {entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES}");
-
-//        // If this is the currently displayed entry, refresh the UI
-//        if (_mode == PanelMode.Inventory && entry.inventoryId == _selectedInventoryId)
-//        {
-//            HideProgressBar();
-//            ShowInventoryDetails(entry);
-//            RefreshUpdateButton(entry);
-//        }
-
-//        RefreshInventoryCardBadges();
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // DRAG-DROP CALLBACKS (called by CannonDragHandler / CannonSlot)
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    /// <summary>
-//    /// Called by CannonDragHandler.OnEndDrag() after a successful castle placement.
-//    /// Removes the placed cannon's card from the inventory list.
-//    /// </summary>
-//    public void OnCannonPlacedOnCastle(CannonInventoryEntry entry)
-//    {
-//        if (_mode == PanelMode.Inventory)
-//        {
-//            // If the placed cannon was selected, clear the selection
-//            if (_selectedInventoryId == entry.inventoryId)
-//            {
-//                _selectedInventoryId = -1;
-//                ClearDetails();
-//                HideProgressBar();
-//            }
-//            PopulateInventoryCards();
-//            // Auto-select first remaining card
-//            if (_spawnedInventoryCards.Count > 0)
-//            {
-//                _spawnedInventoryCards[0].SetSelected(true);
-//                _selectedInventoryId = _spawnedInventoryCards[0].InventoryId;
-//                CannonInventoryEntry first = SelectedEntry;
-//                if (first != null) { ShowInventoryDetails(first); RefreshUpdateButton(first); }
-//            }
-//        }
-//    }
-
-//    /// <summary>
-//    /// Called by CannonSlot.RemoveCannon() when the player removes a cannon
-//    /// from the castle, sending it back to the inventory.
-//    /// </summary>
-//    public void OnSlotRemoved()
-//    {
-//        if (_mode == PanelMode.Inventory)
-//            PopulateInventoryCards();
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // BUTTON HELPERS
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    private void RefreshBuyButton()
-//    {
-//        if (buyButton == null) return;
-//        bool canAfford = _selectedBuyData != null && _gold >= _selectedBuyData.cost;
-//        buyButton.interactable = canAfford;
-//        if (buyButtonText != null)
-//            buyButtonText.text = _selectedBuyData != null
-//                ? $"Buy  ({_selectedBuyData.cost})"
-//                : "Buy";
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // PROGRESS BAR HELPERS
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    private void ShowProgressBar()
-//    {
-//        upgradeProgressBarBG?.SetActive(true);
-//        if (upgradeProgressBar != null) upgradeProgressBar.fillAmount = 0f;
-//    }
-
-//    private void HideProgressBar()
-//    {
-//        upgradeProgressBarBG?.SetActive(false);
-//        if (upgradeTimerText != null) upgradeTimerText.text = "";
-//    }
-
-//    /// <summary>
-//    /// Called when switching inventory cards — shows or hides the progress bar
-//    /// depending on whether the newly selected cannon is currently upgrading.
-//    /// </summary>
-//    private void RefreshProgressBarForSelected()
-//    {
-//        CannonInventoryEntry entry = SelectedEntry;
-//        if (entry == null) { HideProgressBar(); return; }
-
-//        if (entry.isUpgrading)
-//        {
-//            ShowProgressBar();
-//            // Snap fill to current progress immediately
-//            float total = Mathf.Max(0.001f, entry.data.upgradeDuration);
-//            float remaining = entry.upgradeEndTime - Time.time;
-//            float progress = 1f - Mathf.Clamp01(remaining / total);
-//            if (upgradeProgressBar != null) upgradeProgressBar.fillAmount = progress;
-//            if (upgradeTimerText != null) upgradeTimerText.text = $"{Mathf.Max(0f, remaining):F1}s";
-//        }
-//        else
-//        {
-//            HideProgressBar();
-//        }
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // COIN
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    private void RefreshCoinText()
-//    {
-//        if (coinText != null) coinText.text = _gold.ToString();
-//    }
-
-//    /// <summary>Public so other systems (rewards, quests) can add gold.</summary>
-//    public void AddGold(int amount)
-//    {
-//        _gold += amount;
-//        RefreshCoinText();
-//        if (_mode == PanelMode.Buy) RefreshBuyButton();
-//    }
-
-//    public int GetGold() => _gold;
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // WARNING / FEEDBACK
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    private void ShowWarning(string message)
-//    {
-//        if (warningText == null) return;
-//        warningText.text = message;
-//        CancelInvoke(nameof(ClearWarning));
-//        Invoke(nameof(ClearWarning), 2.5f);
-//    }
-
-//    private void ClearWarning()
-//    {
-//        if (warningText != null) warningText.text = "";
-//    }
-
-//    // ═════════════════════════════════════════════════════════════════════════
-//    // QUERIES (public utility)
-//    // ═════════════════════════════════════════════════════════════════════════
-
-//    /// <summary>How many copies of this cannon type the player currently owns.</summary>
-//    public int CountOwned(CannonData data)
-//    {
-//        int count = 0;
-//        foreach (CannonInventoryEntry e in _inventory)
-//            if (e.data == data) count++;
-//        return count;
-//    }
-
-//    /// <summary>Returns the full inventory list (read-only for external systems).</summary>
-//    public IReadOnlyList<CannonInventoryEntry> GetInventory() => _inventory;
-//}
-
-
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -677,194 +6,204 @@ using TMPro;
 /// <summary>
 /// CANNON PANEL — CannonPanelManager
 ///
-/// Single manager that owns everything: inventory, gold, buy flow,
-/// upgrade flow, and UI state. No separate "CannonArea" is needed.
+/// The single script that drives the entire Cannon Panel.
+/// Attach to the root CannonPanle GameObject (matches screenshot hierarchy).
 ///
-/// TWO MODES ───────────────────────────────────────────────────────────
-///   Buy Mode       : shows 3 fixed cannon-type cards. Player selects one
-///                    and clicks Buy to purchase a copy with coins.
-///   Inventory Mode : shows one dynamic card per owned cannon copy —
-///                    including cannons already placed on the castle.
-///                    • Unplaced cannon → Equip button + drag-drop support
-///                    • Placed cannon   → Unequip button
-///                    Player can also select a card and click Upgrade (max 3×).
+/// ════════════════════════════════════════════════════════════════
+/// FLOW
+/// ════════════════════════════════════════════════════════════════
 ///
-/// EQUIP / UNEQUIP FLOW ────────────────────────────────────────────────
-///   EquipCannon(id)   — places the cannon on the first free CannonSlot.
-///                       Assign all castle slots to the castleSlots array.
-///   UnequipCannon(id) — removes the cannon from its slot, returning it
-///                       to the inventory with upgrade progress intact.
+///  Village Panel
+///    └── CannonSlot.AddButton clicked
+///          └── OpenPanel(callingSlot)  → panel opens in BUY MODE
 ///
-/// DETAILS SECTION (shared, always visible) ────────────────────────────
-///   Shows the selected cannon's: Name, Cost, Range.
-///   In Inventory mode Range shows the current upgraded value.
+///  BUY MODE
+///    • Shows 3 cannon cards, all locked initially
+///    • Select a card → details (Name, Cost, Range) + HUD bars update
+///    • Click Buy → deducts gold, creates CannonInventoryEntry, lock removed on that card
+///    • Click "Inventory" tab → switches to INVENTORY MODE
 ///
-/// UPGRADES ────────────────────────────────────────────────────────────
-///   Each owned copy has its own upgrade counter (0–3).
-///   Upgrading cannon A never affects cannon B.
-///   Upgrade timers tick in Update() even while the panel is closed.
+///  INVENTORY MODE
+///    • Spawns one card per owned cannon (not equipped ones can also be shown — configurable)
+///    • Select a card → details update with CURRENT upgraded stats + level badge + timer
+///    • Equip   → calls callingSlot.Equip(entry); panel closes
+///    • Unequip → calls entry.equippedSlot.Unequip()
+///    • Upgrade → starts timed upgrade on selected entry
+///    • Click "Buy" tab → switches back to BUY MODE
 ///
-/// HIERARCHY GUIDE ─────────────────────────────────────────────────────
-///   CannonPanel
-///   ├── TabBar
-///   │   ├── TabBuyButton
-///   │   └── TabInventoryButton
-///   ├── BuyView
-///   │   ├── BuyCard_0  (CannonCard)
-///   │   ├── BuyCard_1  (CannonCard)
-///   │   └── BuyCard_2  (CannonCard)
-///   ├── InventoryView
-///   │   └── ScrollRect → InventoryCardContainer
-///   ├── DetailsSection
-///   │   ├── DetailsNameText
-///   │   ├── DetailsCostText
-///   │   └── DetailsRangeText
-///   ├── HUDSection
-///   │   ├── HealthBar (Image Filled) + HealthText
-///   │   ├── DamageBar                + DamageText
-///   │   └── RangeBar                 + RangeText
-///   ├── UpgradeProgressBarBackground
-///   │   └── UpgradeProgressBar  (Image Filled Horizontal Left)
-///   ├── UpgradeTimerText
-///   ├── BuyButton
-///   ├── UpdateButton
-///   ├── CoinText
-///   └── WarningText
+///  BackButton → closes panel, returns to Village
+///
+/// ════════════════════════════════════════════════════════════════
+/// HIERARCHY (CannonPanle in screenshot)
+/// ════════════════════════════════════════════════════════════════
+///
+///  CannonPanle
+///  ├── bg
+///  ├── BackButton
+///  ├── BuyTabButton          ← "Buy" tab
+///  ├── InventoryTabButton    ← "Inventory" tab (shown as "Inventory" text in screenshot)
+///  ├── CardGrid              ← parent of the 3 buy-mode cards
+///  │   ├── CannonCard_0  (CannonCard)
+///  │   ├── CannonCard_1  (CannonCard)
+///  │   └── CannonCard_2  (CannonCard)
+///  ├── InventoryScrollContent  ← dynamic inventory cards spawned here
+///  ├── Panel                 ← right-side details panel
+///  │   ├── Level             ← "LEVEL 1" badge + upgrade timer
+///  │   │   └── Text (TMP)   ← levelText
+///  │   ├── TimerText (TMP)   ← "00:00"
+///  │   ├── Cannon1           ← large preview Image
+///  │   ├── NameText (TMP)    ← "Name: Iron Field"
+///  │   ├── CostText (TMP)    ← "Cost: 100"
+///  │   ├── RangeText (TMP)   ← "Range: 40m"
+///  │   ├── HealthBar (Image Filled) + HealthText (TMP)
+///  │   ├── AbilityBar        + AbilityText
+///  │   ├── DamageBar         + DamageText
+///  │   ├── BuyButton
+///  │   ├── EquipButton       (inventory mode)
+///  │   ├── UnequipButton     (inventory mode)
+///  │   └── UpgradeButton     (inventory mode)
+///  └── CoinText (TMP)        ← coin amount top-right (reads from GameManager)
+///
 /// </summary>
 public class CannonPanelManager : MonoBehaviour
 {
     public static CannonPanelManager Instance { get; private set; }
 
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
     // INSPECTOR FIELDS
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
 
-    [Header("Cannon Types (3 entries: Iron, Bronze, Golden)")]
-    [SerializeField] private CannonData[] cannonTypes;
+    [Header("Cannon Types — assign 3 CannonData assets")]
+    [SerializeField] private CannonData[] cannonTypes;   // 3 entries
 
-    // ─── Castle Slots ─────────────────────────────────────────────────────────
-    [Header("Castle Slots (assign all CannonSlot objects on the castle)")]
-    [Tooltip("Used by EquipCannon() to find the first available slot.")]
-    [SerializeField] private CannonSlot[] castleSlots;
+    // ── Tab buttons ───────────────────────────────────────────────────────────
+    [Header("Tab Buttons")]
+    [SerializeField] private Button buyTabButton;
+    [SerializeField] private Button inventoryTabButton;
+    [SerializeField] private Button backButton;
 
-    // ─── Buy Mode ─────────────────────────────────────────────────────────────
-    [Header("Buy Mode")]
-    [SerializeField] private GameObject buyView;
-    [Tooltip("3 pre-placed CannonCard components in BuyView, same order as cannonTypes")]
-    [SerializeField] private CannonCard[] buyCards;
+    // ── Buy Mode ──────────────────────────────────────────────────────────────
+    [Header("Buy Mode — Card Grid")]
+    [Tooltip("Parent GameObject containing the 3 fixed CannonCard objects")]
+    [SerializeField] private GameObject cardGridRoot;
+    [Tooltip("3 pre-placed CannonCard components inside CardGrid, same order as cannonTypes")]
+    [SerializeField] private CannonCard[] buyCards;       // 3 entries
 
-    // ─── Inventory Mode ───────────────────────────────────────────────────────
+    // ── Inventory Mode ────────────────────────────────────────────────────────
     [Header("Inventory Mode")]
-    [SerializeField] private GameObject inventoryView;
-    [Tooltip("Prefab used to spawn one card per owned cannon copy")]
+    [Tooltip("Content Transform of the ScrollRect — dynamic cards spawn here")]
+    [SerializeField] private Transform inventoryScrollContent;
+    [Tooltip("CannonCard prefab spawned for each owned cannon")]
     [SerializeField] private CannonCard inventoryCardPrefab;
-    [Tooltip("Content transform of the ScrollRect")]
-    [SerializeField] private Transform inventoryCardContainer;
 
-    // ─── Details Section ──────────────────────────────────────────────────────
-    [Header("Details Section (shared)")]
-    [SerializeField] private TextMeshProUGUI detailsNameText;
-    [SerializeField] private TextMeshProUGUI detailsCostText;
-    [SerializeField] private TextMeshProUGUI detailsRangeText;
+    // ── Details Panel (right side) ────────────────────────────────────────────
+    [Header("Details Panel")]
+    [SerializeField] private Image previewImage;    // Cannon1 in hierarchy
+    [SerializeField] private TextMeshProUGUI levelText;       // "LEVEL 1"
+    [SerializeField] private TextMeshProUGUI timerText;       // "00:00"
+    [SerializeField] private TextMeshProUGUI nameText;        // "Name: Iron Field"
+    [SerializeField] private TextMeshProUGUI costText;        // "Cost: 100"
+    [SerializeField] private TextMeshProUGUI rangeText;       // "Range: 40m"
 
-    // ─── HUD Stat Bars ────────────────────────────────────────────────────────
+    // ── HUD bars (screenshot shows HEALTH / ABILITY / DAMAGE) ────────────────
     [Header("HUD Stat Bars (Image Type = Filled, Horizontal, Fill Origin = Left)")]
     [SerializeField] private Image healthBar;
-    [SerializeField] private TextMeshProUGUI healthText;
+    [SerializeField] private TextMeshProUGUI healthValueText;
+    [SerializeField] private Image abilityBar;
+    [SerializeField] private TextMeshProUGUI abilityValueText;
     [SerializeField] private Image damageBar;
-    [SerializeField] private TextMeshProUGUI damageText;
-    [SerializeField] private Image rangeBar;
-    [SerializeField] private TextMeshProUGUI rangeText;
+    [SerializeField] private TextMeshProUGUI damageValueText;
 
-    [Header("Max stat values used for bar fill ratio")]
+    [Header("Max values for bar fill ratio — tune per game balance")]
     [SerializeField] private float maxHealth = 200f;
-    [SerializeField] private float maxDamage = 150f;
-    [SerializeField] private float maxRange = 200f;
+    [SerializeField] private float maxAbility = 150f;
+    [SerializeField] private float maxDamage = 100f;
 
-    // ─── Upgrade UI ───────────────────────────────────────────────────────────
-    [Header("Upgrade UI")]
-    [Tooltip("Parent of the progress bar — shown/hidden as upgrade starts/ends")]
-    [SerializeField] private GameObject upgradeProgressBarBG;
-    [Tooltip("Image (Filled, Horizontal, Left) — fillAmount driven in Update()")]
+    // ── Upgrade progress bar ──────────────────────────────────────────────────
+    [Header("Upgrade Progress (shown while upgrading)")]
+    [SerializeField] private GameObject upgradeProgressBG;
     [SerializeField] private Image upgradeProgressBar;
-    [Tooltip("Shows '7.3s' countdown while upgrading")]
-    [SerializeField] private TextMeshProUGUI upgradeTimerText;
 
-    // ─── Buttons ──────────────────────────────────────────────────────────────
-    [Header("Buttons")]
+    // ── Action buttons ────────────────────────────────────────────────────────
+    [Header("Action Buttons")]
     [SerializeField] private Button buyButton;
     [SerializeField] private TextMeshProUGUI buyButtonText;
-    [SerializeField] private Button updateButton;
-    [SerializeField] private TextMeshProUGUI updateButtonText;   // "Upgrade (1/3)" / "MAX"
+    [SerializeField] private Button equipButton;
+    [SerializeField] private Button unequipButton;
+    [SerializeField] private Button upgradeButton;
+    [SerializeField] private TextMeshProUGUI upgradeButtonText;  // "Upgrade (1/3)" / "MAX"
 
-    [Header("Tab Buttons")]
-    [SerializeField] private Button tabBuyButton;
-    [SerializeField] private Button tabInventoryButton;
-
-    // ─── Coin ─────────────────────────────────────────────────────────────────
-    [Header("Coin")]
+    // ── Coin / Warning ────────────────────────────────────────────────────────
+    [Header("Coin & Warning")]
     [SerializeField] private TextMeshProUGUI coinText;
-    [SerializeField] private int startingGold = 300;
-
-    // ─── Warning / Feedback ───────────────────────────────────────────────────
-    [Header("Warning / Feedback Text")]
     [SerializeField] private TextMeshProUGUI warningText;
 
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
     // PRIVATE STATE
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
 
     private readonly List<CannonInventoryEntry> _inventory = new List<CannonInventoryEntry>();
     private int _nextId = 0;
-    private int _gold;
+
+    // Track which cannon types have been purchased at least once (for lock removal)
+    private readonly HashSet<CannonData> _everBought = new HashSet<CannonData>();
 
     private enum PanelMode { Buy, Inventory }
     private PanelMode _mode = PanelMode.Buy;
 
-    // ── Buy mode selection ────────────────────────────────────────────────────
+    // The slot that opened this panel (set by OpenPanel)
+    private CannonSlot _callingSlot;
+
+    // Buy mode selection
     private CannonData _selectedBuyData;
     private CannonCard _selectedBuyCard;
 
-    // ── Inventory mode selection ──────────────────────────────────────────────
+    // Inventory mode selection
     private int _selectedInventoryId = -1;
-
     private CannonInventoryEntry SelectedEntry =>
         _inventory.Find(e => e.inventoryId == _selectedInventoryId);
 
-    // Tracks the currently displayed inventory cards for badge refreshing
+    // Spawned inventory cards (for badge refresh)
     private readonly List<CannonCard> _spawnedInventoryCards = new List<CannonCard>();
 
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
     // UNITY LIFECYCLE
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
 
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        _gold = startingGold;
     }
 
     private void Start()
     {
-        // Tab buttons
-        tabBuyButton?.onClick.AddListener(OpenBuyMode);
-        tabInventoryButton?.onClick.AddListener(OpenInventoryMode);
+        // Wire tab buttons
+        buyTabButton?.onClick.AddListener(SwitchToBuyMode);
+        inventoryTabButton?.onClick.AddListener(SwitchToInventoryMode);
+        backButton?.onClick.AddListener(ClosePanel);
 
-        // Action buttons
+        // Wire action buttons
         buyButton?.onClick.AddListener(OnBuyClicked);
-        updateButton?.onClick.AddListener(OnUpdateClicked);
+        equipButton?.onClick.AddListener(OnEquipClicked);
+        unequipButton?.onClick.AddListener(OnUnequipClicked);
+        upgradeButton?.onClick.AddListener(OnUpgradeClicked);
 
-        // Initialise the 3 static buy cards
+        // Subscribe to GameManager gold changes so coin display stays in sync
+        GameManager.OnGoldChanged += OnGoldChanged;
+
+        // Setup the 3 fixed buy cards (all locked at start)
         if (buyCards != null)
             for (int i = 0; i < buyCards.Length && i < cannonTypes.Length; i++)
-                buyCards[i].SetupBuyCard(cannonTypes[i]);
+                buyCards[i].SetupBuyCard(cannonTypes[i], locked: true);
 
-        RefreshCoinText();
-        HideProgressBar();
+        // Panel starts hidden — it is shown by OpenPanel()
+        gameObject.SetActive(false);
+    }
 
-        // Open buy mode on start
-        OpenBuyMode();
+    private void OnDestroy()
+    {
+        GameManager.OnGoldChanged -= OnGoldChanged;
     }
 
     private void Update()
@@ -872,102 +211,94 @@ public class CannonPanelManager : MonoBehaviour
         TickAllUpgrades();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // PUBLIC ENTRY POINT — called by GameManager.OpenCannonPanel()
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
+    // PANEL OPEN / CLOSE
+    // ════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Called by GameManager every time the player opens the Cannon panel
-    /// (e.g. via the "Add Cannon" button). Resets to Buy mode so the player
-    /// always lands on the purchase screen first.
+    /// Called by CannonSlot.AddButton.
+    /// Opens the panel in Buy mode, remembers which slot triggered the open.
     /// </summary>
-    public void OnPanelOpened()
+    public void OpenPanel(CannonSlot callingSlot)
     {
-        OpenBuyMode();
+        _callingSlot = callingSlot;
+        gameObject.SetActive(true);
+        RefreshCoinText();
+        SwitchToBuyMode();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // MODE SWITCHING
-    // ═════════════════════════════════════════════════════════════════════════
+    private void ClosePanel()
+    {
+        ClearWarning();
+        gameObject.SetActive(false);
+        // Return to village via GameManager
+        GameManager.Instance?.CloseCurrentPanel();
+    }
 
-    public void OpenBuyMode()
+    // ════════════════════════════════════════════════════════════════
+    // MODE SWITCHING
+    // ════════════════════════════════════════════════════════════════
+
+    private void SwitchToBuyMode()
     {
         _mode = PanelMode.Buy;
-        buyView?.SetActive(true);
-        inventoryView?.SetActive(false);
 
-        buyButton?.gameObject.SetActive(true);
-        updateButton?.gameObject.SetActive(false);
+        // Show card grid, hide inventory scroll
+        if (cardGridRoot != null) cardGridRoot.SetActive(true);
+        if (inventoryScrollContent != null) inventoryScrollContent.gameObject.SetActive(false);
+
+        // Show Buy button, hide inventory action buttons
+        SetButtonsForMode(buy: true);
+
+        // Auto-select first card
+        if (buyCards != null && buyCards.Length > 0 && cannonTypes.Length > 0)
+            SelectBuyCard(buyCards[0], cannonTypes[0]);
 
         HideProgressBar();
-
-        // FIXED: guard both arrays before indexing.
-        // Old code:  if (cannonTypes != null && cannonTypes.Length > 0)
-        //                SelectBuyCard(buyCards[0], cannonTypes[0]);   ← crash if buyCards null/empty
-        if (cannonTypes != null && cannonTypes.Length > 0 &&
-            buyCards != null && buyCards.Length > 0)
-        {
-            SelectBuyCard(buyCards[0], cannonTypes[0]);
-        }
-        else if (cannonTypes == null || cannonTypes.Length == 0)
-        {
-            Debug.LogWarning("[CannonPanelManager] cannonTypes array is empty — " +
-                             "assign at least one CannonData ScriptableObject in the Inspector.");
-        }
-        else if (buyCards == null || buyCards.Length == 0)
-        {
-            Debug.LogWarning("[CannonPanelManager] buyCards array is empty — " +
-                             "drag the 3 BuyCard CannonCard components into the Inspector.");
-        }
-
         ClearWarning();
     }
 
-    private void OnValidate()
-    {
-        if (cannonTypes == null || cannonTypes.Length == 0)
-            Debug.LogWarning("[CannonPanelManager] cannonTypes is empty.", this);
-
-        if (buyCards == null || buyCards.Length == 0)
-            Debug.LogWarning("[CannonPanelManager] buyCards is empty — " +
-                             "drag all 3 BuyCard CannonCard components here.", this);
-
-        if (buyView == null)
-            Debug.LogWarning("[CannonPanelManager] buyView is not assigned.", this);
-
-        if (inventoryView == null)
-            Debug.LogWarning("[CannonPanelManager] inventoryView is not assigned.", this);
-
-        if (inventoryCardPrefab == null)
-            Debug.LogWarning("[CannonPanelManager] inventoryCardPrefab is not assigned.", this);
-
-        if (inventoryCardContainer == null)
-            Debug.LogWarning("[CannonPanelManager] inventoryCardContainer is not assigned.", this);
-
-        if (buyButton == null)
-            Debug.LogWarning("[CannonPanelManager] buyButton is not assigned.", this);
-
-        if (updateButton == null)
-            Debug.LogWarning("[CannonPanelManager] updateButton is not assigned.", this);
-    }
-
-    public void OpenInventoryMode()
+    private void SwitchToInventoryMode()
     {
         _mode = PanelMode.Inventory;
-        buyView?.SetActive(false);
-        inventoryView?.SetActive(true);
 
-        buyButton?.gameObject.SetActive(false);
-        updateButton?.gameObject.SetActive(true);
+        if (cardGridRoot != null) cardGridRoot.SetActive(false);
+        if (inventoryScrollContent != null) inventoryScrollContent.gameObject.SetActive(true);
 
-        // Refresh without wiping the current selection
-        RefreshInventoryUI();
+        SetButtonsForMode(buy: false);
+        PopulateInventoryCards();
+
+        if (_spawnedInventoryCards.Count > 0)
+        {
+            // Auto-select first card
+            _selectedInventoryId = _spawnedInventoryCards[0].InventoryId;
+            _spawnedInventoryCards[0].SetSelected(true);
+            ShowInventoryDetails(SelectedEntry);
+            RefreshInventoryButtons(SelectedEntry);
+            RefreshProgressBarForSelected(SelectedEntry);
+        }
+        else
+        {
+            ClearDetails();
+            if (upgradeButton != null) upgradeButton.interactable = false;
+            if (equipButton != null) equipButton.interactable = false;
+            HideProgressBar();
+        }
+
         ClearWarning();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // CARD SELECTION (called by CannonCard.OnClick)
-    // ═════════════════════════════════════════════════════════════════════════
+    private void SetButtonsForMode(bool buy)
+    {
+        if (buyButton != null) buyButton.gameObject.SetActive(buy);
+        if (equipButton != null) equipButton.gameObject.SetActive(!buy);
+        if (unequipButton != null) unequipButton.gameObject.SetActive(!buy);
+        if (upgradeButton != null) upgradeButton.gameObject.SetActive(!buy);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // CARD SELECTION  (called by CannonCard.OnClick)
+    // ════════════════════════════════════════════════════════════════
 
     public void OnCardSelected(CannonCard card)
     {
@@ -977,9 +308,8 @@ public class CannonPanelManager : MonoBehaviour
         }
         else
         {
-            // Deselect all inventory cards
-            foreach (CannonCard c in _spawnedInventoryCards)
-                c.SetSelected(false);
+            // Deselect all
+            foreach (CannonCard c in _spawnedInventoryCards) c.SetSelected(false);
             card.SetSelected(true);
 
             _selectedInventoryId = card.InventoryId;
@@ -987,191 +317,94 @@ public class CannonPanelManager : MonoBehaviour
             if (entry == null) return;
 
             ShowInventoryDetails(entry);
-            RefreshUpdateButton(entry);
-            RefreshProgressBarForSelected();
+            RefreshInventoryButtons(entry);
+            RefreshProgressBarForSelected(entry);
         }
         ClearWarning();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // EQUIP / UNEQUIP (called by CannonCard equip / unequip buttons)
-    // ═════════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Places the cannon with the given inventoryId onto the first free
-    /// castle slot. Shows a warning if all slots are occupied.
-    /// Called by the Equip button on each inventory card.
-    /// </summary>
-    public void EquipCannon(int inventoryId)
-    {
-        CannonInventoryEntry entry = _inventory.Find(e => e.inventoryId == inventoryId);
-        if (entry == null || entry.isPlacedOnCastle) return;
-
-        // Find the first free slot
-        if (castleSlots != null)
-        {
-            foreach (CannonSlot slot in castleSlots)
-            {
-                if (slot == null || slot.IsOccupied) continue;
-
-                slot.PlaceCannon(entry);
-
-                // Keep this cannon selected so the player sees it flip to Unequip
-                _selectedInventoryId = inventoryId;
-
-                if (_mode == PanelMode.Inventory)
-                    RefreshInventoryUI();
-
-                Debug.Log($"[CannonPanel] Equipped '{entry.data.cannonName}' " +
-                          $"(id={inventoryId}) via button.");
-                return;
-            }
-        }
-
-        ShowWarning("No free cannon slots on the castle!");
-    }
-
-    /// <summary>
-    /// Removes the cannon with the given inventoryId from its castle slot,
-    /// returning it to the inventory with upgrade progress intact.
-    /// Called by the Unequip button on each inventory card.
-    /// </summary>
-    public void UnequipCannon(int inventoryId)
-    {
-        CannonInventoryEntry entry = _inventory.Find(e => e.inventoryId == inventoryId);
-        if (entry == null || !entry.isPlacedOnCastle || entry.occupiedSlot == null) return;
-
-        // Keep this cannon selected so the player sees it flip back to Equip
-        _selectedInventoryId = inventoryId;
-
-        // RemoveCannon() clears isPlacedOnCastle / occupiedSlot and fires
-        // CannonPanelManager.Instance.OnSlotRemoved() → RefreshInventoryUI().
-        entry.occupiedSlot.RemoveCannon();
-
-        Debug.Log($"[CannonPanel] Unequipped '{entry.data.cannonName}' " +
-                  $"(id={inventoryId}) via button.");
-    }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // BUY FLOW
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
+    // BUY MODE
+    // ════════════════════════════════════════════════════════════════
 
     private void SelectBuyCard(CannonCard card, CannonData data)
     {
-        // Clear previous selection highlight
         if (_selectedBuyCard != null) _selectedBuyCard.SetSelected(false);
-
         _selectedBuyData = data;
         _selectedBuyCard = card;
         card?.SetSelected(true);
-
         ShowBuyDetails(data);
         RefreshBuyButton();
     }
 
     private void OnBuyClicked()
     {
-        if (_selectedBuyData == null)
+        if (_selectedBuyData == null) { ShowWarning("Select a cannon first."); return; }
+
+        if (GameManager.Instance == null)
         {
-            ShowWarning("Select a cannon first.");
+            Debug.LogError("[CannonPanel] GameManager not found! Cannot spend gold.");
             return;
         }
-        if (_gold < _selectedBuyData.cost)
+
+        if (!GameManager.Instance.SpendGold(_selectedBuyData.cost))
         {
             ShowWarning("Not enough coins!");
             return;
         }
 
-        // Deduct cost
-        _gold -= _selectedBuyData.cost;
-        RefreshCoinText();
-
-        // Create inventory entry
+        // Create new inventory entry
         var entry = new CannonInventoryEntry
         {
             data = _selectedBuyData,
-            inventoryId = _nextId++,
-            upgradeCount = 0,
-            isUpgrading = false,
-            isPlacedOnCastle = false,
-            occupiedSlot = null
+            inventoryId = _nextId++
         };
         _inventory.Add(entry);
 
-        ShowWarning($"Purchased {_selectedBuyData.cannonName}!");
+        // Remove lock from this card type if this is the first purchase
+        if (!_everBought.Contains(_selectedBuyData))
+        {
+            _everBought.Add(_selectedBuyData);
+            // Find the matching buy card and unlock it
+            for (int i = 0; i < buyCards.Length && i < cannonTypes.Length; i++)
+                if (cannonTypes[i] == _selectedBuyData)
+                    buyCards[i].SetLocked(false);
+        }
+
+        RefreshCoinText();
         RefreshBuyButton();
-
-        Debug.Log($"[CannonPanel] Bought '{_selectedBuyData.cannonName}' " +
-                  $"(id={entry.inventoryId}). Total owned: {CountOwned(_selectedBuyData)}x.");
+        ShowWarning($"Bought {_selectedBuyData.cannonName}!");
+        Debug.Log($"[CannonPanel] Bought '{_selectedBuyData.cannonName}' id={entry.inventoryId}");
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // DETAILS SECTION
-    // ═════════════════════════════════════════════════════════════════════════
-
-    /// <summary>Buy mode — shows base stats from the ScriptableObject.</summary>
-    private void ShowBuyDetails(CannonData data)
+    private void RefreshBuyButton()
     {
-        if (detailsNameText != null) detailsNameText.text = data.cannonName;
-        if (detailsCostText != null) detailsCostText.text = $"Cost: {data.cost}";
-        if (detailsRangeText != null) detailsRangeText.text = $"Range: {data.range:F0}";
-
-        RefreshHUDBars(data.health, data.damage, data.range);
+        if (buyButton == null) return;
+        int gold = GameManager.Instance?.Gold ?? 0;
+        buyButton.interactable = _selectedBuyData != null && gold >= _selectedBuyData.cost;
+        if (buyButtonText != null)
+            buyButtonText.text = _selectedBuyData != null ? $"Buy ({_selectedBuyData.cost})" : "Buy";
     }
 
-    /// <summary>Inventory mode — shows current upgraded stats.</summary>
-    private void ShowInventoryDetails(CannonInventoryEntry entry)
-    {
-        if (detailsNameText != null) detailsNameText.text = entry.data.cannonName;
-        if (detailsCostText != null) detailsCostText.text = $"Cost: {entry.data.cost}";
-        if (detailsRangeText != null) detailsRangeText.text = $"Range: {entry.CurrentRange:F0}";
+    // ════════════════════════════════════════════════════════════════
+    // INVENTORY MODE
+    // ════════════════════════════════════════════════════════════════
 
-        RefreshHUDBars(entry.CurrentHealth, entry.CurrentDamage, entry.CurrentRange);
-    }
-
-    private void ClearDetails()
-    {
-        if (detailsNameText != null) detailsNameText.text = "—";
-        if (detailsCostText != null) detailsCostText.text = "";
-        if (detailsRangeText != null) detailsRangeText.text = "";
-        RefreshHUDBars(0f, 0f, 0f);
-    }
-
-    private void RefreshHUDBars(float health, float damage, float range)
-    {
-        if (healthBar != null) healthBar.fillAmount = Mathf.Clamp01(health / maxHealth);
-        if (damageBar != null) damageBar.fillAmount = Mathf.Clamp01(damage / maxDamage);
-        if (rangeBar != null) rangeBar.fillAmount = Mathf.Clamp01(range / maxRange);
-
-        if (healthText != null) healthText.text = $"{health:F0}";
-        if (damageText != null) damageText.text = $"{damage:F0}";
-        if (rangeText != null) rangeText.text = $"{range:F0}";
-    }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // INVENTORY CARDS
-    // ═════════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Destroys all spawned inventory cards and recreates them from scratch.
-    /// ALL owned cannons are shown — placed cannons display the Unequip button;
-    /// unplaced cannons display the Equip button and support drag-drop.
-    /// </summary>
     private void PopulateInventoryCards()
     {
         _spawnedInventoryCards.Clear();
-        if (inventoryCardContainer != null)
-            foreach (Transform child in inventoryCardContainer)
-                Destroy(child.gameObject);
 
-        if (inventoryCardPrefab == null) return;
+        if (inventoryScrollContent == null || inventoryCardPrefab == null) return;
+
+        // Destroy old cards
+        foreach (Transform child in inventoryScrollContent)
+            Destroy(child.gameObject);
 
         foreach (CannonInventoryEntry entry in _inventory)
         {
-            CannonCard card = Instantiate(inventoryCardPrefab, inventoryCardContainer);
+            CannonCard card = Instantiate(inventoryCardPrefab, inventoryScrollContent);
             card.SetupInventoryCard(entry);
 
-            // Restore selection highlight if this was the previously selected cannon
             if (entry.inventoryId == _selectedInventoryId)
                 card.SetSelected(true);
 
@@ -1179,146 +412,115 @@ public class CannonPanelManager : MonoBehaviour
         }
     }
 
-    private void RefreshInventoryCardBadges()
-    {
-        foreach (CannonCard card in _spawnedInventoryCards)
-        {
-            if (card == null) continue;
-            CannonInventoryEntry entry = _inventory.Find(e => e.inventoryId == card.InventoryId);
-            if (entry != null) card.RefreshUpgradeBadge(entry);
-        }
-    }
-
-    /// <summary>
-    /// Central helper: repopulates cards and restores the selection/details UI.
-    /// Call this whenever the inventory list or a cannon's placement state changes.
-    /// </summary>
-    private void RefreshInventoryUI()
-    {
-        PopulateInventoryCards();
-
-        CannonInventoryEntry current = SelectedEntry;
-
-        if (current != null)
-        {
-            // Selection is still valid — refresh details for the same cannon
-            ShowInventoryDetails(current);
-            RefreshUpdateButton(current);
-            RefreshProgressBarForSelected();
-        }
-        else if (_spawnedInventoryCards.Count > 0)
-        {
-            // Previous selection gone — auto-select the first card
-            _selectedInventoryId = _spawnedInventoryCards[0].InventoryId;
-            _spawnedInventoryCards[0].SetSelected(true);
-
-            CannonInventoryEntry first = SelectedEntry;
-            if (first != null)
-            {
-                ShowInventoryDetails(first);
-                RefreshUpdateButton(first);
-                RefreshProgressBarForSelected();
-            }
-        }
-        else
-        {
-            // No cannons owned
-            _selectedInventoryId = -1;
-            ClearDetails();
-            HideProgressBar();
-            if (updateButton != null)
-            {
-                updateButton.interactable = false;
-                if (updateButtonText != null) updateButtonText.text = "No Cannons";
-            }
-        }
-    }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // UPGRADE FLOW
-    // ═════════════════════════════════════════════════════════════════════════
-
-    private void OnUpdateClicked()
+    private void OnEquipClicked()
     {
         CannonInventoryEntry entry = SelectedEntry;
+        if (entry == null) { ShowWarning("Select a cannon first."); return; }
+        if (_callingSlot == null) { ShowWarning("No slot to equip to!"); return; }
 
-        if (entry == null)
+        if (entry.isEquipped && entry.equippedSlot == _callingSlot)
         {
-            ShowWarning("Select a cannon first.");
-            return;
-        }
-        if (entry.upgradeCount >= CannonInventoryEntry.MAX_UPGRADES)
-        {
-            ShowWarning("Already at maximum level!");
-            return;
-        }
-        if (entry.isUpgrading)
-        {
-            ShowWarning("Upgrade already in progress.");
+            ShowWarning("Already equipped here.");
             return;
         }
 
-        // Start the upgrade timer
+        _callingSlot.Equip(entry);
+        RefreshInventoryButtons(entry);
+        ShowWarning($"Equipped {entry.data.cannonName}!");
+    }
+
+    private void OnUnequipClicked()
+    {
+        CannonInventoryEntry entry = SelectedEntry;
+        if (entry == null) { ShowWarning("Select a cannon first."); return; }
+        if (!entry.isEquipped) { ShowWarning("Not equipped."); return; }
+
+        entry.equippedSlot?.Unequip();
+        RefreshInventoryButtons(entry);
+    }
+
+    private void OnUpgradeClicked()
+    {
+        CannonInventoryEntry entry = SelectedEntry;
+        if (entry == null) { ShowWarning("Select a cannon first."); return; }
+        if (entry.IsMaxLevel) { ShowWarning("Already at MAX level!"); return; }
+        if (entry.isUpgrading) { ShowWarning("Upgrade in progress."); return; }
+
         entry.isUpgrading = true;
         entry.upgradeEndTime = Time.time + entry.data.upgradeDuration;
 
-        RefreshUpdateButton(entry);
+        RefreshInventoryButtons(entry);
         ShowProgressBar();
         RefreshInventoryCardBadges();
-
-        Debug.Log($"[CannonPanel] Upgrade started for '{entry.data.cannonName}' " +
-                  $"(id={entry.inventoryId}, upgrade " +
-                  $"{entry.upgradeCount + 1}/{CannonInventoryEntry.MAX_UPGRADES})");
+        Debug.Log($"[CannonPanel] Upgrade started — '{entry.data.cannonName}' id={entry.inventoryId} " +
+                  $"upgrade {entry.upgradeCount + 1}/{CannonInventoryEntry.MAX_UPGRADES}");
     }
 
-    private void RefreshUpdateButton(CannonInventoryEntry entry)
+    private void RefreshInventoryButtons(CannonInventoryEntry entry)
     {
-        if (updateButton == null) return;
-
         if (entry == null)
         {
-            updateButton.interactable = false;
-            if (updateButtonText != null) updateButtonText.text = "No Cannons";
+            if (equipButton != null) equipButton.interactable = false;
+            if (unequipButton != null) unequipButton.interactable = false;
+            if (upgradeButton != null) upgradeButton.interactable = false;
             return;
         }
 
-        if (entry.upgradeCount >= CannonInventoryEntry.MAX_UPGRADES)
+        // Equip — disabled if already equipped in this same slot
+        if (equipButton != null)
+            equipButton.interactable = !entry.isEquipped || entry.equippedSlot != _callingSlot;
+
+        // Unequip — only enabled if equipped somewhere
+        if (unequipButton != null)
+            unequipButton.interactable = entry.isEquipped;
+
+        // Upgrade button text and state
+        if (upgradeButton != null)
         {
-            if (updateButtonText != null) updateButtonText.text = "MAX";
-            updateButton.interactable = false;
-        }
-        else if (entry.isUpgrading)
-        {
-            if (updateButtonText != null) updateButtonText.text = "Upgrading...";
-            updateButton.interactable = false;
-        }
-        else
-        {
-            if (updateButtonText != null)
-                updateButtonText.text = $"Upgrade ({entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES})";
-            updateButton.interactable = true;
+            if (entry.IsMaxLevel)
+            {
+                if (upgradeButtonText != null) upgradeButtonText.text = "MAX";
+                upgradeButton.interactable = false;
+            }
+            else if (entry.isUpgrading)
+            {
+                if (upgradeButtonText != null) upgradeButtonText.text = "Upgrading...";
+                upgradeButton.interactable = false;
+            }
+            else
+            {
+                if (upgradeButtonText != null)
+                    upgradeButtonText.text =
+                        $"Upgrade ({entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES})";
+                upgradeButton.interactable = true;
+            }
         }
     }
 
-    // ─── Upgrade tick (called every frame in Update) ───────────────────────
+    // ════════════════════════════════════════════════════════════════
+    // UPGRADE TICK  (Update)
+    // ════════════════════════════════════════════════════════════════
 
     private void TickAllUpgrades()
     {
-        // All entries tick in the background even while the panel is closed
         foreach (CannonInventoryEntry entry in _inventory)
         {
             if (!entry.isUpgrading) continue;
 
             float remaining = entry.upgradeEndTime - Time.time;
 
-            // Only drive the progress bar UI for the currently selected entry
+            // Only update the UI for the currently selected entry
             if (_mode == PanelMode.Inventory && entry.inventoryId == _selectedInventoryId)
             {
                 float total = Mathf.Max(0.001f, entry.data.upgradeDuration);
                 float progress = 1f - Mathf.Clamp01(remaining / total);
-
                 if (upgradeProgressBar != null) upgradeProgressBar.fillAmount = progress;
-                if (upgradeTimerText != null) upgradeTimerText.text = $"{Mathf.Max(0f, remaining):F1}s";
+
+                // Timer display in MM:SS format  (matches "00:00" in screenshot)
+                float clamped = Mathf.Max(0f, remaining);
+                int mins = (int)(clamped / 60f);
+                int secs = (int)(clamped % 60f);
+                if (timerText != null) timerText.text = $"{mins:00}:{secs:00}";
             }
 
             if (remaining <= 0f)
@@ -1331,99 +533,126 @@ public class CannonPanelManager : MonoBehaviour
         entry.upgradeCount++;
         entry.isUpgrading = false;
 
-        Debug.Log($"[CannonPanel] Upgrade complete for '{entry.data.cannonName}' " +
-                  $"(id={entry.inventoryId}). " +
-                  $"Level now {entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES}");
+        Debug.Log($"[CannonPanel] Upgrade complete — '{entry.data.cannonName}' id={entry.inventoryId} " +
+                  $"now level {entry.DisplayLevel}");
 
-        // If this is the currently displayed entry, refresh the UI
         if (_mode == PanelMode.Inventory && entry.inventoryId == _selectedInventoryId)
         {
             HideProgressBar();
             ShowInventoryDetails(entry);
-            RefreshUpdateButton(entry);
+            RefreshInventoryButtons(entry);
+            if (timerText != null) timerText.text = "00:00";
         }
 
         RefreshInventoryCardBadges();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // DRAG-DROP CALLBACKS (called by CannonDragHandler / CannonSlot)
-    // ═════════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Called by CannonDragHandler.OnEndDrag() after a successful castle
-    /// placement via drag-and-drop. Refreshes the inventory UI so the
-    /// card flips from Equip to Unequip without disappearing from the list.
-    /// </summary>
-    public void OnCannonPlacedOnCastle(CannonInventoryEntry entry)
+    private void RefreshInventoryCardBadges()
     {
-        if (_mode != PanelMode.Inventory) return;
-
-        // Keep the placed cannon selected so the player can see it flip to Unequip
-        _selectedInventoryId = entry.inventoryId;
-        RefreshInventoryUI();
+        foreach (CannonCard card in _spawnedInventoryCards)
+        {
+            if (card == null) continue;
+            CannonInventoryEntry e = _inventory.Find(x => x.inventoryId == card.InventoryId);
+            if (e != null) card.RefreshBadge(e);
+        }
     }
 
-    /// <summary>
-    /// Called by CannonSlot.RemoveCannon() when the player uses the slot's
-    /// own remove button (the X on the castle). Refreshes the inventory list
-    /// so the cannon's card flips back from Unequip to Equip.
-    /// </summary>
-    public void OnSlotRemoved()
+    // ════════════════════════════════════════════════════════════════
+    // DETAILS PANEL
+    // ════════════════════════════════════════════════════════════════
+
+    private void ShowBuyDetails(CannonData data)
     {
-        if (_mode == PanelMode.Inventory)
-            RefreshInventoryUI();
+        ApplyPreviewSprite(data.previewSprite ?? (data.idleSprites?.Length > 0 ? data.idleSprites[0] : null));
+
+        if (levelText != null) levelText.text = "LEVEL 1";
+        if (timerText != null) timerText.text = "00:00";
+        if (nameText != null) nameText.text = $"Name: {data.cannonName}";
+        if (costText != null) costText.text = $"Cost: {data.cost}";
+        if (rangeText != null) rangeText.text = $"Range: {data.range:F0}m";
+
+        SetHUDBars(data.health, data.ability, data.damage);
+        HideProgressBar();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // BUTTON HELPERS
-    // ═════════════════════════════════════════════════════════════════════════
-
-    private void RefreshBuyButton()
+    private void ShowInventoryDetails(CannonInventoryEntry entry)
     {
-        if (buyButton == null) return;
-        bool canAfford = _selectedBuyData != null && _gold >= _selectedBuyData.cost;
-        buyButton.interactable = canAfford;
-        if (buyButtonText != null)
-            buyButtonText.text = _selectedBuyData != null
-                ? $"Buy  ({_selectedBuyData.cost})"
-                : "Buy";
+        if (entry == null) { ClearDetails(); return; }
+
+        Sprite sp = entry.data.previewSprite
+            ?? (entry.data.idleSprites?.Length > 0 ? entry.data.idleSprites[0] : null);
+        ApplyPreviewSprite(sp);
+
+        if (levelText != null) levelText.text = $"LEVEL {entry.DisplayLevel}";
+        if (nameText != null) nameText.text = $"Name: {entry.data.cannonName}";
+        if (costText != null) costText.text = $"Cost: {entry.data.cost}";
+        if (rangeText != null) rangeText.text = $"Range: {entry.CurrentRange:F0}m";
+
+        SetHUDBars(entry.CurrentHealth, entry.CurrentAbility, entry.CurrentDamage);
+
+        // Timer — only show if currently upgrading
+        if (timerText != null)
+            timerText.text = entry.isUpgrading
+                ? FormatTimer(entry.UpgradeTimeRemaining)
+                : "00:00";
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // PROGRESS BAR HELPERS
-    // ═════════════════════════════════════════════════════════════════════════
+    private void ClearDetails()
+    {
+        ApplyPreviewSprite(null);
+        if (levelText != null) levelText.text = "LEVEL 1";
+        if (timerText != null) timerText.text = "00:00";
+        if (nameText != null) nameText.text = "Name: —";
+        if (costText != null) costText.text = "";
+        if (rangeText != null) rangeText.text = "";
+        SetHUDBars(0f, 0f, 0f);
+    }
+
+    private void SetHUDBars(float health, float ability, float damage)
+    {
+        if (healthBar != null) healthBar.fillAmount = Mathf.Clamp01(health / maxHealth);
+        if (abilityBar != null) abilityBar.fillAmount = Mathf.Clamp01(ability / maxAbility);
+        if (damageBar != null) damageBar.fillAmount = Mathf.Clamp01(damage / maxDamage);
+
+        if (healthValueText != null) healthValueText.text = $"{health:F0}";
+        if (abilityValueText != null) abilityValueText.text = $"{ability:F0}";
+        if (damageValueText != null) damageValueText.text = $"{damage:F0}";
+    }
+
+    private void ApplyPreviewSprite(Sprite s)
+    {
+        if (previewImage == null) return;
+        previewImage.enabled = s != null;
+        if (s != null) previewImage.sprite = s;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // PROGRESS BAR
+    // ════════════════════════════════════════════════════════════════
 
     private void ShowProgressBar()
     {
-        upgradeProgressBarBG?.SetActive(true);
+        if (upgradeProgressBG != null) upgradeProgressBG.SetActive(true);
         if (upgradeProgressBar != null) upgradeProgressBar.fillAmount = 0f;
     }
 
     private void HideProgressBar()
     {
-        upgradeProgressBarBG?.SetActive(false);
-        if (upgradeTimerText != null) upgradeTimerText.text = "";
+        if (upgradeProgressBG != null) upgradeProgressBG.SetActive(false);
+        if (timerText != null && _mode == PanelMode.Buy) timerText.text = "00:00";
     }
 
-    /// <summary>
-    /// Called when switching inventory cards — shows or hides the progress bar
-    /// depending on whether the newly selected cannon is currently upgrading.
-    /// </summary>
-    private void RefreshProgressBarForSelected()
+    private void RefreshProgressBarForSelected(CannonInventoryEntry entry)
     {
-        CannonInventoryEntry entry = SelectedEntry;
         if (entry == null) { HideProgressBar(); return; }
 
         if (entry.isUpgrading)
         {
             ShowProgressBar();
-            // Snap fill to current progress immediately
             float total = Mathf.Max(0.001f, entry.data.upgradeDuration);
-            float remaining = entry.upgradeEndTime - Time.time;
-            float progress = 1f - Mathf.Clamp01(remaining / total);
+            float progress = 1f - Mathf.Clamp01(entry.UpgradeTimeRemaining / total);
             if (upgradeProgressBar != null) upgradeProgressBar.fillAmount = progress;
-            if (upgradeTimerText != null) upgradeTimerText.text = $"{Mathf.Max(0f, remaining):F1}s";
+            if (timerText != null) timerText.text = FormatTimer(entry.UpgradeTimeRemaining);
         }
         else
         {
@@ -1431,33 +660,32 @@ public class CannonPanelManager : MonoBehaviour
         }
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
     // COIN
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
 
     private void RefreshCoinText()
     {
-        if (coinText != null) coinText.text = _gold.ToString();
+        if (coinText == null) return;
+        coinText.text = GameManager.Instance != null
+            ? GameManager.Instance.Gold.ToString()
+            : "0";
     }
 
-    /// <summary>Public so other systems (rewards, quests) can add gold.</summary>
-    public void AddGold(int amount)
+    private void OnGoldChanged(int newAmount)
     {
-        _gold += amount;
-        RefreshCoinText();
+        if (coinText != null) coinText.text = newAmount.ToString();
         if (_mode == PanelMode.Buy) RefreshBuyButton();
     }
 
-    public int GetGold() => _gold;
-
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
     // WARNING / FEEDBACK
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
 
-    private void ShowWarning(string message)
+    private void ShowWarning(string msg)
     {
         if (warningText == null) return;
-        warningText.text = message;
+        warningText.text = msg;
         CancelInvoke(nameof(ClearWarning));
         Invoke(nameof(ClearWarning), 2.5f);
     }
@@ -1467,19 +695,44 @@ public class CannonPanelManager : MonoBehaviour
         if (warningText != null) warningText.text = "";
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // QUERIES (public utility)
-    // ═════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
+    // CALLBACKS FROM CannonSlot
+    // ════════════════════════════════════════════════════════════════
 
-    /// <summary>How many copies of this cannon type the player currently owns.</summary>
-    public int CountOwned(CannonData data)
+    /// <summary>Called by CannonSlot.Unequip() to refresh the inventory card list.</summary>
+    public void RefreshAfterUnequip()
     {
-        int count = 0;
-        foreach (CannonInventoryEntry e in _inventory)
-            if (e.data == data) count++;
-        return count;
+        if (_mode == PanelMode.Inventory)
+        {
+            PopulateInventoryCards();
+            CannonInventoryEntry entry = SelectedEntry;
+            if (entry != null)
+            {
+                ShowInventoryDetails(entry);
+                RefreshInventoryButtons(entry);
+            }
+        }
     }
 
-    /// <summary>Returns the full inventory list (read-only for external systems).</summary>
+    // ════════════════════════════════════════════════════════════════
+    // HELPERS
+    // ════════════════════════════════════════════════════════════════
+
+    private static string FormatTimer(float seconds)
+    {
+        float s = Mathf.Max(0f, seconds);
+        int min = (int)(s / 60f);
+        int sec = (int)(s % 60f);
+        return $"{min:00}:{sec:00}";
+    }
+
+    /// <summary>Read-only access for external systems.</summary>
     public IReadOnlyList<CannonInventoryEntry> GetInventory() => _inventory;
+
+    public int CountOwned(CannonData data)
+    {
+        int n = 0;
+        foreach (var e in _inventory) if (e.data == data) n++;
+        return n;
+    }
 }

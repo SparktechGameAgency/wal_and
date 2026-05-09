@@ -17,7 +17,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &3352431258020258908
 RectTransform:
   m_ObjectHideFlags: 0
@@ -244,12 +244,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7c1bebd4eeafa541850aa56de82f43f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CannonCard
-  cannonPreviewImage: {fileID: 6597493418417900722}
+  cannonImage: {fileID: 0}
   nameText: {fileID: 0}
-  costText: {fileID: 0}
-  upgradeCountText: {fileID: 0}
+  lockOverlay: {fileID: 0}
   selectedHighlight: {fileID: 3235329255986770071}
-  upgradingBadge: {fileID: 6308060131346659896}
+  upgradeBadge: {fileID: 0}
   cardButton: {fileID: 6888726498660038154}
 --- !u!114 &6888726498660038154
 MonoBehaviour:

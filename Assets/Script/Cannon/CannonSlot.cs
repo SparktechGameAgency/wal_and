@@ -1,109 +1,96 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
+using TMPro;
 
 /// <summary>
 /// CANNON PANEL — CannonSlot
 ///
-/// Attach to each slot GameObject on the castle.
-/// Receives cannons via drag-and-drop (IDropHandler).
+/// Attach to the CannonSlot GameObject on the Village panel.
+/// Matches the hierarchy in the screenshot:
 ///
-/// Upgrade state is NOT stored here — it lives in CannonInventoryEntry.
-/// Removing a cannon from the slot sends it back to the inventory
-/// with all upgrade progress intact.
+///   CannonSlot  (this script)
+///   ├── Spawnpoint         — cannon prefab is parented here when equipped
+///   ├── EmptySlotVisual    — shown when no cannon is equipped
+///   │   └── Text (TMP)     — e.g. "+" or "Empty"
+///   ├── SlotHighLight      — optional hover glow
+///   ├── RemoveButton       — unequips the current cannon
+///   └── AddButton          — opens the Cannon Panel
+///       └── Text (TMP)
 ///
-/// Hierarchy suggestion per slot:
-///   CannonSlot (this script + Image for background)
-///   ├── SpawnPoint        ← cannon prefab is parented here
-///   ├── EmptySlotVisual   ← shown when nothing is placed
-///   ├── SlotHighlight     ← shown while dragging over this slot
-///   └── RemoveButton      ← shown while occupied; sends cannon back to inventory
+/// FLOW:
+///   1. Player clicks AddButton  → CannonPanelManager.OpenPanel(this)
+///   2. Player buys a cannon in the panel (added to inventory)
+///   3. Player clicks Equip in the inventory tab
+///      → CannonPanelManager calls slot.Equip(entry)
+///   4. Player clicks RemoveButton → slot.Unequip()
 /// </summary>
-public class CannonSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPointerExitHandler
+public class CannonSlot : MonoBehaviour
 {
-    // ─── Inspector References ─────────────────────────────────────────────────
-
-    [Header("Children")]
-    [SerializeField] private RectTransform spawnPoint;
-    [Tooltip("Shown when the slot is empty")]
+    // ── Inspector refs ─────────────────────────────────────────────────────────
+    [Header("Children (match screenshot hierarchy)")]
+    [SerializeField] private Transform spawnpoint;
     [SerializeField] private GameObject emptySlotVisual;
-    [Tooltip("Glows while a cannon is being dragged over this slot")]
-    [SerializeField] private Image slotHighlight;
-    [Tooltip("Button that removes the cannon back to the inventory")]
+    [SerializeField] private GameObject slotHighLight;
     [SerializeField] private Button removeButton;
+    [SerializeField] private Button addButton;
 
-    // ─── Runtime State ────────────────────────────────────────────────────────
-
+    // ── Runtime state ──────────────────────────────────────────────────────────
     private CannonInventoryEntry _entry;
     private CannonController _controller;
 
-    // ─── Public Properties ────────────────────────────────────────────────────
-
     public bool IsOccupied => _entry != null;
-    public int OccupiedId => _entry?.inventoryId ?? -1;
     public CannonInventoryEntry Entry => _entry;
 
-    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
-
+    // ── Unity ──────────────────────────────────────────────────────────────────
     private void Awake()
     {
-        if (slotHighlight != null) slotHighlight.gameObject.SetActive(false);
-        if (removeButton != null)
-        {
-            removeButton.gameObject.SetActive(false);
-            removeButton.onClick.AddListener(OnRemoveClicked);
-        }
+        addButton?.onClick.AddListener(OnAddClicked);
+        removeButton?.onClick.AddListener(OnRemoveClicked);
         RefreshVisuals();
     }
 
-    // ─── Public API ───────────────────────────────────────────────────────────
+    // ── Public API ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Place a cannon into this slot.
-    /// Called by OnDrop (drag-and-drop) and can also be called directly.
-    /// If the slot is already occupied the existing cannon is removed first.
+    /// Called by CannonPanelManager when the player clicks Equip in the inventory tab.
+    /// Spawns the cannon prefab at the Spawnpoint.
     /// </summary>
-    public void PlaceCannon(CannonInventoryEntry entry)
+    public void Equip(CannonInventoryEntry entry)
     {
         if (entry == null) return;
-        if (IsOccupied) RemoveCannon();
+
+        // If something is already here, unequip it first
+        if (IsOccupied) Unequip();
 
         _entry = entry;
-        _entry.isPlacedOnCastle = true;
-        _entry.occupiedSlot = this;
+        _entry.isEquipped = true;
+        _entry.equippedSlot = this;
 
-        // Spawn the visual prefab
-        if (entry.data.prefab != null)
+        // Spawn visual prefab
+        if (entry.data.prefab != null && spawnpoint != null)
         {
-            Transform parent = spawnPoint != null ? spawnPoint : transform;
-            GameObject go = Instantiate(entry.data.prefab, parent);
+            GameObject go = Instantiate(entry.data.prefab, spawnpoint);
             RectTransform rt = go.GetComponent<RectTransform>();
-            if (rt != null)
-            {
-                rt.anchoredPosition = Vector2.zero;
-                rt.localScale = Vector3.one;
-                // Match the prefab's own RectTransform size
-                RectTransform prefabRt = entry.data.prefab.GetComponent<RectTransform>();
-                if (prefabRt != null) rt.sizeDelta = prefabRt.sizeDelta;
-            }
+            if (rt != null) { rt.anchoredPosition = Vector2.zero; rt.localScale = Vector3.one; }
+
             _controller = go.GetComponent<CannonController>();
             _controller?.Setup(entry.data);
         }
 
         RefreshVisuals();
-        Debug.Log($"[CannonSlot] Placed '{entry.data.cannonName}' (id={entry.inventoryId})");
+        Debug.Log($"[CannonSlot] Equipped '{entry.data.cannonName}' (id={entry.inventoryId})");
     }
 
     /// <summary>
-    /// Remove the cannon from this slot and send it back to inventory.
-    /// Upgrade progress is preserved inside the CannonInventoryEntry.
+    /// Called by RemoveButton or by CannonPanelManager (Unequip button in inventory).
+    /// Returns the cannon to the inventory — upgrade progress is fully preserved.
     /// </summary>
-    public void RemoveCannon()
+    public void Unequip()
     {
         if (!IsOccupied) return;
 
-        _entry.isPlacedOnCastle = false;
-        _entry.occupiedSlot = null;
+        _entry.isEquipped = false;
+        _entry.equippedSlot = null;
 
         if (_controller != null)
         {
@@ -111,55 +98,35 @@ public class CannonSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPo
             _controller = null;
         }
 
-        Debug.Log($"[CannonSlot] Removed '{_entry.data.cannonName}' (id={_entry.inventoryId})");
+        Debug.Log($"[CannonSlot] Unequipped '{_entry.data.cannonName}' (id={_entry.inventoryId})");
         _entry = null;
 
         RefreshVisuals();
 
-        // Refresh inventory cards so the returned cannon reappears
-        CannonPanelManager.Instance?.OnSlotRemoved();
+        // Refresh the panel so this cannon reappears in the inventory list
+        CannonPanelManager.Instance?.RefreshAfterUnequip();
     }
 
-    // ─── IDropHandler ─────────────────────────────────────────────────────────
+    // ── Button handlers ────────────────────────────────────────────────────────
 
-    public void OnDrop(PointerEventData eventData)
+    private void OnAddClicked()
     {
-        // Only accept drops when the slot is free
-        if (IsOccupied) return;
-
-        CannonDragHandler drag = eventData.pointerDrag?.GetComponent<CannonDragHandler>();
-        if (drag == null || drag.Entry == null) return;
-
-        // Don't accept a cannon that is already placed on another slot
-        if (drag.Entry.isPlacedOnCastle) return;
-
-        PlaceCannon(drag.Entry);
+        // Open the cannon panel, telling it this slot is the target
+        CannonPanelManager.Instance?.OpenPanel(this);
     }
 
-    // ─── IPointerEnterHandler / IPointerExitHandler ───────────────────────────
+    private void OnRemoveClicked() => Unequip();
 
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        // Highlight only when slot is free (acts as a drop target visual cue)
-        if (!IsOccupied && slotHighlight != null)
-            slotHighlight.gameObject.SetActive(true);
-    }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        if (slotHighlight != null)
-            slotHighlight.gameObject.SetActive(false);
-    }
-
-    // ─── Private Helpers ──────────────────────────────────────────────────────
-
-    private void OnRemoveClicked() => RemoveCannon();
+    // ── Visuals ────────────────────────────────────────────────────────────────
 
     private void RefreshVisuals()
     {
         bool occupied = IsOccupied;
+
         if (emptySlotVisual != null) emptySlotVisual.SetActive(!occupied);
+        if (slotHighLight != null) slotHighLight.SetActive(false);
+
+        // AddButton always visible so player can swap cannon; RemoveButton only when occupied
         if (removeButton != null) removeButton.gameObject.SetActive(occupied);
-        if (slotHighlight != null) slotHighlight.gameObject.SetActive(false);
     }
 }
