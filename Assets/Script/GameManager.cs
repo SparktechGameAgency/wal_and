@@ -1008,7 +1008,8 @@ public class GameManager : MonoBehaviour
             return;
         }
         SetActivePanel(GameState.Cannon);
-        CannonPanelManager.Instance?.OnPanelOpened();
+        //CannonPanelManager.Instance?.OnPanelOpened();
+        CannonPanelManager.Instance?.OnPanelOpened(null);
     }
 
     // ── Settings Overlay ──────────────────────────────────────────────────────

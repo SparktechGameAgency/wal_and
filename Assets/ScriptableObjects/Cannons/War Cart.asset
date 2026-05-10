@@ -12,16 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e965c7d74ec89b4fbc1bfb34d347a86, type: 3}
   m_Name: War Cart
   m_EditorClassIdentifier: Assembly-CSharp::CannonData
-  cannonName: Iron Cannon
+  cannonName: War Cart
   cost: 150
   prefab: {fileID: 495375933528977137, guid: 1871b044d15564d47b8a223412f2c4d5, type: 3}
   previewSprite: {fileID: 21300000, guid: e7586dc615b6c474b9683816b087c613, type: 3}
   idleSprites: []
   idleFPS: 6
   health: 40
+  ability: 45
   damage: 20
   range: 40
   upgradeHealthGain: 8
+  upgradeAbilityGain: 7
   upgradeDamageGain: 5
   upgradeRangeGain: 8
   upgradeDuration: 10

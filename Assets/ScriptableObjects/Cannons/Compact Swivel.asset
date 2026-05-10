@@ -12,16 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e965c7d74ec89b4fbc1bfb34d347a86, type: 3}
   m_Name: Compact Swivel
   m_EditorClassIdentifier: Assembly-CSharp::CannonData
-  cannonName: Iron Cannon
+  cannonName: Compact Swivel
   cost: 200
   prefab: {fileID: 192765526860925984, guid: 596a7957b7767554f9610395931b5050, type: 3}
   previewSprite: {fileID: 21300000, guid: 95d1d100121d0584bb68691ae711c677, type: 3}
   idleSprites: []
   idleFPS: 6
   health: 50
+  ability: 60
   damage: 35
   range: 50
   upgradeHealthGain: 8
+  upgradeAbilityGain: 7
   upgradeDamageGain: 5
   upgradeRangeGain: 8
   upgradeDuration: 10
