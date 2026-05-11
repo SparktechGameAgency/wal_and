@@ -92,7 +92,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1238101130840551824
 RectTransform:
   m_ObjectHideFlags: 0
@@ -244,12 +244,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7c1bebd4eeafa541850aa56de82f43f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CannonCard
-  cannonImage: {fileID: 0}
-  nameText: {fileID: 0}
-  lockOverlay: {fileID: 0}
-  selectedHighlight: {fileID: 3235329255986770071}
-  upgradeBadge: {fileID: 0}
-  cardButton: {fileID: 6888726498660038154}
+  _cannonImage: {fileID: 6597493418417900722}
+  _nameText: {fileID: 7173395973112531773}
+  _selectedHighlight: {fileID: 3235329255986770071}
+  _lockOverlay: {fileID: 818446622768634694}
+  _badgeRoot: {fileID: 6308060131346659896}
+  _badgeText: {fileID: 0}
+  _button: {fileID: 6888726498660038154}
 --- !u!114 &6888726498660038154
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -388,8 +389,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 22
+  m_fontSizeBase: 22
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -525,7 +526,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2194822014460160413
 RectTransform:
   m_ObjectHideFlags: 0

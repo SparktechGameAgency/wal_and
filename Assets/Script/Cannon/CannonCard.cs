@@ -1,3 +1,429 @@
+////////using UnityEngine;
+////////using UnityEngine.UI;
+////////using TMPro;
+
+/////////// <summary>
+/////////// CANNON PANEL — CannonCard
+///////////
+/////////// Attach this to the root of your CannonCard prefab.
+/////////// All child references are auto-wired by name in Awake() — no Inspector
+/////////// drag-and-drop required. Keep these exact child GameObject names:
+///////////
+///////////   CannonCard  (root — Button + this script)
+///////////   ├── CannonImage      (Image component)
+///////////   ├── CardName         (TextMeshProUGUI)
+///////////   ├── Selected         (any GameObject — active when this card is selected)
+///////////   ├── Locked           (any GameObject — active when type hasn't been bought yet)
+///////////   └── UpgradeBadge     (GameObject with TextMeshProUGUI — shows "2/3" or "MAX")
+///////////
+/////////// Card clicks are forwarded to CannonPanelManager.Instance.OnCardSelected(this).
+/////////// </summary>
+////////[RequireComponent(typeof(Button))]
+////////public class CannonCard : MonoBehaviour
+////////{
+////////    // ── Auto-wired at runtime ──────────────────────────────────────────────────
+////////    public Image _cannonImage;
+////////    public TextMeshProUGUI _nameText;
+////////    public GameObject _selectedHighlight;
+////////    public GameObject _lockOverlay;
+////////    public GameObject _badgeRoot;
+////////    public TextMeshProUGUI _badgeText;
+////////    public Button _button;
+
+////////    // ── Runtime data ───────────────────────────────────────────────────────────
+////////    private CannonData _data;
+////////    private int _inventoryId = -1;
+////////    private bool _isBuyMode = true;
+
+////////    public CannonData Data => _data;
+////////    public int InventoryId => _inventoryId;
+////////    public bool IsBuyMode => _isBuyMode;
+
+////////    // ══════════════════════════════════════════════════════════════════════════
+////////    // UNITY
+////////    // ══════════════════════════════════════════════════════════════════════════
+
+////////    private void Awake()
+////////    {
+////////        Transform t = transform;
+
+////////        var imgT = t.Find("CannonImage");
+////////        if (imgT != null) _cannonImage = imgT.GetComponent<Image>();
+
+////////        var nameT = t.Find("CardName");
+////////        if (nameT != null) _nameText = nameT.GetComponent<TextMeshProUGUI>();
+
+////////        var selT = t.Find("Selected");
+////////        if (selT != null) _selectedHighlight = selT.gameObject;
+
+////////        var lockT = t.Find("Locked");
+////////        if (lockT != null) _lockOverlay = lockT.gameObject;
+
+////////        var badgeT = t.Find("UpgradeBadge");
+////////        if (badgeT != null)
+////////        {
+////////            _badgeRoot = badgeT.gameObject;
+////////            // TMP may sit directly on the badge object or on a child Text object
+////////            _badgeText = badgeT.GetComponent<TextMeshProUGUI>()
+////////                      ?? badgeT.GetComponentInChildren<TextMeshProUGUI>(includeInactive: true);
+////////        }
+
+////////        _button = GetComponent<Button>();
+////////        _button.onClick.AddListener(OnClick);
+
+////////        SetSelected(false);
+////////    }
+
+////////    // ══════════════════════════════════════════════════════════════════════════
+////////    // SETUP
+////////    // ══════════════════════════════════════════════════════════════════════════
+
+////////    /// <summary>
+////////    /// Used for the 3 fixed Buy-mode cards.
+////////    /// <paramref name="locked"/> = true until the player buys this type at least once.
+////////    /// </summary>
+////////    public void SetupBuyCard(CannonData data, bool locked)
+////////    {
+////////        _data = data;
+////////        _inventoryId = -1;
+////////        _isBuyMode = true;
+
+////////        ApplySprite(data);
+////////        SetCardName(data.cannonName);
+////////        SetLocked(locked);
+////////        ShowBadge(false, string.Empty);
+////////        SetSelected(false);
+////////    }
+
+////////    /// <summary>
+////////    /// Used for dynamically spawned Inventory-mode cards.
+////////    /// <paramref name="displayName"/> is the copy-numbered label, e.g. "Iron Cannon (2/3)".
+////////    /// </summary>
+////////    public void SetupInventoryCard(CannonInventoryEntry entry, string displayName)
+////////    {
+////////        _data = entry.data;
+////////        _inventoryId = entry.inventoryId;
+////////        _isBuyMode = false;
+
+////////        ApplySprite(entry.data);
+////////        SetCardName(displayName);
+////////        SetLocked(false);          // inventory cards are always owned — never locked
+////////        RefreshBadge(entry);
+////////        SetSelected(false);
+////////    }
+
+////////    // ══════════════════════════════════════════════════════════════════════════
+////////    // RUNTIME REFRESH
+////////    // ══════════════════════════════════════════════════════════════════════════
+
+////////    /// <summary>Updates the upgrade badge. Called after an upgrade starts or completes.</summary>
+////////    public void RefreshBadge(CannonInventoryEntry entry)
+////////    {
+////////        if (entry == null || _isBuyMode) { ShowBadge(false, string.Empty); return; }
+
+////////        string text = entry.IsMaxLevel
+////////            ? "MAX"
+////////            : $"{entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES}";
+
+////////        ShowBadge(true, text);
+////////    }
+
+////////    /// <summary>Shows or hides the lock overlay.</summary>
+////////    public void SetLocked(bool locked)
+////////    {
+////////        if (_lockOverlay != null) _lockOverlay.SetActive(locked);
+////////    }
+
+////////    /// <summary>Shows or hides the selection highlight.</summary>
+////////    public void SetSelected(bool selected)
+////////    {
+////////        if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
+////////    }
+
+////////    // ══════════════════════════════════════════════════════════════════════════
+////////    // PRIVATE HELPERS
+////////    // ══════════════════════════════════════════════════════════════════════════
+
+////////    private void ApplySprite(CannonData data)
+////////    {
+////////        if (_cannonImage == null || data == null) return;
+
+////////        Sprite s = data.previewSprite;
+////////        if (s == null && data.idleSprites != null && data.idleSprites.Length > 0)
+////////            s = data.idleSprites[0];
+
+////////        if (s != null)
+////////        {
+////////            _cannonImage.sprite = s;
+////////            _cannonImage.enabled = true;
+////////        }
+////////    }
+
+////////    private void SetCardName(string text)
+////////    {
+////////        if (_nameText != null) _nameText.text = text;
+////////    }
+
+////////    private void ShowBadge(bool visible, string text)
+////////    {
+////////        if (_badgeRoot != null) _badgeRoot.SetActive(visible);
+////////        if (_badgeText != null) _badgeText.text = text;
+////////    }
+
+////////    private void OnClick() => CannonPanelManager.Instance?.OnCardSelected(this);
+////////}
+
+
+//////using System.Collections;
+//////using UnityEngine;
+//////using UnityEngine.UI;
+//////using TMPro;
+
+///////// <summary>
+///////// CANNON PANEL — CannonCard
+/////////
+///////// Attach this to the root of your CannonCard prefab.
+///////// All child references are auto-wired by name in Awake() — no Inspector
+///////// drag-and-drop required. Keep these exact child GameObject names:
+/////////
+/////////   CannonCard  (root — Button + this script)
+/////////   ├── CannonImage      (Image component)
+/////////   ├── CardName         (TextMeshProUGUI)
+/////////   ├── Selected         (any GameObject — active when this card is selected)
+/////////   ├── Locked           (any GameObject — active when type hasn't been bought yet)
+/////////   └── UpgradeBadge     (GameObject with TextMeshProUGUI — shows "2/3" or "MAX")
+/////////
+///////// Card clicks are forwarded to CannonPanelManager.Instance.OnCardSelected(this).
+///////// </summary>
+//////[RequireComponent(typeof(Button))]
+//////public class CannonCard : MonoBehaviour
+//////{
+//////    // ── Auto-wired at runtime ──────────────────────────────────────────────────
+//////    public Image _cannonImage;
+//////    public TextMeshProUGUI _nameText;
+//////    public GameObject _selectedHighlight;
+//////    public GameObject _lockOverlay;
+//////    public GameObject _badgeRoot;
+//////    public TextMeshProUGUI _badgeText;
+//////    public Button _button;
+
+//////    // ── Runtime data ───────────────────────────────────────────────────────────
+//////    private CannonData _data;
+//////    private int _inventoryId = -1;
+//////    private bool _isBuyMode = true;
+
+//////    // ── Badge pulse ────────────────────────────────────────────────────────────
+//////    private Coroutine _pulseCoroutine;
+
+//////    // Pulse settings — tweak these to taste
+//////    private const float PulseMinScale = 0.85f;  // smallest scale during pulse
+//////    private const float PulseMaxScale = 1.15f;  // largest scale during pulse
+//////    private const float PulsePeriod = 0.7f;   // seconds for one full in-out cycle
+
+//////    public CannonData Data => _data;
+//////    public int InventoryId => _inventoryId;
+//////    public bool IsBuyMode => _isBuyMode;
+
+//////    // ══════════════════════════════════════════════════════════════════════════
+//////    // UNITY
+//////    // ══════════════════════════════════════════════════════════════════════════
+
+//////    private void Awake()
+//////    {
+//////        Transform t = transform;
+
+//////        var imgT = t.Find("CannonImage");
+//////        if (imgT != null) _cannonImage = imgT.GetComponent<Image>();
+
+//////        var nameT = t.Find("CardName");
+//////        if (nameT != null) _nameText = nameT.GetComponent<TextMeshProUGUI>();
+
+//////        var selT = t.Find("Selected");
+//////        if (selT != null) _selectedHighlight = selT.gameObject;
+
+//////        var lockT = t.Find("Locked");
+//////        if (lockT != null) _lockOverlay = lockT.gameObject;
+
+//////        var badgeT = t.Find("UpgradeBadge");
+//////        if (badgeT != null)
+//////        {
+//////            _badgeRoot = badgeT.gameObject;
+//////            // TMP may sit directly on the badge object or on a child Text object
+//////            _badgeText = badgeT.GetComponent<TextMeshProUGUI>()
+//////                      ?? badgeT.GetComponentInChildren<TextMeshProUGUI>(includeInactive: true);
+//////        }
+
+//////        _button = GetComponent<Button>();
+//////        _button.onClick.AddListener(OnClick);
+
+//////        SetSelected(false);
+//////    }
+
+//////    // ══════════════════════════════════════════════════════════════════════════
+//////    // SETUP
+//////    // ══════════════════════════════════════════════════════════════════════════
+
+//////    /// <summary>
+//////    /// Used for the 3 fixed Buy-mode cards.
+//////    /// <paramref name="locked"/> = true until the player buys this type at least once.
+//////    /// </summary>
+//////    public void SetupBuyCard(CannonData data, bool locked)
+//////    {
+//////        _data = data;
+//////        _inventoryId = -1;
+//////        _isBuyMode = true;
+
+//////        ApplySprite(data);
+//////        SetCardName(data.cannonName);
+//////        SetLocked(locked);
+//////        ShowBadge(false, string.Empty);
+//////        SetSelected(false);
+//////    }
+
+//////    /// <summary>
+//////    /// Used for dynamically spawned Inventory-mode cards.
+//////    /// <paramref name="displayName"/> is the copy-numbered label, e.g. "Iron Cannon (2/3)".
+//////    /// </summary>
+//////    public void SetupInventoryCard(CannonInventoryEntry entry, string displayName)
+//////    {
+//////        _data = entry.data;
+//////        _inventoryId = entry.inventoryId;
+//////        _isBuyMode = false;
+
+//////        ApplySprite(entry.data);
+//////        SetCardName(displayName);
+//////        SetLocked(false);          // inventory cards are always owned — never locked
+//////        RefreshBadge(entry);
+//////        SetSelected(false);
+//////    }
+
+//////    // ══════════════════════════════════════════════════════════════════════════
+//////    // RUNTIME REFRESH
+//////    // ══════════════════════════════════════════════════════════════════════════
+
+//////    /// <summary>Updates the upgrade badge. Badge is ONLY visible while an upgrade is actively running.</summary>
+//////    public void RefreshBadge(CannonInventoryEntry entry)
+//////    {
+//////        if (entry == null || _isBuyMode) { ShowBadge(false, string.Empty); return; }
+
+//////        // Badge visible ONLY during an active upgrade, hidden at all other times
+//////        if (entry.isUpgrading)
+//////            ShowBadge(true, $"{entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES}");
+//////        else
+//////            ShowBadge(false, string.Empty);
+//////    }
+
+//////    /// <summary>Shows or hides the lock overlay.</summary>
+//////    public void SetLocked(bool locked)
+//////    {
+//////        if (_lockOverlay != null) _lockOverlay.SetActive(locked);
+//////    }
+
+//////    /// <summary>Shows or hides the selection highlight.</summary>
+//////    public void SetSelected(bool selected)
+//////    {
+//////        if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
+//////    }
+
+//////    // ══════════════════════════════════════════════════════════════════════════
+//////    // PRIVATE HELPERS
+//////    // ══════════════════════════════════════════════════════════════════════════
+
+//////    private void ApplySprite(CannonData data)
+//////    {
+//////        if (_cannonImage == null) return;
+
+//////        if (data == null)
+//////        {
+//////            _cannonImage.sprite = null;
+//////            _cannonImage.enabled = false;
+//////            return;
+//////        }
+
+//////        Sprite s = data.previewSprite;
+//////        if (s == null && data.idleSprites != null && data.idleSprites.Length > 0)
+//////            s = data.idleSprites[0];
+
+//////        // Always overwrite sprite so a stale prefab sprite never bleeds through
+//////        _cannonImage.sprite = s;
+//////        _cannonImage.enabled = s != null;
+
+//////#if UNITY_EDITOR
+//////        if (s == null)
+//////            Debug.LogWarning($"[CannonCard] '{data.cannonName}' has no previewSprite or idleSprites — " +
+//////                             "assign a sprite in the CannonData ScriptableObject.", data);
+//////        else
+//////            Debug.Log($"[CannonCard] Sprite applied: {data.cannonName} → {s.name}", gameObject);
+//////#endif
+//////    }
+
+//////    private void SetCardName(string text)
+//////    {
+//////        if (_nameText != null) _nameText.text = text;
+//////    }
+
+//////    /// <summary>
+//////    /// Shows or hides the upgrade badge.
+//////    /// When shown, starts a smooth scale-pulse coroutine on the badge root.
+//////    /// When hidden, stops the pulse and resets scale to 1.
+//////    /// </summary>
+//////    private void ShowBadge(bool visible, string text)
+//////    {
+//////        if (_badgeRoot != null) _badgeRoot.SetActive(visible);
+//////        if (_badgeText != null) _badgeText.text = text;
+
+//////        if (visible)
+//////            StartPulse();
+//////        else
+//////            StopPulse();
+//////    }
+
+//////    // ── Badge pulse helpers ────────────────────────────────────────────────────
+
+//////    private void StartPulse()
+//////    {
+//////        if (_badgeRoot == null) return;
+//////        StopPulse();   // ensure no duplicate coroutines
+//////        _pulseCoroutine = StartCoroutine(PulseBadge());
+//////    }
+
+//////    private void StopPulse()
+//////    {
+//////        if (_pulseCoroutine != null)
+//////        {
+//////            StopCoroutine(_pulseCoroutine);
+//////            _pulseCoroutine = null;
+//////        }
+
+//////        // Reset the badge scale so it doesn't stay mid-animation
+//////        if (_badgeRoot != null)
+//////            _badgeRoot.transform.localScale = Vector3.one;
+//////    }
+
+//////    /// <summary>
+//////    /// Smoothly oscillates the badge scale between PulseMinScale and PulseMaxScale
+//////    /// using a sine wave so the motion feels organic rather than linear.
+//////    /// </summary>
+//////    private IEnumerator PulseBadge()
+//////    {
+//////        Transform badgeT = _badgeRoot.transform;
+//////        float t = 0f;
+
+//////        while (true)
+//////        {
+//////            t += Time.deltaTime;
+//////            // sin goes -1→1; remap to 0→1, then lerp between min and max scale
+//////            float sin01 = (Mathf.Sin(t * (2f * Mathf.PI / PulsePeriod)) + 1f) * 0.5f;
+//////            float scale = Mathf.Lerp(PulseMinScale, PulseMaxScale, sin01);
+//////            badgeT.localScale = new Vector3(scale, scale, 1f);
+//////            yield return null;
+//////        }
+//////    }
+
+//////    private void OnClick() => CannonPanelManager.Instance?.OnCardSelected(this);
+//////}
+
+////using System.Collections;
 ////using UnityEngine;
 ////using UnityEngine.UI;
 ////using TMPro;
@@ -5,124 +431,252 @@
 /////// <summary>
 /////// CANNON PANEL — CannonCard
 ///////
-/////// Represents one card in the cannon panel grid.
-/////// Used in BOTH modes:
-///////   Buy Mode       — 3 pre-placed cards, one per cannon type. All start locked.
-///////   Inventory Mode — dynamically spawned, one per owned cannon copy.
+/////// Attach this to the root of your LevelCardPrefab.
+/////// All references are auto-wired by name in Awake() — no Inspector drag-and-drop needed.
 ///////
-/////// Clicking the card calls CannonPanelManager.Instance.OnCardSelected(this).
+///////   LevelCardPrefab  (root — Button + CannonCard script)
+///////   └── Cannon           (Image — cannon icon)
+///////       ├── Level
+///////       │   └── Text     (TextMeshProUGUI — card name label)
+///////       ├── Selected     (any GameObject — active when this card is selected)
+///////       ├── Lock         (any GameObject — active when type hasn't been bought yet)
+///////       └── UpgradeBadge (Image — pulsing icon, shown ONLY while upgrading)
 ///////
-/////// Hierarchy per card:
-///////   CannonCard (this script + Button)
-///////   ├── CannonImage          Image — shows previewSprite
-///////   ├── NameText             TMP   — cannon name below the image
-///////   ├── LockOverlay          Image — semi-transparent lock, active when locked
-///////   ├── SelectedHighlight    Image/Outline — active when this card is selected
-///////   └── UpgradeBadge         TMP   — "(2/3)" shown in Inventory mode only
+/////// Card clicks are forwarded to CannonPanelManager.Instance.OnCardSelected(this).
 /////// </summary>
+////[RequireComponent(typeof(Button))]
 ////public class CannonCard : MonoBehaviour
 ////{
-////    // ── Inspector refs ─────────────────────────────────────────────────────────
-////    [SerializeField] private Image cannonImage;
-////    [SerializeField] private TextMeshProUGUI nameText;
-////    [SerializeField] private GameObject lockOverlay;
-////    [SerializeField] private GameObject selectedHighlight;
-////    [SerializeField] private TextMeshProUGUI upgradeBadge;   // "(1/3)", "MAX"
-////    [SerializeField] private Button cardButton;
+////    // ── Auto-wired at runtime ──────────────────────────────────────────────────
+////    public Image _cannonImage;
+////    public TextMeshProUGUI _nameText;
+////    public GameObject _selectedHighlight;
+////    public GameObject _lockOverlay;
+////    public GameObject _badgeRoot;
+////    public TextMeshProUGUI _badgeText;
+////    public Button _button;
 
 ////    // ── Runtime data ───────────────────────────────────────────────────────────
 ////    private CannonData _data;
 ////    private int _inventoryId = -1;
 ////    private bool _isBuyMode = true;
-////    private bool _locked = true;
+
+////    // ── Badge pulse ────────────────────────────────────────────────────────────
+////    private Coroutine _pulseCoroutine;
+
+////    // Pulse settings — tweak these to taste
+////    private const float PulseMinScale = 0.85f;  // smallest scale during pulse
+////    private const float PulseMaxScale = 1.15f;  // largest scale during pulse
+////    private const float PulsePeriod = 0.7f;   // seconds for one full in-out cycle
 
 ////    public CannonData Data => _data;
 ////    public int InventoryId => _inventoryId;
 ////    public bool IsBuyMode => _isBuyMode;
 
-////    // ── Unity ──────────────────────────────────────────────────────────────────
+////    // ══════════════════════════════════════════════════════════════════════════
+////    // UNITY
+////    // ══════════════════════════════════════════════════════════════════════════
+
 ////    private void Awake()
 ////    {
-////        if (cardButton == null) cardButton = GetComponent<Button>();
-////        cardButton?.onClick.AddListener(OnClick);
+////        Transform t = transform;
+
+////        // "Cannon" is the direct child that holds the Image and all visual sub-children
+////        Transform mid = t.Find("Cannon");
+
+////        if (mid == null)
+////            Debug.LogError("[CannonCard] Could not find child 'Cannon' on " +
+////                           gameObject.name + ". Check the prefab hierarchy.", gameObject);
+
+////        // Cannon icon Image is on the middle node itself, not the root
+////        if (mid != null) _cannonImage = mid.GetComponent<Image>();
+
+////        // All other children are one level under mid
+////        // Note: Text is nested inside the "Level" child, not directly under "Cannon"
+////        var nameT = mid != null ? mid.Find("Level/Text") : null;
+////        var selT = mid != null ? mid.Find("Selected") : null;
+////        var lockT = mid != null ? mid.Find("Lock") : null;
+////        var badgeT = mid != null ? mid.Find("UpgradeBadge") : null;
+
+////        if (nameT != null) _nameText = nameT.GetComponent<TextMeshProUGUI>();
+////        if (selT != null) _selectedHighlight = selT.gameObject;
+////        if (lockT != null) _lockOverlay = lockT.gameObject;
+////        if (badgeT != null)
+////        {
+////            _badgeRoot = badgeT.gameObject;
+////            _badgeText = null;   // badge is a plain Image — no TMP text
+////        }
+
+////        _button = GetComponent<Button>();
+////        _button.onClick.AddListener(OnClick);
+
 ////        SetSelected(false);
 ////    }
 
-////    // ── Setup ──────────────────────────────────────────────────────────────────
+////    // ══════════════════════════════════════════════════════════════════════════
+////    // SETUP
+////    // ══════════════════════════════════════════════════════════════════════════
 
 ////    /// <summary>
-////    /// Call for the 3 fixed buy-mode cards.
-////    /// locked = true means the player hasn't purchased this type yet.
+////    /// Used for the 3 fixed Buy-mode cards.
+////    /// <paramref name="locked"/> = true until the player buys this type at least once.
 ////    /// </summary>
 ////    public void SetupBuyCard(CannonData data, bool locked)
 ////    {
 ////        _data = data;
 ////        _inventoryId = -1;
 ////        _isBuyMode = true;
-////        _locked = locked;
 
 ////        ApplySprite(data);
-////        if (nameText != null) nameText.text = data.cannonName;
-////        if (lockOverlay != null) lockOverlay.SetActive(locked);
-////        if (upgradeBadge != null) upgradeBadge.gameObject.SetActive(false);
+////        SetCardName(data.cannonName);
+////        SetLocked(locked);
+////        ShowBadge(false);
+////        SetSelected(false);
 ////    }
 
 ////    /// <summary>
-////    /// Call for dynamically spawned inventory cards.
+////    /// Used for dynamically spawned Inventory-mode cards.
+////    /// <paramref name="displayName"/> is the copy-numbered label, e.g. "Iron Cannon (2/3)".
 ////    /// </summary>
-////    public void SetupInventoryCard(CannonInventoryEntry entry)
+////    public void SetupInventoryCard(CannonInventoryEntry entry, string displayName)
 ////    {
 ////        _data = entry.data;
 ////        _inventoryId = entry.inventoryId;
 ////        _isBuyMode = false;
-////        _locked = false;
 
 ////        ApplySprite(entry.data);
-////        if (nameText != null) nameText.text = entry.data.cannonName;
-////        if (lockOverlay != null) lockOverlay.SetActive(false);
-
+////        SetCardName(displayName);
+////        SetLocked(false);          // inventory cards are always owned — never locked
 ////        RefreshBadge(entry);
+////        SetSelected(false);
 ////    }
 
-////    // ── Runtime refresh ────────────────────────────────────────────────────────
+////    // ══════════════════════════════════════════════════════════════════════════
+////    // RUNTIME REFRESH
+////    // ══════════════════════════════════════════════════════════════════════════
 
-////    /// <summary>Called by CannonPanelManager after upgrade starts/completes.</summary>
+////    /// <summary>Updates the upgrade badge. Badge is ONLY visible while an upgrade is actively running.</summary>
 ////    public void RefreshBadge(CannonInventoryEntry entry)
 ////    {
-////        if (upgradeBadge == null) return;
-////        upgradeBadge.gameObject.SetActive(true);
-////        upgradeBadge.text = entry.IsMaxLevel
-////            ? "MAX"
-////            : $"({entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES})";
+////        if (entry == null || _isBuyMode) { ShowBadge(false); return; }
+
+////        // Badge visible ONLY during an active upgrade, hidden at all other times
+////        if (entry.isUpgrading)
+////            ShowBadge(true);
+////        else
+////            ShowBadge(false);
 ////    }
 
-////    /// <summary>Removes the lock overlay after the player purchases this type.</summary>
+////    /// <summary>Shows or hides the lock overlay.</summary>
 ////    public void SetLocked(bool locked)
 ////    {
-////        _locked = locked;
-////        if (lockOverlay != null) lockOverlay.SetActive(locked);
+////        if (_lockOverlay != null) _lockOverlay.SetActive(locked);
 ////    }
 
-////    /// <summary>Shows or hides the selected outline/glow.</summary>
+////    /// <summary>Shows or hides the selection highlight.</summary>
 ////    public void SetSelected(bool selected)
 ////    {
-////        if (selectedHighlight != null) selectedHighlight.SetActive(selected);
+////        if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
 ////    }
 
-////    // ── Private ────────────────────────────────────────────────────────────────
+////    // ══════════════════════════════════════════════════════════════════════════
+////    // PRIVATE HELPERS
+////    // ══════════════════════════════════════════════════════════════════════════
 
 ////    private void ApplySprite(CannonData data)
 ////    {
-////        if (cannonImage == null) return;
+////        if (_cannonImage == null) return;
+
+////        if (data == null)
+////        {
+////            _cannonImage.sprite = null;
+////            _cannonImage.enabled = false;
+////            return;
+////        }
+
 ////        Sprite s = data.previewSprite;
 ////        if (s == null && data.idleSprites != null && data.idleSprites.Length > 0)
 ////            s = data.idleSprites[0];
-////        if (s != null) { cannonImage.sprite = s; cannonImage.enabled = true; }
+
+////        // Always overwrite sprite so a stale prefab sprite never bleeds through
+////        _cannonImage.sprite = s;
+////        _cannonImage.enabled = s != null;
+
+////#if UNITY_EDITOR
+////        if (s == null)
+////            Debug.LogWarning($"[CannonCard] '{data.cannonName}' has no previewSprite or idleSprites — " +
+////                             "assign a sprite in the CannonData ScriptableObject.", data);
+////        else
+////            Debug.Log($"[CannonCard] Sprite applied: {data.cannonName} → {s.name}", gameObject);
+////#endif
+////    }
+
+////    private void SetCardName(string text)
+////    {
+////        if (_nameText != null) _nameText.text = text;
+////    }
+
+////    /// <summary>
+////    /// Shows or hides the upgrade badge Image.
+////    /// When shown, starts the scale-pulse coroutine.
+////    /// When hidden, stops the pulse and resets scale to 1.
+////    /// </summary>
+////    private void ShowBadge(bool visible)
+////    {
+////        if (_badgeRoot != null) _badgeRoot.SetActive(visible);
+
+////        if (visible)
+////            StartPulse();
+////        else
+////            StopPulse();
+////    }
+
+////    // ── Badge pulse helpers ────────────────────────────────────────────────────
+
+////    private void StartPulse()
+////    {
+////        if (_badgeRoot == null) return;
+////        StopPulse();   // ensure no duplicate coroutines
+////        _pulseCoroutine = StartCoroutine(PulseBadge());
+////    }
+
+////    private void StopPulse()
+////    {
+////        if (_pulseCoroutine != null)
+////        {
+////            StopCoroutine(_pulseCoroutine);
+////            _pulseCoroutine = null;
+////        }
+
+////        // Reset the badge scale so it doesn't stay mid-animation
+////        if (_badgeRoot != null)
+////            _badgeRoot.transform.localScale = Vector3.one;
+////    }
+
+////    /// <summary>
+////    /// Smoothly oscillates the badge scale between PulseMinScale and PulseMaxScale
+////    /// using a sine wave so the motion feels organic rather than linear.
+////    /// </summary>
+////    private IEnumerator PulseBadge()
+////    {
+////        Transform badgeT = _badgeRoot.transform;
+////        float t = 0f;
+
+////        while (true)
+////        {
+////            t += Time.deltaTime;
+////            // sin goes -1→1; remap to 0→1, then lerp between min and max scale
+////            float sin01 = (Mathf.Sin(t * (2f * Mathf.PI / PulsePeriod)) + 1f) * 0.5f;
+////            float scale = Mathf.Lerp(PulseMinScale, PulseMaxScale, sin01);
+////            badgeT.localScale = new Vector3(scale, scale, 1f);
+////            yield return null;
+////        }
 ////    }
 
 ////    private void OnClick() => CannonPanelManager.Instance?.OnCardSelected(this);
 ////}
 
+//using System.Collections;
 //using UnityEngine;
 //using UnityEngine.UI;
 //using TMPro;
@@ -130,66 +684,80 @@
 ///// <summary>
 ///// CANNON PANEL — CannonCard
 /////
-///// Attach this to the root of your CannonCard prefab.
-///// The script auto-wires all child refs by name in Awake() so you never need
-///// to drag anything in the Inspector — just keep these exact child names:
+///// Attach this to the root of your LevelCardPrefab.
+///// All references are auto-wired by name in Awake() — no Inspector drag-and-drop needed.
 /////
-/////   CannonCard (root — Button + this script)
-/////   ├── CannonImage      (Image component)
-/////   ├── CardName         (TextMeshProUGUI)
-/////   ├── Selected         (any GameObject — shown when this card is selected)
-/////   ├── Locked           (any GameObject — shown when type not purchased)
-/////   └── UpgradeBadge     (GameObject with a TextMeshProUGUI — "1/3" / "MAX")
+/////   LevelCardPrefab  (root — Button + CannonCard script)
+/////   └── Cannon           (Image — cannon icon)
+/////       ├── Level
+/////       │   └── Text     (TextMeshProUGUI — card name label)
+/////       ├── Selected     (any GameObject — active when this card is selected)
+/////       ├── Lock         (any GameObject — active when type hasn't been bought yet)
+/////       └── UpgradeBadge (Image — pulsing icon, shown ONLY while upgrading)
 /////
-///// The card reports clicks to CannonPanelManager.Instance.OnCardSelected(this).
+///// Card clicks are forwarded to CannonPanelManager.Instance.OnCardSelected(this).
 ///// </summary>
 //[RequireComponent(typeof(Button))]
 //public class CannonCard : MonoBehaviour
 //{
-//    // ── Auto-wired at runtime (no Inspector drag needed) ───────────────────────
-//    private Image _cannonImage;
-//    private TextMeshProUGUI _nameText;
-//    private GameObject _selectedHighlight;
-//    private GameObject _lockOverlay;
-//    private GameObject _badgeRoot;          // UpgradeBadge GameObject
-//    private TextMeshProUGUI _badgeText;          // TMP inside UpgradeBadge
-//    private Button _button;
+//    // ── Auto-wired at runtime ──────────────────────────────────────────────────
+//    public Image _cannonImage;
+//    public TextMeshProUGUI _nameText;
+//    public GameObject _selectedHighlight;
+//    public GameObject _lockOverlay;
+//    public GameObject _badgeRoot;
+//    public TextMeshProUGUI _badgeText;
+//    public Button _button;
 
 //    // ── Runtime data ───────────────────────────────────────────────────────────
 //    private CannonData _data;
 //    private int _inventoryId = -1;
 //    private bool _isBuyMode = true;
 
+//    // ── Badge pulse ────────────────────────────────────────────────────────────
+//    private Coroutine _pulseCoroutine;
+
+//    // Pulse settings — tweak these to taste
+//    private const float PulseMinScale = 0.85f;  // smallest scale during pulse
+//    private const float PulseMaxScale = 1.15f;  // largest scale during pulse
+//    private const float PulsePeriod = 0.7f;   // seconds for one full in-out cycle
+
 //    public CannonData Data => _data;
 //    public int InventoryId => _inventoryId;
 //    public bool IsBuyMode => _isBuyMode;
 
-//    // ── Unity ──────────────────────────────────────────────────────────────────
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // UNITY
+//    // ══════════════════════════════════════════════════════════════════════════
+
 //    private void Awake()
 //    {
-//        // ── wire children by name ──────────────────────────────────────────────
 //        Transform t = transform;
 
-//        var imgT = t.Find("CannonImage");
-//        if (imgT != null) _cannonImage = imgT.GetComponent<Image>();
+//        // "Cannon" is a direct child of the root — find it safely (works even when inactive)
+//        Transform mid = FindDirectChild(t, "Cannon");
 
-//        var nameT = t.Find("CardName");
+//        if (mid == null)
+//            Debug.LogError("[CannonCard] Could not find child 'Cannon' on " +
+//                           gameObject.name + ". Check the prefab hierarchy.", gameObject);
+
+//        // Cannon icon — Image component sits on the "Cannon" node itself
+//        if (mid != null) _cannonImage = mid.GetComponent<Image>();
+
+//        // Text is nested: Cannon → Level → Text
+//        Transform levelT = mid != null ? FindDirectChild(mid, "Level") : null;
+//        Transform nameT = levelT != null ? FindDirectChild(levelT, "Text") : null;
 //        if (nameT != null) _nameText = nameT.GetComponent<TextMeshProUGUI>();
 
-//        var selT = t.Find("Selected");
+//        // Selected, Lock, UpgradeBadge are direct children of Cannon.
+//        // Using FindDirectChild so inactive GameObjects are always found.
+//        Transform selT = mid != null ? FindDirectChild(mid, "Selected") : null;
+//        Transform lockT = mid != null ? FindDirectChild(mid, "Lock") : null;
+//        Transform badgeT = mid != null ? FindDirectChild(mid, "UpgradeBadge") : null;
+
 //        if (selT != null) _selectedHighlight = selT.gameObject;
-
-//        var lockT = t.Find("Locked");
 //        if (lockT != null) _lockOverlay = lockT.gameObject;
-
-//        var badgeT = t.Find("UpgradeBadge");
-//        if (badgeT != null)
-//        {
-//            _badgeRoot = badgeT.gameObject;
-//            // TMP may sit directly on the badge, or on a child Text object
-//            _badgeText = badgeT.GetComponent<TextMeshProUGUI>()
-//                      ?? badgeT.GetComponentInChildren<TextMeshProUGUI>(includeInactive: true);
-//        }
+//        if (badgeT != null) { _badgeRoot = badgeT.gameObject; _badgeText = null; }
 
 //        _button = GetComponent<Button>();
 //        _button.onClick.AddListener(OnClick);
@@ -197,12 +765,27 @@
 //        SetSelected(false);
 //    }
 
+//    /// <summary>
+//    /// Finds a direct child of <paramref name="parent"/> by name.
+//    /// Unlike Transform.Find(), this iterates GetChild() so it reliably
+//    /// returns inactive GameObjects regardless of Unity version.
+//    /// </summary>
+//    private static Transform FindDirectChild(Transform parent, string childName)
+//    {
+//        for (int i = 0; i < parent.childCount; i++)
+//        {
+//            Transform child = parent.GetChild(i);
+//            if (child.name == childName) return child;
+//        }
+//        return null;
+//    }
+
 //    // ══════════════════════════════════════════════════════════════════════════
 //    // SETUP
 //    // ══════════════════════════════════════════════════════════════════════════
 
 //    /// <summary>
-//    /// Used by the 3 fixed buy-mode cards.
+//    /// Used for the 3 fixed Buy-mode cards.
 //    /// <paramref name="locked"/> = true until the player buys this type at least once.
 //    /// </summary>
 //    public void SetupBuyCard(CannonData data, bool locked)
@@ -214,13 +797,13 @@
 //        ApplySprite(data);
 //        SetCardName(data.cannonName);
 //        SetLocked(locked);
-//        ShowBadge(false, string.Empty);
+//        ShowBadge(false);
 //        SetSelected(false);
 //    }
 
 //    /// <summary>
-//    /// Used for dynamically spawned inventory cards.
-//    /// <paramref name="displayName"/> is already formatted, e.g. "Iron Cannon (2/3)".
+//    /// Used for dynamically spawned Inventory-mode cards.
+//    /// <paramref name="displayName"/> is the copy-numbered label, e.g. "Iron Cannon (2/3)".
 //    /// </summary>
 //    public void SetupInventoryCard(CannonInventoryEntry entry, string displayName)
 //    {
@@ -239,22 +822,16 @@
 //    // RUNTIME REFRESH
 //    // ══════════════════════════════════════════════════════════════════════════
 
-//    /// <summary>Updates the upgrade badge text. Called after an upgrade starts or completes.</summary>
+//    /// <summary>Updates the upgrade badge. Badge is ONLY visible while an upgrade is actively running.</summary>
 //    public void RefreshBadge(CannonInventoryEntry entry)
 //    {
-//        if (entry == null) { ShowBadge(false, string.Empty); return; }
+//        if (entry == null || _isBuyMode) { ShowBadge(false); return; }
 
-//        if (_isBuyMode)
-//        {
-//            ShowBadge(false, string.Empty);
-//            return;
-//        }
-
-//        string text = entry.IsMaxLevel
-//            ? "MAX"
-//            : $"{entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES}";
-
-//        ShowBadge(true, text);
+//        // Badge visible ONLY during an active upgrade, hidden at all other times
+//        if (entry.isUpgrading)
+//            ShowBadge(true);
+//        else
+//            ShowBadge(false);
 //    }
 
 //    /// <summary>Shows or hides the lock overlay.</summary>
@@ -263,7 +840,7 @@
 //        if (_lockOverlay != null) _lockOverlay.SetActive(locked);
 //    }
 
-//    /// <summary>Shows or hides the selected highlight.</summary>
+//    /// <summary>Shows or hides the selection highlight.</summary>
 //    public void SetSelected(bool selected)
 //    {
 //        if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
@@ -275,17 +852,30 @@
 
 //    private void ApplySprite(CannonData data)
 //    {
-//        if (_cannonImage == null || data == null) return;
+//        if (_cannonImage == null) return;
+
+//        if (data == null)
+//        {
+//            _cannonImage.sprite = null;
+//            _cannonImage.enabled = false;
+//            return;
+//        }
 
 //        Sprite s = data.previewSprite;
 //        if (s == null && data.idleSprites != null && data.idleSprites.Length > 0)
 //            s = data.idleSprites[0];
 
-//        if (s != null)
-//        {
-//            _cannonImage.sprite = s;
-//            _cannonImage.enabled = true;
-//        }
+//        // Always overwrite sprite so a stale prefab sprite never bleeds through
+//        _cannonImage.sprite = s;
+//        _cannonImage.enabled = s != null;
+
+//#if UNITY_EDITOR
+//        if (s == null)
+//            Debug.LogWarning($"[CannonCard] '{data.cannonName}' has no previewSprite or idleSprites — " +
+//                             "assign a sprite in the CannonData ScriptableObject.", data);
+//        else
+//            Debug.Log($"[CannonCard] Sprite applied: {data.cannonName} → {s.name}", gameObject);
+//#endif
 //    }
 
 //    private void SetCardName(string text)
@@ -293,15 +883,745 @@
 //        if (_nameText != null) _nameText.text = text;
 //    }
 
-//    private void ShowBadge(bool visible, string text)
+//    /// <summary>
+//    /// Shows or hides the upgrade badge Image.
+//    /// When shown, starts the scale-pulse coroutine.
+//    /// When hidden, stops the pulse and resets scale to 1.
+//    /// </summary>
+//    private void ShowBadge(bool visible)
 //    {
 //        if (_badgeRoot != null) _badgeRoot.SetActive(visible);
-//        if (_badgeText != null) _badgeText.text = text;
+
+//        if (visible)
+//            StartPulse();
+//        else
+//            StopPulse();
+//    }
+
+//    // ── Badge pulse helpers ────────────────────────────────────────────────────
+
+//    private void StartPulse()
+//    {
+//        if (_badgeRoot == null) return;
+//        StopPulse();   // ensure no duplicate coroutines
+//        _pulseCoroutine = StartCoroutine(PulseBadge());
+//    }
+
+//    private void StopPulse()
+//    {
+//        if (_pulseCoroutine != null)
+//        {
+//            StopCoroutine(_pulseCoroutine);
+//            _pulseCoroutine = null;
+//        }
+
+//        // Reset the badge scale so it doesn't stay mid-animation
+//        if (_badgeRoot != null)
+//            _badgeRoot.transform.localScale = Vector3.one;
+//    }
+
+//    /// <summary>
+//    /// Smoothly oscillates the badge scale between PulseMinScale and PulseMaxScale
+//    /// using a sine wave so the motion feels organic rather than linear.
+//    /// </summary>
+//    private IEnumerator PulseBadge()
+//    {
+//        Transform badgeT = _badgeRoot.transform;
+//        float t = 0f;
+
+//        while (true)
+//        {
+//            t += Time.deltaTime;
+//            // sin goes -1→1; remap to 0→1, then lerp between min and max scale
+//            float sin01 = (Mathf.Sin(t * (2f * Mathf.PI / PulsePeriod)) + 1f) * 0.5f;
+//            float scale = Mathf.Lerp(PulseMinScale, PulseMaxScale, sin01);
+//            badgeT.localScale = new Vector3(scale, scale, 1f);
+//            yield return null;
+//        }
 //    }
 
 //    private void OnClick() => CannonPanelManager.Instance?.OnCardSelected(this);
 //}
 
+//////using UnityEngine;
+//////using UnityEngine.UI;
+//////using TMPro;
+
+///////// <summary>
+///////// CANNON PANEL — CannonCard
+/////////
+///////// Attach this to the root of your CannonCard prefab.
+///////// All child references are auto-wired by name in Awake() — no Inspector
+///////// drag-and-drop required. Keep these exact child GameObject names:
+/////////
+/////////   CannonCard  (root — Button + this script)
+/////////   ├── CannonImage      (Image component)
+/////////   ├── CardName         (TextMeshProUGUI)
+/////////   ├── Selected         (any GameObject — active when this card is selected)
+/////////   ├── Locked           (any GameObject — active when type hasn't been bought yet)
+/////////   └── UpgradeBadge     (GameObject with TextMeshProUGUI — shows "2/3" or "MAX")
+/////////
+///////// Card clicks are forwarded to CannonPanelManager.Instance.OnCardSelected(this).
+///////// </summary>
+//////[RequireComponent(typeof(Button))]
+//////public class CannonCard : MonoBehaviour
+//////{
+//////    // ── Auto-wired at runtime ──────────────────────────────────────────────────
+//////    public Image _cannonImage;
+//////    public TextMeshProUGUI _nameText;
+//////    public GameObject _selectedHighlight;
+//////    public GameObject _lockOverlay;
+//////    public GameObject _badgeRoot;
+//////    public TextMeshProUGUI _badgeText;
+//////    public Button _button;
+
+//////    // ── Runtime data ───────────────────────────────────────────────────────────
+//////    private CannonData _data;
+//////    private int _inventoryId = -1;
+//////    private bool _isBuyMode = true;
+
+//////    public CannonData Data => _data;
+//////    public int InventoryId => _inventoryId;
+//////    public bool IsBuyMode => _isBuyMode;
+
+//////    // ══════════════════════════════════════════════════════════════════════════
+//////    // UNITY
+//////    // ══════════════════════════════════════════════════════════════════════════
+
+//////    private void Awake()
+//////    {
+//////        Transform t = transform;
+
+//////        var imgT = t.Find("CannonImage");
+//////        if (imgT != null) _cannonImage = imgT.GetComponent<Image>();
+
+//////        var nameT = t.Find("CardName");
+//////        if (nameT != null) _nameText = nameT.GetComponent<TextMeshProUGUI>();
+
+//////        var selT = t.Find("Selected");
+//////        if (selT != null) _selectedHighlight = selT.gameObject;
+
+//////        var lockT = t.Find("Locked");
+//////        if (lockT != null) _lockOverlay = lockT.gameObject;
+
+//////        var badgeT = t.Find("UpgradeBadge");
+//////        if (badgeT != null)
+//////        {
+//////            _badgeRoot = badgeT.gameObject;
+//////            // TMP may sit directly on the badge object or on a child Text object
+//////            _badgeText = badgeT.GetComponent<TextMeshProUGUI>()
+//////                      ?? badgeT.GetComponentInChildren<TextMeshProUGUI>(includeInactive: true);
+//////        }
+
+//////        _button = GetComponent<Button>();
+//////        _button.onClick.AddListener(OnClick);
+
+//////        SetSelected(false);
+//////    }
+
+//////    // ══════════════════════════════════════════════════════════════════════════
+//////    // SETUP
+//////    // ══════════════════════════════════════════════════════════════════════════
+
+//////    /// <summary>
+//////    /// Used for the 3 fixed Buy-mode cards.
+//////    /// <paramref name="locked"/> = true until the player buys this type at least once.
+//////    /// </summary>
+//////    public void SetupBuyCard(CannonData data, bool locked)
+//////    {
+//////        _data = data;
+//////        _inventoryId = -1;
+//////        _isBuyMode = true;
+
+//////        ApplySprite(data);
+//////        SetCardName(data.cannonName);
+//////        SetLocked(locked);
+//////        ShowBadge(false, string.Empty);
+//////        SetSelected(false);
+//////    }
+
+//////    /// <summary>
+//////    /// Used for dynamically spawned Inventory-mode cards.
+//////    /// <paramref name="displayName"/> is the copy-numbered label, e.g. "Iron Cannon (2/3)".
+//////    /// </summary>
+//////    public void SetupInventoryCard(CannonInventoryEntry entry, string displayName)
+//////    {
+//////        _data = entry.data;
+//////        _inventoryId = entry.inventoryId;
+//////        _isBuyMode = false;
+
+//////        ApplySprite(entry.data);
+//////        SetCardName(displayName);
+//////        SetLocked(false);          // inventory cards are always owned — never locked
+//////        RefreshBadge(entry);
+//////        SetSelected(false);
+//////    }
+
+//////    // ══════════════════════════════════════════════════════════════════════════
+//////    // RUNTIME REFRESH
+//////    // ══════════════════════════════════════════════════════════════════════════
+
+//////    /// <summary>Updates the upgrade badge. Called after an upgrade starts or completes.</summary>
+//////    public void RefreshBadge(CannonInventoryEntry entry)
+//////    {
+//////        if (entry == null || _isBuyMode) { ShowBadge(false, string.Empty); return; }
+
+//////        string text = entry.IsMaxLevel
+//////            ? "MAX"
+//////            : $"{entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES}";
+
+//////        ShowBadge(true, text);
+//////    }
+
+//////    /// <summary>Shows or hides the lock overlay.</summary>
+//////    public void SetLocked(bool locked)
+//////    {
+//////        if (_lockOverlay != null) _lockOverlay.SetActive(locked);
+//////    }
+
+//////    /// <summary>Shows or hides the selection highlight.</summary>
+//////    public void SetSelected(bool selected)
+//////    {
+//////        if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
+//////    }
+
+//////    // ══════════════════════════════════════════════════════════════════════════
+//////    // PRIVATE HELPERS
+//////    // ══════════════════════════════════════════════════════════════════════════
+
+//////    private void ApplySprite(CannonData data)
+//////    {
+//////        if (_cannonImage == null || data == null) return;
+
+//////        Sprite s = data.previewSprite;
+//////        if (s == null && data.idleSprites != null && data.idleSprites.Length > 0)
+//////            s = data.idleSprites[0];
+
+//////        if (s != null)
+//////        {
+//////            _cannonImage.sprite = s;
+//////            _cannonImage.enabled = true;
+//////        }
+//////    }
+
+//////    private void SetCardName(string text)
+//////    {
+//////        if (_nameText != null) _nameText.text = text;
+//////    }
+
+//////    private void ShowBadge(bool visible, string text)
+//////    {
+//////        if (_badgeRoot != null) _badgeRoot.SetActive(visible);
+//////        if (_badgeText != null) _badgeText.text = text;
+//////    }
+
+//////    private void OnClick() => CannonPanelManager.Instance?.OnCardSelected(this);
+//////}
+
+
+////using System.Collections;
+////using UnityEngine;
+////using UnityEngine.UI;
+////using TMPro;
+
+/////// <summary>
+/////// CANNON PANEL — CannonCard
+///////
+/////// Attach this to the root of your CannonCard prefab.
+/////// All child references are auto-wired by name in Awake() — no Inspector
+/////// drag-and-drop required. Keep these exact child GameObject names:
+///////
+///////   CannonCard  (root — Button + this script)
+///////   ├── CannonImage      (Image component)
+///////   ├── CardName         (TextMeshProUGUI)
+///////   ├── Selected         (any GameObject — active when this card is selected)
+///////   ├── Locked           (any GameObject — active when type hasn't been bought yet)
+///////   └── UpgradeBadge     (GameObject with TextMeshProUGUI — shows "2/3" or "MAX")
+///////
+/////// Card clicks are forwarded to CannonPanelManager.Instance.OnCardSelected(this).
+/////// </summary>
+////[RequireComponent(typeof(Button))]
+////public class CannonCard : MonoBehaviour
+////{
+////    // ── Auto-wired at runtime ──────────────────────────────────────────────────
+////    public Image _cannonImage;
+////    public TextMeshProUGUI _nameText;
+////    public GameObject _selectedHighlight;
+////    public GameObject _lockOverlay;
+////    public GameObject _badgeRoot;
+////    public TextMeshProUGUI _badgeText;
+////    public Button _button;
+
+////    // ── Runtime data ───────────────────────────────────────────────────────────
+////    private CannonData _data;
+////    private int _inventoryId = -1;
+////    private bool _isBuyMode = true;
+
+////    // ── Badge pulse ────────────────────────────────────────────────────────────
+////    private Coroutine _pulseCoroutine;
+
+////    // Pulse settings — tweak these to taste
+////    private const float PulseMinScale = 0.85f;  // smallest scale during pulse
+////    private const float PulseMaxScale = 1.15f;  // largest scale during pulse
+////    private const float PulsePeriod = 0.7f;   // seconds for one full in-out cycle
+
+////    public CannonData Data => _data;
+////    public int InventoryId => _inventoryId;
+////    public bool IsBuyMode => _isBuyMode;
+
+////    // ══════════════════════════════════════════════════════════════════════════
+////    // UNITY
+////    // ══════════════════════════════════════════════════════════════════════════
+
+////    private void Awake()
+////    {
+////        Transform t = transform;
+
+////        var imgT = t.Find("CannonImage");
+////        if (imgT != null) _cannonImage = imgT.GetComponent<Image>();
+
+////        var nameT = t.Find("CardName");
+////        if (nameT != null) _nameText = nameT.GetComponent<TextMeshProUGUI>();
+
+////        var selT = t.Find("Selected");
+////        if (selT != null) _selectedHighlight = selT.gameObject;
+
+////        var lockT = t.Find("Locked");
+////        if (lockT != null) _lockOverlay = lockT.gameObject;
+
+////        var badgeT = t.Find("UpgradeBadge");
+////        if (badgeT != null)
+////        {
+////            _badgeRoot = badgeT.gameObject;
+////            // TMP may sit directly on the badge object or on a child Text object
+////            _badgeText = badgeT.GetComponent<TextMeshProUGUI>()
+////                      ?? badgeT.GetComponentInChildren<TextMeshProUGUI>(includeInactive: true);
+////        }
+
+////        _button = GetComponent<Button>();
+////        _button.onClick.AddListener(OnClick);
+
+////        SetSelected(false);
+////    }
+
+////    // ══════════════════════════════════════════════════════════════════════════
+////    // SETUP
+////    // ══════════════════════════════════════════════════════════════════════════
+
+////    /// <summary>
+////    /// Used for the 3 fixed Buy-mode cards.
+////    /// <paramref name="locked"/> = true until the player buys this type at least once.
+////    /// </summary>
+////    public void SetupBuyCard(CannonData data, bool locked)
+////    {
+////        _data = data;
+////        _inventoryId = -1;
+////        _isBuyMode = true;
+
+////        ApplySprite(data);
+////        SetCardName(data.cannonName);
+////        SetLocked(locked);
+////        ShowBadge(false, string.Empty);
+////        SetSelected(false);
+////    }
+
+////    /// <summary>
+////    /// Used for dynamically spawned Inventory-mode cards.
+////    /// <paramref name="displayName"/> is the copy-numbered label, e.g. "Iron Cannon (2/3)".
+////    /// </summary>
+////    public void SetupInventoryCard(CannonInventoryEntry entry, string displayName)
+////    {
+////        _data = entry.data;
+////        _inventoryId = entry.inventoryId;
+////        _isBuyMode = false;
+
+////        ApplySprite(entry.data);
+////        SetCardName(displayName);
+////        SetLocked(false);          // inventory cards are always owned — never locked
+////        RefreshBadge(entry);
+////        SetSelected(false);
+////    }
+
+////    // ══════════════════════════════════════════════════════════════════════════
+////    // RUNTIME REFRESH
+////    // ══════════════════════════════════════════════════════════════════════════
+
+////    /// <summary>Updates the upgrade badge. Badge is ONLY visible while an upgrade is actively running.</summary>
+////    public void RefreshBadge(CannonInventoryEntry entry)
+////    {
+////        if (entry == null || _isBuyMode) { ShowBadge(false, string.Empty); return; }
+
+////        // Badge visible ONLY during an active upgrade, hidden at all other times
+////        if (entry.isUpgrading)
+////            ShowBadge(true, $"{entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES}");
+////        else
+////            ShowBadge(false, string.Empty);
+////    }
+
+////    /// <summary>Shows or hides the lock overlay.</summary>
+////    public void SetLocked(bool locked)
+////    {
+////        if (_lockOverlay != null) _lockOverlay.SetActive(locked);
+////    }
+
+////    /// <summary>Shows or hides the selection highlight.</summary>
+////    public void SetSelected(bool selected)
+////    {
+////        if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
+////    }
+
+////    // ══════════════════════════════════════════════════════════════════════════
+////    // PRIVATE HELPERS
+////    // ══════════════════════════════════════════════════════════════════════════
+
+////    private void ApplySprite(CannonData data)
+////    {
+////        if (_cannonImage == null) return;
+
+////        if (data == null)
+////        {
+////            _cannonImage.sprite = null;
+////            _cannonImage.enabled = false;
+////            return;
+////        }
+
+////        Sprite s = data.previewSprite;
+////        if (s == null && data.idleSprites != null && data.idleSprites.Length > 0)
+////            s = data.idleSprites[0];
+
+////        // Always overwrite sprite so a stale prefab sprite never bleeds through
+////        _cannonImage.sprite = s;
+////        _cannonImage.enabled = s != null;
+
+////#if UNITY_EDITOR
+////        if (s == null)
+////            Debug.LogWarning($"[CannonCard] '{data.cannonName}' has no previewSprite or idleSprites — " +
+////                             "assign a sprite in the CannonData ScriptableObject.", data);
+////        else
+////            Debug.Log($"[CannonCard] Sprite applied: {data.cannonName} → {s.name}", gameObject);
+////#endif
+////    }
+
+////    private void SetCardName(string text)
+////    {
+////        if (_nameText != null) _nameText.text = text;
+////    }
+
+////    /// <summary>
+////    /// Shows or hides the upgrade badge.
+////    /// When shown, starts a smooth scale-pulse coroutine on the badge root.
+////    /// When hidden, stops the pulse and resets scale to 1.
+////    /// </summary>
+////    private void ShowBadge(bool visible, string text)
+////    {
+////        if (_badgeRoot != null) _badgeRoot.SetActive(visible);
+////        if (_badgeText != null) _badgeText.text = text;
+
+////        if (visible)
+////            StartPulse();
+////        else
+////            StopPulse();
+////    }
+
+////    // ── Badge pulse helpers ────────────────────────────────────────────────────
+
+////    private void StartPulse()
+////    {
+////        if (_badgeRoot == null) return;
+////        StopPulse();   // ensure no duplicate coroutines
+////        _pulseCoroutine = StartCoroutine(PulseBadge());
+////    }
+
+////    private void StopPulse()
+////    {
+////        if (_pulseCoroutine != null)
+////        {
+////            StopCoroutine(_pulseCoroutine);
+////            _pulseCoroutine = null;
+////        }
+
+////        // Reset the badge scale so it doesn't stay mid-animation
+////        if (_badgeRoot != null)
+////            _badgeRoot.transform.localScale = Vector3.one;
+////    }
+
+////    /// <summary>
+////    /// Smoothly oscillates the badge scale between PulseMinScale and PulseMaxScale
+////    /// using a sine wave so the motion feels organic rather than linear.
+////    /// </summary>
+////    private IEnumerator PulseBadge()
+////    {
+////        Transform badgeT = _badgeRoot.transform;
+////        float t = 0f;
+
+////        while (true)
+////        {
+////            t += Time.deltaTime;
+////            // sin goes -1→1; remap to 0→1, then lerp between min and max scale
+////            float sin01 = (Mathf.Sin(t * (2f * Mathf.PI / PulsePeriod)) + 1f) * 0.5f;
+////            float scale = Mathf.Lerp(PulseMinScale, PulseMaxScale, sin01);
+////            badgeT.localScale = new Vector3(scale, scale, 1f);
+////            yield return null;
+////        }
+////    }
+
+////    private void OnClick() => CannonPanelManager.Instance?.OnCardSelected(this);
+////}
+
+//using System.Collections;
+//using UnityEngine;
+//using UnityEngine.UI;
+//using TMPro;
+
+///// <summary>
+///// CANNON PANEL — CannonCard
+/////
+///// Attach this to the root of your LevelCardPrefab.
+///// All references are auto-wired by name in Awake() — no Inspector drag-and-drop needed.
+/////
+/////   LevelCardPrefab  (root — Button + CannonCard script)
+/////   └── Cannon           (Image — cannon icon)
+/////       ├── Level
+/////       │   └── Text     (TextMeshProUGUI — card name label)
+/////       ├── Selected     (any GameObject — active when this card is selected)
+/////       ├── Lock         (any GameObject — active when type hasn't been bought yet)
+/////       └── UpgradeBadge (Image — pulsing icon, shown ONLY while upgrading)
+/////
+///// Card clicks are forwarded to CannonPanelManager.Instance.OnCardSelected(this).
+///// </summary>
+//[RequireComponent(typeof(Button))]
+//public class CannonCard : MonoBehaviour
+//{
+//    // ── Auto-wired at runtime ──────────────────────────────────────────────────
+//    public Image _cannonImage;
+//    public TextMeshProUGUI _nameText;
+//    public GameObject _selectedHighlight;
+//    public GameObject _lockOverlay;
+//    public GameObject _badgeRoot;
+//    public TextMeshProUGUI _badgeText;
+//    public Button _button;
+
+//    // ── Runtime data ───────────────────────────────────────────────────────────
+//    private CannonData _data;
+//    private int _inventoryId = -1;
+//    private bool _isBuyMode = true;
+
+//    // ── Badge pulse ────────────────────────────────────────────────────────────
+//    private Coroutine _pulseCoroutine;
+
+//    // Pulse settings — tweak these to taste
+//    private const float PulseMinScale = 0.85f;  // smallest scale during pulse
+//    private const float PulseMaxScale = 1.15f;  // largest scale during pulse
+//    private const float PulsePeriod = 0.7f;   // seconds for one full in-out cycle
+
+//    public CannonData Data => _data;
+//    public int InventoryId => _inventoryId;
+//    public bool IsBuyMode => _isBuyMode;
+
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // UNITY
+//    // ══════════════════════════════════════════════════════════════════════════
+
+//    private void Awake()
+//    {
+//        Transform t = transform;
+
+//        // "Cannon" is the direct child that holds the Image and all visual sub-children
+//        Transform mid = t.Find("Cannon");
+
+//        if (mid == null)
+//            Debug.LogError("[CannonCard] Could not find child 'Cannon' on " +
+//                           gameObject.name + ". Check the prefab hierarchy.", gameObject);
+
+//        // Cannon icon Image is on the middle node itself, not the root
+//        if (mid != null) _cannonImage = mid.GetComponent<Image>();
+
+//        // All other children are one level under mid
+//        // Note: Text is nested inside the "Level" child, not directly under "Cannon"
+//        var nameT = mid != null ? mid.Find("Level/Text") : null;
+//        var selT = mid != null ? mid.Find("Selected") : null;
+//        var lockT = mid != null ? mid.Find("Lock") : null;
+//        var badgeT = mid != null ? mid.Find("UpgradeBadge") : null;
+
+//        if (nameT != null) _nameText = nameT.GetComponent<TextMeshProUGUI>();
+//        if (selT != null) _selectedHighlight = selT.gameObject;
+//        if (lockT != null) _lockOverlay = lockT.gameObject;
+//        if (badgeT != null)
+//        {
+//            _badgeRoot = badgeT.gameObject;
+//            _badgeText = null;   // badge is a plain Image — no TMP text
+//        }
+
+//        _button = GetComponent<Button>();
+//        _button.onClick.AddListener(OnClick);
+
+//        SetSelected(false);
+//    }
+
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // SETUP
+//    // ══════════════════════════════════════════════════════════════════════════
+
+//    /// <summary>
+//    /// Used for the 3 fixed Buy-mode cards.
+//    /// <paramref name="locked"/> = true until the player buys this type at least once.
+//    /// </summary>
+//    public void SetupBuyCard(CannonData data, bool locked)
+//    {
+//        _data = data;
+//        _inventoryId = -1;
+//        _isBuyMode = true;
+
+//        ApplySprite(data);
+//        SetCardName(data.cannonName);
+//        SetLocked(locked);
+//        ShowBadge(false);
+//        SetSelected(false);
+//    }
+
+//    /// <summary>
+//    /// Used for dynamically spawned Inventory-mode cards.
+//    /// <paramref name="displayName"/> is the copy-numbered label, e.g. "Iron Cannon (2/3)".
+//    /// </summary>
+//    public void SetupInventoryCard(CannonInventoryEntry entry, string displayName)
+//    {
+//        _data = entry.data;
+//        _inventoryId = entry.inventoryId;
+//        _isBuyMode = false;
+
+//        ApplySprite(entry.data);
+//        SetCardName(displayName);
+//        SetLocked(false);          // inventory cards are always owned — never locked
+//        RefreshBadge(entry);
+//        SetSelected(false);
+//    }
+
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // RUNTIME REFRESH
+//    // ══════════════════════════════════════════════════════════════════════════
+
+//    /// <summary>Updates the upgrade badge. Badge is ONLY visible while an upgrade is actively running.</summary>
+//    public void RefreshBadge(CannonInventoryEntry entry)
+//    {
+//        if (entry == null || _isBuyMode) { ShowBadge(false); return; }
+
+//        // Badge visible ONLY during an active upgrade, hidden at all other times
+//        if (entry.isUpgrading)
+//            ShowBadge(true);
+//        else
+//            ShowBadge(false);
+//    }
+
+//    /// <summary>Shows or hides the lock overlay.</summary>
+//    public void SetLocked(bool locked)
+//    {
+//        if (_lockOverlay != null) _lockOverlay.SetActive(locked);
+//    }
+
+//    /// <summary>Shows or hides the selection highlight.</summary>
+//    public void SetSelected(bool selected)
+//    {
+//        if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
+//    }
+
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // PRIVATE HELPERS
+//    // ══════════════════════════════════════════════════════════════════════════
+
+//    private void ApplySprite(CannonData data)
+//    {
+//        if (_cannonImage == null) return;
+
+//        if (data == null)
+//        {
+//            _cannonImage.sprite = null;
+//            _cannonImage.enabled = false;
+//            return;
+//        }
+
+//        Sprite s = data.previewSprite;
+//        if (s == null && data.idleSprites != null && data.idleSprites.Length > 0)
+//            s = data.idleSprites[0];
+
+//        // Always overwrite sprite so a stale prefab sprite never bleeds through
+//        _cannonImage.sprite = s;
+//        _cannonImage.enabled = s != null;
+
+//#if UNITY_EDITOR
+//        if (s == null)
+//            Debug.LogWarning($"[CannonCard] '{data.cannonName}' has no previewSprite or idleSprites — " +
+//                             "assign a sprite in the CannonData ScriptableObject.", data);
+//        else
+//            Debug.Log($"[CannonCard] Sprite applied: {data.cannonName} → {s.name}", gameObject);
+//#endif
+//    }
+
+//    private void SetCardName(string text)
+//    {
+//        if (_nameText != null) _nameText.text = text;
+//    }
+
+//    /// <summary>
+//    /// Shows or hides the upgrade badge Image.
+//    /// When shown, starts the scale-pulse coroutine.
+//    /// When hidden, stops the pulse and resets scale to 1.
+//    /// </summary>
+//    private void ShowBadge(bool visible)
+//    {
+//        if (_badgeRoot != null) _badgeRoot.SetActive(visible);
+
+//        if (visible)
+//            StartPulse();
+//        else
+//            StopPulse();
+//    }
+
+//    // ── Badge pulse helpers ────────────────────────────────────────────────────
+
+//    private void StartPulse()
+//    {
+//        if (_badgeRoot == null) return;
+//        StopPulse();   // ensure no duplicate coroutines
+//        _pulseCoroutine = StartCoroutine(PulseBadge());
+//    }
+
+//    private void StopPulse()
+//    {
+//        if (_pulseCoroutine != null)
+//        {
+//            StopCoroutine(_pulseCoroutine);
+//            _pulseCoroutine = null;
+//        }
+
+//        // Reset the badge scale so it doesn't stay mid-animation
+//        if (_badgeRoot != null)
+//            _badgeRoot.transform.localScale = Vector3.one;
+//    }
+
+//    /// <summary>
+//    /// Smoothly oscillates the badge scale between PulseMinScale and PulseMaxScale
+//    /// using a sine wave so the motion feels organic rather than linear.
+//    /// </summary>
+//    private IEnumerator PulseBadge()
+//    {
+//        Transform badgeT = _badgeRoot.transform;
+//        float t = 0f;
+
+//        while (true)
+//        {
+//            t += Time.deltaTime;
+//            // sin goes -1→1; remap to 0→1, then lerp between min and max scale
+//            float sin01 = (Mathf.Sin(t * (2f * Mathf.PI / PulsePeriod)) + 1f) * 0.5f;
+//            float scale = Mathf.Lerp(PulseMinScale, PulseMaxScale, sin01);
+//            badgeT.localScale = new Vector3(scale, scale, 1f);
+//            yield return null;
+//        }
+//    }
+
+//    private void OnClick() => CannonPanelManager.Instance?.OnCardSelected(this);
+//}
+
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -309,16 +1629,16 @@ using TMPro;
 /// <summary>
 /// CANNON PANEL — CannonCard
 ///
-/// Attach this to the root of your CannonCard prefab.
-/// All child references are auto-wired by name in Awake() — no Inspector
-/// drag-and-drop required. Keep these exact child GameObject names:
+/// Attach this to the root of your LevelCardPrefab.
+/// All references are auto-wired by name in Awake() — no Inspector drag-and-drop needed.
 ///
-///   CannonCard  (root — Button + this script)
-///   ├── CannonImage      (Image component)
-///   ├── CardName         (TextMeshProUGUI)
-///   ├── Selected         (any GameObject — active when this card is selected)
-///   ├── Locked           (any GameObject — active when type hasn't been bought yet)
-///   └── UpgradeBadge     (GameObject with TextMeshProUGUI — shows "2/3" or "MAX")
+///   LevelCardPrefab  (root — Button + CannonCard script)
+///   └── Cannon           (Image — cannon icon)
+///       ├── Level
+///       │   └── Text     (TextMeshProUGUI — card name label)
+///       ├── Selected     (any GameObject — active when this card is selected)
+///       ├── Lock         (any GameObject — active when type hasn't been bought yet)
+///       └── UpgradeBadge (Image — pulsing icon, shown ONLY while upgrading)
 ///
 /// Card clicks are forwarded to CannonPanelManager.Instance.OnCardSelected(this).
 /// </summary>
@@ -339,6 +1659,14 @@ public class CannonCard : MonoBehaviour
     private int _inventoryId = -1;
     private bool _isBuyMode = true;
 
+    // ── Badge pulse ────────────────────────────────────────────────────────────
+    private Coroutine _pulseCoroutine;
+
+    // Pulse settings — tweak these to taste
+    private const float PulseMinScale = 0.85f;  // smallest scale during pulse
+    private const float PulseMaxScale = 1.15f;  // largest scale during pulse
+    private const float PulsePeriod = 0.7f;   // seconds for one full in-out cycle
+
     public CannonData Data => _data;
     public int InventoryId => _inventoryId;
     public bool IsBuyMode => _isBuyMode;
@@ -351,31 +1679,50 @@ public class CannonCard : MonoBehaviour
     {
         Transform t = transform;
 
-        var imgT = t.Find("CannonImage");
-        if (imgT != null) _cannonImage = imgT.GetComponent<Image>();
+        // "Cannon" is a direct child of the root — find it safely (works even when inactive)
+        Transform mid = FindDirectChild(t, "Cannon");
 
-        var nameT = t.Find("CardName");
+        if (mid == null)
+            Debug.LogError("[CannonCard] Could not find child 'Cannon' on " +
+                           gameObject.name + ". Check the prefab hierarchy.", gameObject);
+
+        // Cannon icon — Image component sits on the "Cannon" node itself
+        if (mid != null) _cannonImage = mid.GetComponent<Image>();
+
+        // Text is nested: Cannon → Level → Text
+        Transform levelT = mid != null ? FindDirectChild(mid, "Level") : null;
+        Transform nameT = levelT != null ? FindDirectChild(levelT, "Text") : null;
         if (nameT != null) _nameText = nameT.GetComponent<TextMeshProUGUI>();
 
-        var selT = t.Find("Selected");
+        // Selected, Lock, UpgradeBadge are direct children of Cannon.
+        // Using FindDirectChild so inactive GameObjects are always found.
+        Transform selT = mid != null ? FindDirectChild(mid, "Selected") : null;
+        Transform lockT = mid != null ? FindDirectChild(mid, "Lock") : null;
+        Transform badgeT = mid != null ? FindDirectChild(mid, "UpgradeBadge") : null;
+
         if (selT != null) _selectedHighlight = selT.gameObject;
-
-        var lockT = t.Find("Locked");
         if (lockT != null) _lockOverlay = lockT.gameObject;
-
-        var badgeT = t.Find("UpgradeBadge");
-        if (badgeT != null)
-        {
-            _badgeRoot = badgeT.gameObject;
-            // TMP may sit directly on the badge object or on a child Text object
-            _badgeText = badgeT.GetComponent<TextMeshProUGUI>()
-                      ?? badgeT.GetComponentInChildren<TextMeshProUGUI>(includeInactive: true);
-        }
+        if (badgeT != null) { _badgeRoot = badgeT.gameObject; _badgeText = null; }
 
         _button = GetComponent<Button>();
         _button.onClick.AddListener(OnClick);
 
         SetSelected(false);
+    }
+
+    /// <summary>
+    /// Finds a direct child of <paramref name="parent"/> by name.
+    /// Unlike Transform.Find(), this iterates GetChild() so it reliably
+    /// returns inactive GameObjects regardless of Unity version.
+    /// </summary>
+    private static Transform FindDirectChild(Transform parent, string childName)
+    {
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            if (child.name == childName) return child;
+        }
+        return null;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -395,7 +1742,7 @@ public class CannonCard : MonoBehaviour
         ApplySprite(data);
         SetCardName(data.cannonName);
         SetLocked(locked);
-        ShowBadge(false, string.Empty);
+        ShowBadge(false);
         SetSelected(false);
     }
 
@@ -420,16 +1767,16 @@ public class CannonCard : MonoBehaviour
     // RUNTIME REFRESH
     // ══════════════════════════════════════════════════════════════════════════
 
-    /// <summary>Updates the upgrade badge. Called after an upgrade starts or completes.</summary>
+    /// <summary>Updates the upgrade badge. Badge is ONLY visible while an upgrade is actively running.</summary>
     public void RefreshBadge(CannonInventoryEntry entry)
     {
-        if (entry == null || _isBuyMode) { ShowBadge(false, string.Empty); return; }
+        if (entry == null || _isBuyMode) { ShowBadge(false); return; }
 
-        string text = entry.IsMaxLevel
-            ? "MAX"
-            : $"{entry.upgradeCount}/{CannonInventoryEntry.MAX_UPGRADES}";
-
-        ShowBadge(true, text);
+        // Badge visible ONLY during an active upgrade, hidden at all other times
+        if (entry.isUpgrading)
+            ShowBadge(true);
+        else
+            ShowBadge(false);
     }
 
     /// <summary>Shows or hides the lock overlay.</summary>
@@ -450,17 +1797,30 @@ public class CannonCard : MonoBehaviour
 
     private void ApplySprite(CannonData data)
     {
-        if (_cannonImage == null || data == null) return;
+        if (_cannonImage == null) return;
+
+        if (data == null)
+        {
+            _cannonImage.sprite = null;
+            _cannonImage.enabled = false;
+            return;
+        }
 
         Sprite s = data.previewSprite;
         if (s == null && data.idleSprites != null && data.idleSprites.Length > 0)
             s = data.idleSprites[0];
 
-        if (s != null)
-        {
-            _cannonImage.sprite = s;
-            _cannonImage.enabled = true;
-        }
+        // Always overwrite sprite so a stale prefab sprite never bleeds through
+        _cannonImage.sprite = s;
+        _cannonImage.enabled = s != null;
+
+#if UNITY_EDITOR
+        if (s == null)
+            Debug.LogWarning($"[CannonCard] '{data.cannonName}' has no previewSprite or idleSprites — " +
+                             "assign a sprite in the CannonData ScriptableObject.", data);
+        else
+            Debug.Log($"[CannonCard] Sprite applied: {data.cannonName} → {s.name}", gameObject);
+#endif
     }
 
     private void SetCardName(string text)
@@ -468,10 +1828,61 @@ public class CannonCard : MonoBehaviour
         if (_nameText != null) _nameText.text = text;
     }
 
-    private void ShowBadge(bool visible, string text)
+    /// <summary>
+    /// Shows or hides the upgrade badge Image.
+    /// When shown, starts the scale-pulse coroutine.
+    /// When hidden, stops the pulse and resets scale to 1.
+    /// </summary>
+    private void ShowBadge(bool visible)
     {
         if (_badgeRoot != null) _badgeRoot.SetActive(visible);
-        if (_badgeText != null) _badgeText.text = text;
+
+        if (visible)
+            StartPulse();
+        else
+            StopPulse();
+    }
+
+    // ── Badge pulse helpers ────────────────────────────────────────────────────
+
+    private void StartPulse()
+    {
+        if (_badgeRoot == null) return;
+        StopPulse();   // ensure no duplicate coroutines
+        _pulseCoroutine = StartCoroutine(PulseBadge());
+    }
+
+    private void StopPulse()
+    {
+        if (_pulseCoroutine != null)
+        {
+            StopCoroutine(_pulseCoroutine);
+            _pulseCoroutine = null;
+        }
+
+        // Reset the badge scale so it doesn't stay mid-animation
+        if (_badgeRoot != null)
+            _badgeRoot.transform.localScale = Vector3.one;
+    }
+
+    /// <summary>
+    /// Smoothly oscillates the badge scale between PulseMinScale and PulseMaxScale
+    /// using a sine wave so the motion feels organic rather than linear.
+    /// </summary>
+    private IEnumerator PulseBadge()
+    {
+        Transform badgeT = _badgeRoot.transform;
+        float t = 0f;
+
+        while (true)
+        {
+            t += Time.deltaTime;
+            // sin goes -1→1; remap to 0→1, then lerp between min and max scale
+            float sin01 = (Mathf.Sin(t * (2f * Mathf.PI / PulsePeriod)) + 1f) * 0.5f;
+            float scale = Mathf.Lerp(PulseMinScale, PulseMaxScale, sin01);
+            badgeT.localScale = new Vector3(scale, scale, 1f);
+            yield return null;
+        }
     }
 
     private void OnClick() => CannonPanelManager.Instance?.OnCardSelected(this);
