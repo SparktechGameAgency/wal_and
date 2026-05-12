@@ -12,6 +12,8 @@ GameObject:
   - component: {fileID: 3282351395139109427}
   - component: {fileID: 8352765153395532219}
   - component: {fileID: 3685522165631226223}
+  - component: {fileID: -2884375400678039210}
+  - component: {fileID: 2871333129892882450}
   m_Layer: 0
   m_Name: WhiteHorsePrefab
   m_TagString: Untagged
@@ -88,3 +90,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b9054b904e0ad594688cd1363dc9c311, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HorseController
+--- !u!114 &-2884375400678039210
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2288478195812368321}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e562bd1399dd6f4db47a2ca85d7c4e6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HorseDragHandler
+  horseData: {fileID: 0}
+  destroyOnSuccessfulDrop: 0
+--- !u!225 &2871333129892882450
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2288478195812368321}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
