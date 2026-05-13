@@ -40,4 +40,10 @@ MonoBehaviour:
   - {fileID: 21300000, guid: a5817301ec4320f4484190524a6b0036, type: 3}
   - {fileID: 21300000, guid: e7aa5ef34cef3334b972531ee3467a18, type: 3}
   - {fileID: 21300000, guid: aa9e7d86ddb42674ab5f73ec24c8208c, type: 3}
+  ridingSprites:
+  - {fileID: 21300000, guid: 3af715ebfd92e9948894299e4a2cba71, type: 3}
+  - {fileID: 21300000, guid: 6fcec29b59a0ff646bd47efa40375822, type: 3}
+  - {fileID: 21300000, guid: a02e574f41c8e224fb37e2532b2ed9dc, type: 3}
+  - {fileID: 21300000, guid: e0d46e5cbc5ac2e46b7e1cb918435a6d, type: 3}
+  - {fileID: 21300000, guid: a262ac0b35515a448a60fdbe5455774e, type: 3}
   bodyTypeVariants: []

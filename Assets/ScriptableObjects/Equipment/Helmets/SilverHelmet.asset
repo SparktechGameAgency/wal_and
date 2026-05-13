@@ -40,8 +40,10 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 5c2f61a7b9dc25c41bbc78fd3c055420, type: 3}
   - {fileID: 21300000, guid: ea82f55c78bbc0c46a73c3668c57508b, type: 3}
   - {fileID: 21300000, guid: 11b501d50c64017478bf4f460cc141f5, type: 3}
-  bodyTypeVariants:
-  - bodyType: 0
-    walkSprites: []
-    idleSprites: []
-    deathSprites: []
+  ridingSprites:
+  - {fileID: 21300000, guid: e1aa14f95adb7b146818b225293b16d3, type: 3}
+  - {fileID: 21300000, guid: d0fb6859e29e92e42a51f073034361e6, type: 3}
+  - {fileID: 21300000, guid: 64b2cf2b3ce6e5d4f82a4a31c71e80cc, type: 3}
+  - {fileID: 21300000, guid: d5f6b01691ebe1e4fa6fc8887b9690fb, type: 3}
+  - {fileID: 21300000, guid: 0beea93c9bf5a784dabb8356a99df370, type: 3}
+  bodyTypeVariants: []

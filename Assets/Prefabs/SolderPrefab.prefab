@@ -314,11 +314,11 @@ GameObject:
   - component: {fileID: 4585076851735702295}
   - component: {fileID: 2759028443904672868}
   - component: {fileID: 7850433121265120829}
-  - component: {fileID: 7274979484675607967}
   - component: {fileID: 2943540191941807523}
   - component: {fileID: 5261921174585227437}
   - component: {fileID: 1719591651901012661}
   - component: {fileID: 6098266101483220485}
+  - component: {fileID: 6005783029285077165}
   m_Layer: 0
   m_Name: SolderPrefab
   m_TagString: Untagged
@@ -431,18 +431,6 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
---- !u!114 &7274979484675607967
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4226479539583937247}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ce24aff65a418246829888b25246a57, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SoldierDragDrop
 --- !u!114 &2943540191941807523
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -487,7 +475,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a29e2f3ecb6c344d9a35e340f0ad6bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteLayerAnimator
-  fps: 8
+  idleFps: 6
+  walkFps: 10
+  ridingFps: 8
+  deathFps: 6
 --- !u!114 &6098266101483220485
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -511,6 +502,19 @@ MonoBehaviour:
   maxDamageDisplay: 100
   colorHealthy: {r: 0.2, g: 0.8, b: 0.2, a: 1}
   colorDanger: {r: 0.85, g: 0.15, b: 0.15, a: 1}
+--- !u!114 &6005783029285077165
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4226479539583937247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ce24aff65a418246829888b25246a57, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SoldierDragDrop
+  helmetTable: {fileID: 11400000, guid: 58e5e2edb684383449ffb28175613d14, type: 2}
 --- !u!1 &4316971333734999063
 GameObject:
   m_ObjectHideFlags: 0

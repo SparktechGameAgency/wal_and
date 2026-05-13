@@ -1,456 +1,129 @@
-////using UnityEngine;
-////using UnityEngine.EventSystems;
-////using UnityEngine.UI;
-
-/////// <summary>
-/////// AREA FORGE - SoldierDragDrop
-///////
-/////// ── BUG FIX: Soldier never flips after drag/retrieve ──────────────────────────
-///////   Every SetParent(x, worldPositionStays: true) call makes Unity recompute
-///////   localScale to preserve world scale across parents with different Canvas
-///////   Scaler factors. This corrupts the sign of localScale.x that SoldierController
-///////   uses to track facing direction. Fix: call _controller.RefreshFlip() after
-///////   every re-parent to restore the correct sign from the authoritative _direction.
-///////
-/////// ── BUG FIX: Patrol area shifts after retrieve ────────────────────────────────
-///////   Handled inside SoldierController.SetPatrolling(true) — it now always
-///////   recalculates patrol bounds from the soldier's current position before
-///////   resuming, so the patrol range is always centred on where the soldier stands.
-///////
-/////// ── BUG FIX: Can't re-drag after retrieve ─────────────────────────────────────
-///////   Unity skips OnEndDrag on a disabled GameObject. AcceptSoldier calls
-///////   SetActive(false), so _isDragging and blocksRaycasts stay stuck.
-///////   Fix: reset both flags in OnSuccessfulDrop() (called before SetActive(false)).
-///////
-/////// ── Setup ──────────────────────────────────────────────────────────────────────
-///////   1. Attach to SoldierPrefab root (same GO as CanvasGroup, SoldierStats).
-///////   2. The root Canvas must have a GraphicRaycaster.
-///////   3. An EventSystem must exist in the scene.
-///////   4. The SPAWN PANEL must be a plain RectTransform + Image (Raycast Target ON).
-///////      Do NOT add any Layout Group — it overrides anchoredPosition every frame
-///////      and stops the soldier from moving (animations play, position is frozen).
-/////// </summary>
-////[RequireComponent(typeof(CanvasGroup))]
-////public class SoldierDragDrop : MonoBehaviour,
-////    IBeginDragHandler, IDragHandler, IEndDragHandler
-////{
-////    // ─── State ────────────────────────────────────────────────────────────────
-
-////    private CanvasGroup _canvasGroup;
-////    private RectTransform _rect;
-////    private SoldierController _controller;
-
-////    private Canvas _rootCanvas;
-////    private Transform _homeParent;
-////    private Vector2 _homeAnchoredPosition;
-////    private bool _isDragging;
-
-////    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
-
-////    private void Awake()
-////    {
-////        _canvasGroup = GetComponent<CanvasGroup>();
-////        _rect = GetComponent<RectTransform>();
-////        _controller = GetComponent<SoldierController>();
-////    }
-
-////    private void Start()
-////    {
-////        RecordHome();
-////    }
-
-////    // ─── Drag Handlers ────────────────────────────────────────────────────────
-
-////    public void OnBeginDrag(PointerEventData eventData)
-////    {
-////        if (_isDragging) return;
-
-////        // Re-find root canvas every drag — cached value breaks after retrieve
-////        // re-parents the soldier to a different panel.
-////        _rootCanvas = GetComponentInParent<Canvas>();
-////        while (_rootCanvas != null && !_rootCanvas.isRootCanvas)
-////            _rootCanvas = _rootCanvas.transform.parent?.GetComponentInParent<Canvas>();
-
-////        if (_rootCanvas == null)
-////        {
-////            Debug.LogError("[SoldierDragDrop] No root Canvas found. " +
-////                           "Make sure the soldier is inside a Canvas.");
-////            return;
-////        }
-
-////        RecordHome();
-
-////        _isDragging = true;
-////        _controller?.SetPatrolling(false);
-
-////        // ── Re-parent to root canvas ──────────────────────────────────────────
-////        transform.SetParent(_rootCanvas.transform, true);
-////        transform.SetAsLastSibling();
-
-////        _canvasGroup.blocksRaycasts = false;
-////    }
-
-////    public void OnDrag(PointerEventData eventData)
-////    {
-////        if (_rootCanvas == null) return;
-////        _rect.anchoredPosition += eventData.delta / _rootCanvas.scaleFactor;
-////    }
-
-////    public void OnEndDrag(PointerEventData eventData)
-////    {
-////        // NOTE: This may NOT fire if the drop target called SetActive(false) on us
-////        // inside OnDrop. OnSuccessfulDrop() also resets these flags for that case.
-////        _isDragging = false;
-////        _canvasGroup.blocksRaycasts = true;
-
-////        if (_rootCanvas != null && transform.parent == _rootCanvas.transform)
-////            SnapBack();
-////    }
-
-////    // ─── Drop Outcomes ────────────────────────────────────────────────────────
-
-////    /// <summary>
-////    /// Returns the soldier to its home position and resumes patrol.
-////    /// Called automatically when the drag ends over empty space.
-////    /// </summary>
-////    public void SnapBack()
-////    {
-////        transform.SetParent(_homeParent, true);
-////        _rect.anchoredPosition = _homeAnchoredPosition;
-
-////        // RefreshFlip re-applies the correct localScale.x sign after SetParent,
-////        // which can corrupt localScale when parent Canvas Scalers differ.
-////        //_controller?.RefreshFlip();
-////        _controller?.SetPatrolling(true);
-
-////        Debug.Log("[SoldierDragDrop] Snapped back to home.");
-////    }
-
-////    /// <summary>
-////    /// Called by the drop target (WizardBox) after accepting the soldier.
-////    ///
-////    /// Resets _isDragging and blocksRaycasts HERE (not just in OnEndDrag) because
-////    /// the drop target calls SetActive(false) immediately after, which prevents
-////    /// Unity from delivering OnEndDrag to the disabled GameObject.
-////    /// </summary>
-////    public void OnSuccessfulDrop()
-////    {
-////        _isDragging = false;
-////        _canvasGroup.blocksRaycasts = true;
-////        _controller?.SetPatrolling(false);
-////        Debug.Log("[SoldierDragDrop] Accepted by drop target.");
-////    }
-
-////    /// <summary>
-////    /// Call this from WizardBox "Retrieve" instead of directly calling SetParent.
-////    ///
-////    ///   spawnParent   — the Transform to parent the soldier under (spawn area)
-////    ///   spawnPosition — optional anchoredPosition override inside that parent
-////    ///
-////    /// What it does:
-////    ///   • Re-parents soldier to spawnParent
-////    ///   • Optionally moves to spawnPosition
-////    ///   • Y-rotation flip is unaffected by SetParent — no refresh needed
-////    ///   • Calls SetPatrolling(true) which recalculates patrol bounds from
-////    ///     the soldier's new position before resuming
-////    ///   • Resets drag state flags
-////    ///   • Records new home for next drag's snap-back
-////    /// </summary>
-////    public void Retrieve(Transform spawnParent, Vector2? spawnPosition = null)
-////    {
-////        if (spawnParent == null)
-////        {
-////            Debug.LogError("[SoldierDragDrop] Retrieve: spawnParent is null.");
-////            return;
-////        }
-
-////        transform.SetParent(spawnParent, true);
-
-////        if (spawnPosition.HasValue)
-////            _rect.anchoredPosition = spawnPosition.Value;
-
-////        _canvasGroup.blocksRaycasts = true;
-////        _isDragging = false;
-
-////        // Record new home so the next drag's SnapBack comes back here.
-////        RecordHome();
-
-////        // SetPatrolling(true) internally recalculates patrol bounds from the
-////        // soldier's current anchoredPosition, fixing the "patrol area drifts"
-////        // bug after the soldier lands at a new position.
-////        //_controller?.RefreshFlip();
-////        _controller?.SetPatrolling(true);
-
-////        Debug.Log($"[SoldierDragDrop] Retrieved to '{spawnParent.name}'.");
-////    }
-
-////    // ─── Helper ───────────────────────────────────────────────────────────────
-
-////    private void RecordHome()
-////    {
-////        _homeParent = transform.parent;
-////        _homeAnchoredPosition = _rect.anchoredPosition;
-////    }
-////}
-
-////using UnityEngine;
-////using UnityEngine.EventSystems;
-////using UnityEngine.UI;
-
-/////// <summary>
-/////// AREA FORGE - SoldierDragDrop
-///////
-/////// ── BUG FIX: Soldier never flips after drag/retrieve ──────────────────────────
-///////   Every SetParent(x, worldPositionStays: true) call makes Unity recompute
-///////   localScale to preserve world scale across parents with different Canvas
-///////   Scaler factors. This corrupts the sign of localScale.x that SoldierController
-///////   uses to track facing direction. Fix: call _controller.RefreshFlip() after
-///////   every re-parent to restore the correct sign from the authoritative _direction.
-///////
-/////// ── BUG FIX: Patrol area shifts after retrieve ────────────────────────────────
-///////   Handled inside SoldierController.SetPatrolling(true) — it now always
-///////   recalculates patrol bounds from the soldier's current position before
-///////   resuming, so the patrol range is always centred on where the soldier stands.
-///////
-/////// ── BUG FIX: Can't re-drag after retrieve ─────────────────────────────────────
-///////   Unity skips OnEndDrag on a disabled GameObject. AcceptSoldier calls
-///////   SetActive(false), so _isDragging and blocksRaycasts stay stuck.
-///////   Fix: reset both flags in OnSuccessfulDrop() (called before SetActive(false)).
-///////
-/////// ── Setup ──────────────────────────────────────────────────────────────────────
-///////   1. Attach to SoldierPrefab root (same GO as CanvasGroup, SoldierStats).
-///////   2. The root Canvas must have a GraphicRaycaster.
-///////   3. An EventSystem must exist in the scene.
-///////   4. The SPAWN PANEL must be a plain RectTransform + Image (Raycast Target ON).
-///////      Do NOT add any Layout Group — it overrides anchoredPosition every frame
-///////      and stops the soldier from moving (animations play, position is frozen).
-/////// </summary>
-////[RequireComponent(typeof(CanvasGroup))]
-////public class SoldierDragDrop : MonoBehaviour,
-////    IBeginDragHandler, IDragHandler, IEndDragHandler
-////{
-////    // ─── State ────────────────────────────────────────────────────────────────
-
-////    private CanvasGroup _canvasGroup;
-////    private RectTransform _rect;
-////    private SoldierController _controller;
-
-////    private Canvas _rootCanvas;
-////    private Transform _homeParent;
-////    private Vector2 _homeAnchoredPosition;
-////    private bool _isDragging;
-
-////    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
-
-////    private void Awake()
-////    {
-////        _canvasGroup = GetComponent<CanvasGroup>();
-////        _rect = GetComponent<RectTransform>();
-////        _controller = GetComponent<SoldierController>();
-////    }
-
-////    private void Start()
-////    {
-////        RecordHome();
-////    }
-
-////    // ─── Drag Handlers ────────────────────────────────────────────────────────
-
-////    public void OnBeginDrag(PointerEventData eventData)
-////    {
-////        if (_isDragging) return;
-
-////        // Re-find root canvas every drag — cached value breaks after retrieve
-////        // re-parents the soldier to a different panel.
-////        _rootCanvas = GetComponentInParent<Canvas>();
-////        while (_rootCanvas != null && !_rootCanvas.isRootCanvas)
-////            _rootCanvas = _rootCanvas.transform.parent?.GetComponentInParent<Canvas>();
-
-////        if (_rootCanvas == null)
-////        {
-////            Debug.LogError("[SoldierDragDrop] No root Canvas found. " +
-////                           "Make sure the soldier is inside a Canvas.");
-////            return;
-////        }
-
-////        RecordHome();
-
-////        _isDragging = true;
-////        _controller?.SetPatrolling(false);
-
-////        // ── Re-parent to root canvas ──────────────────────────────────────────
-////        transform.SetParent(_rootCanvas.transform, true);
-////        transform.SetAsLastSibling();
-
-////        _canvasGroup.blocksRaycasts = false;
-////    }
-
-////    public void OnDrag(PointerEventData eventData)
-////    {
-////        if (_rootCanvas == null) return;
-////        _rect.anchoredPosition += eventData.delta / _rootCanvas.scaleFactor;
-////    }
-
-////    public void OnEndDrag(PointerEventData eventData)
-////    {
-////        // NOTE: This may NOT fire if the drop target called SetActive(false) on us
-////        // inside OnDrop. OnSuccessfulDrop() also resets these flags for that case.
-////        _isDragging = false;
-////        _canvasGroup.blocksRaycasts = true;
-
-////        if (_rootCanvas != null && transform.parent == _rootCanvas.transform)
-////            SnapBack();
-////    }
-
-////    // ─── Drop Outcomes ────────────────────────────────────────────────────────
-
-////    /// <summary>
-////    /// Returns the soldier to its home position and resumes patrol.
-////    /// Called automatically when the drag ends over empty space.
-////    /// </summary>
-////    public void SnapBack()
-////    {
-////        transform.SetParent(_homeParent, true);
-////        _rect.anchoredPosition = _homeAnchoredPosition;
-
-////        // SetPatrolling(true) recalculates patrol bounds from current position
-////        // before resuming, so the patrol range is centred on the soldier.
-////        _controller?.SetPatrolling(true);
-
-////        Debug.Log("[SoldierDragDrop] Snapped back to home.");
-////    }
-
-////    /// <summary>
-////    /// Called by the drop target (WizardBox) after accepting the soldier.
-////    ///
-////    /// Resets _isDragging and blocksRaycasts HERE (not just in OnEndDrag) because
-////    /// the drop target calls SetActive(false) immediately after, which prevents
-////    /// Unity from delivering OnEndDrag to the disabled GameObject.
-////    /// </summary>
-////    public void OnSuccessfulDrop()
-////    {
-////        _isDragging = false;
-////        _canvasGroup.blocksRaycasts = true;
-////        _controller?.SetPatrolling(false);
-////        Debug.Log("[SoldierDragDrop] Accepted by drop target.");
-////    }
-
-////    /// <summary>
-////    /// Call this from WizardBox "Retrieve" instead of directly calling SetParent.
-////    ///
-////    ///   spawnParent   — the Transform to parent the soldier under (spawn area)
-////    ///   spawnPosition — optional anchoredPosition override inside that parent
-////    ///
-////    /// What it does:
-////    ///   • Re-parents soldier to spawnParent
-////    ///   • Optionally moves to spawnPosition
-////    ///   • Y-rotation flip is unaffected by SetParent — no refresh needed
-////    ///   • Calls SetPatrolling(true) which recalculates patrol bounds from
-////    ///     the soldier's new position before resuming
-////    ///   • Resets drag state flags
-////    ///   • Records new home for next drag's snap-back
-////    /// </summary>
-////    public void Retrieve(Transform spawnParent, Vector2? spawnPosition = null)
-////    {
-////        if (spawnParent == null)
-////        {
-////            Debug.LogError("[SoldierDragDrop] Retrieve: spawnParent is null.");
-////            return;
-////        }
-
-////        transform.SetParent(spawnParent, true);
-
-////        if (spawnPosition.HasValue)
-////            _rect.anchoredPosition = spawnPosition.Value;
-
-////        _canvasGroup.blocksRaycasts = true;
-////        _isDragging = false;
-
-////        // Record new home so the next drag's SnapBack comes back here.
-////        RecordHome();
-
-////        // SetPatrolling(true) internally recalculates patrol bounds from the
-////        // soldier's current anchoredPosition, fixing the "patrol area drifts"
-////        // bug after the soldier lands at a new position.
-////        _controller?.SetPatrolling(true);
-
-////        Debug.Log($"[SoldierDragDrop] Retrieved to '{spawnParent.name}'.");
-////    }
-
-////    // ─── Helper ───────────────────────────────────────────────────────────────
-
-////    private void RecordHome()
-////    {
-////        _homeParent = transform.parent;
-////        _homeAnchoredPosition = _rect.anchoredPosition;
-////    }
-////}
-
 //using System.Collections.Generic;
 //using UnityEngine;
 //using UnityEngine.EventSystems;
 //using UnityEngine.UI;
 
 ///// <summary>
-///// AREA FORGE - SoldierDragDrop
+///// AREA FORGE — SoldierDragDrop
 /////
-///// ── BUG FIX: Soldier never flips after drag/retrieve ──────────────────────────
-/////   Every SetParent(x, worldPositionStays: true) call makes Unity recompute
-/////   localScale to preserve world scale across parents with different Canvas
-/////   Scaler factors. This corrupts the sign of localScale.x that SoldierController
-/////   uses to track facing direction. Fix: call _controller.RefreshFlip() after
-/////   every re-parent to restore the correct sign from the authoritative _direction.
+///// Attach to the Soldier prefab root alongside:
+/////   CanvasGroup, CharacterEquipment, CharacterVisuals, SpriteLayerAnimator.
 /////
-///// ── BUG FIX: Patrol area shifts after retrieve ────────────────────────────────
-/////   Handled inside SoldierController.SetPatrolling(true) — it now always
-/////   recalculates patrol bounds from the soldier's current position before
-/////   resuming, so the patrol range is always centred on where the soldier stands.
+///// ════════════════════════════════════════════════════════════════════
+/////  DRAG BEHAVIOUR
+///// ════════════════════════════════════════════════════════════════════
 /////
-///// ── BUG FIX: Can't re-drag after retrieve ─────────────────────────────────────
-/////   Unity skips OnEndDrag on a disabled GameObject. AcceptSoldier calls
-/////   SetActive(false), so _isDragging and blocksRaycasts stay stuck.
-/////   Fix: reset both flags in OnSuccessfulDrop() (called before SetActive(false)).
+/////  OnBeginDrag  Lifts the soldier to canvas-root level so it draws on
+/////               top of all panels. If the soldier was riding a dragon,
+/////               the seat is released and the rider dragon swaps back
+/////               to the plain dragon AFTER the soldier is safely at
+/////               canvas-root (so the soldier is not destroyed with the
+/////               rider dragon GameObject).
 /////
-///// ── Setup ──────────────────────────────────────────────────────────────────────
-/////   1. Attach to SoldierPrefab root (same GO as CanvasGroup, SoldierStats).
-/////   2. The root Canvas must have a GraphicRaycaster.
-/////   3. An EventSystem must exist in the scene.
-/////   4. The SPAWN PANEL must be a plain RectTransform + Image (Raycast Target ON).
-/////      Do NOT add any Layout Group — it overrides anchoredPosition every frame
-/////      and stops the soldier from moving (animations play, position is frozen).
+/////  OnDrag       Moves the soldier under the pointer.
+/////
+/////  OnEndDrag    Raycasts under the pointer:
+/////                 → DragonController found → PerformMount()
+/////                    (which either swaps to rider prefab or falls back
+/////                     to classic in-place mount depending on setup)
+/////                 → Seat occupied          → SnapBack
+/////                 → Empty space            → SnapBack
+/////
+///// ════════════════════════════════════════════════════════════════════
+/////  MOUNT / DISMOUNT
+///// ════════════════════════════════════════════════════════════════════
+/////
+/////  OnEndDrag routes through DragonController.PerformMount() instead of
+/////  calling DragonRiderSeat.MountSoldier() directly. This lets the dragon
+/////  controller decide whether to swap prefabs or mount in place.
+/////
+/////  When the soldier is dragged off the rider dragon (OnBeginDrag with
+/////  wasMounted=true), DragonController.PerformDismount() is called AFTER
+/////  the soldier is already at canvas-root — never while still a child.
+/////
+/////  DismountFromDragon() (programmatic dismount, e.g. Retrieve button)
+/////  follows the same safe order: reparent soldier → then PerformDismount.
+/////
+///// ════════════════════════════════════════════════════════════════════
+/////  HELMET AUTO-EQUIP
+///// ════════════════════════════════════════════════════════════════════
+/////
+/////  If the soldier has no Helmet equipped when they mount, the system
+/////  looks up the correct default in ArmorHelmetTable (matched to their
+/////  Armor) and calls CharacterEquipment.Equip() automatically.
+/////
+///// ════════════════════════════════════════════════════════════════════
+/////  SETUP
+///// ════════════════════════════════════════════════════════════════════
+/////
+/////  1. Attach to SoldierPrefab root alongside CanvasGroup,
+/////     CharacterEquipment, CharacterVisuals, SpriteLayerAnimator.
+/////  2. Drag your ArmorHelmetTable ScriptableObject into helmetTable.
+/////  3. Root Canvas must have a GraphicRaycaster.
+/////  4. An EventSystem must exist in the scene.
+/////  5. Spawn panel must be a RectTransform + Image (Raycast Target ON).
+/////     No Layout Group — it overrides anchoredPosition every frame.
 ///// </summary>
 //[RequireComponent(typeof(CanvasGroup))]
 //public class SoldierDragDrop : MonoBehaviour,
 //    IBeginDragHandler, IDragHandler, IEndDragHandler
 //{
-//    // ─── State ────────────────────────────────────────────────────────────────
+//    // ── Inspector ─────────────────────────────────────────────────────────────
+
+//    [Header("Dragon Mount Settings")]
+//    [Tooltip("Maps each armor to its default helmet.\n" +
+//             "Create via: right-click Project → Create → AreaForge → Armor Helmet Table.\n" +
+//             "Used to auto-equip a helmet when a helmetless soldier mounts a dragon.")]
+//    [SerializeField] private ArmorHelmetTable helmetTable;
+
+//    // ── Component References ──────────────────────────────────────────────────
 
 //    private CanvasGroup _canvasGroup;
 //    private RectTransform _rect;
-//    private SoldierController _controller;
+//    private SoldierController _controller;     // optional — patrol + flip
+//    private CharacterEquipment _equipment;      // tracks equipped items
+//    private SpriteLayerAnimator _animator;       // drives per-layer animation
+
+//    // ── Drag State ────────────────────────────────────────────────────────────
 
 //    private Canvas _rootCanvas;
 //    private Transform _homeParent;
 //    private Vector2 _homeAnchoredPosition;
 //    private bool _isDragging;
 
-//    // ─── Dragon Rider State ───────────────────────────────────────────────────
+//    // ── Dragon Rider State ────────────────────────────────────────────────────
 
-//    // The seat this soldier is currently riding on (null if on the ground).
+//    /// <summary>Seat this soldier is currently riding on. Null = on the ground.</summary>
 //    private DragonRiderSeat _currentSeat;
 
-//    // The home parent/position recorded BEFORE mounting — used by DismountFromDragon
-//    // to send the soldier back to the patrol area, not to the seat.
+//    /// <summary>
+//    /// Ground parent recorded before mounting so DismountFromDragon() can
+//    /// return the soldier to its patrol area, not back to the seat.
+//    /// </summary>
 //    private Transform _mountHomeParent;
 //    private Vector2 _mountHomePos;
 
-//    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // LIFECYCLE
+//    // ══════════════════════════════════════════════════════════════════════════
 
 //    private void Awake()
 //    {
 //        _canvasGroup = GetComponent<CanvasGroup>();
 //        _rect = GetComponent<RectTransform>();
-//        _controller = GetComponent<SoldierController>();
+//        _controller = GetComponent<SoldierController>();    // optional
+//        _equipment = GetComponent<CharacterEquipment>();
+//        _animator = GetComponent<SpriteLayerAnimator>();
+
+//        if (_equipment == null)
+//            Debug.LogWarning("[SoldierDragDrop] CharacterEquipment not found on " +
+//                             $"'{name}'. Helmet auto-equip will be skipped.", this);
+//        if (_animator == null)
+//            Debug.LogWarning("[SoldierDragDrop] SpriteLayerAnimator not found on " +
+//                             $"'{name}'. Riding animation will not play.", this);
+//        if (helmetTable == null)
+//            Debug.LogWarning("[SoldierDragDrop] helmetTable is not assigned on " +
+//                             $"'{name}'. Soldiers will mount without a helmet.", this);
 //    }
 
 //    private void Start()
@@ -458,22 +131,31 @@
 //        RecordHome();
 //    }
 
-//    // ─── Drag Handlers ────────────────────────────────────────────────────────
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // DRAG — BEGIN
+//    // ══════════════════════════════════════════════════════════════════════════
 
 //    public void OnBeginDrag(PointerEventData eventData)
 //    {
 //        if (_isDragging) return;
 
-//        // ── If riding a dragon, release the seat before lifting off ──────────
-//        // Track whether we came from a mount so we can fix the snap-back home below.
+//        // ── If riding, release the seat and capture the rider dragon DC ───────
+//        //
+//        // We capture the DragonController BEFORE clearing _currentSeat so we
+//        // can call PerformDismount() later (after the soldier is safely at
+//        // canvas-root — never while still a child of the rider dragon).
 //        bool wasMounted = _currentSeat != null;
+//        DragonController mountedDragonDC = null;
+
 //        if (wasMounted)
 //        {
+//            mountedDragonDC = _currentSeat.GetComponentInParent<DragonController>();
 //            _currentSeat.ReleaseSoldier();
 //            _currentSeat = null;
+//            _animator?.SetState(AnimationState.Idle);
 //        }
 
-//        // Re-find root canvas every drag — cached value breaks after retrieve
+//        // Re-find root canvas every drag — cached value breaks after Retrieve
 //        // re-parents the soldier to a different panel.
 //        _rootCanvas = GetComponentInParent<Canvas>();
 //        while (_rootCanvas != null && !_rootCanvas.isRootCanvas)
@@ -486,11 +168,8 @@
 //            return;
 //        }
 
-//        // RecordHome() saves transform.parent as home. When dismounting, the
-//        // current parent is still the dragon seat — so home would wrongly become
-//        // the seat, and SnapBack() would re-attach the soldier to the dragon.
-//        // Fix: after RecordHome(), override with the original ground home that
-//        // was stored in _mountHomeParent at the time of mounting.
+//        // RecordHome() would save the rider seat as home while mounted.
+//        // Override with the original ground home that was stored at mount time.
 //        RecordHome();
 //        if (wasMounted && _mountHomeParent != null)
 //        {
@@ -502,12 +181,21 @@
 //        _isDragging = true;
 //        _controller?.SetPatrolling(false);
 
-//        // ── Re-parent to root canvas ──────────────────────────────────────────
+//        // ── Reparent to root canvas BEFORE calling PerformDismount() ──────────
+//        // The soldier must not be a child of the rider dragon when it is
+//        // destroyed by PerformDismount, or the soldier would be destroyed too.
 //        transform.SetParent(_rootCanvas.transform, true);
 //        transform.SetAsLastSibling();
-
 //        _canvasGroup.blocksRaycasts = false;
+
+//        // ── Swap rider dragon → plain dragon now that the soldier is safe ──────
+//        if (wasMounted)
+//            mountedDragonDC?.PerformDismount();
 //    }
+
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // DRAG — MOVE
+//    // ══════════════════════════════════════════════════════════════════════════
 
 //    public void OnDrag(PointerEventData eventData)
 //    {
@@ -515,68 +203,84 @@
 //        _rect.anchoredPosition += eventData.delta / _rootCanvas.scaleFactor;
 //    }
 
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // DRAG — END
+//    // ══════════════════════════════════════════════════════════════════════════
+
 //    public void OnEndDrag(PointerEventData eventData)
 //    {
-//        // NOTE: This may NOT fire if the drop target called SetActive(false) on us
-//        // inside OnDrop. OnSuccessfulDrop() also resets these flags for that case.
 //        _isDragging = false;
-//        // Keep blocksRaycasts FALSE until AFTER the raycast so the soldier's own
-//        // CanvasGroup doesn't shadow the seat/zone underneath.
+//        // Keep blocksRaycasts FALSE until AFTER the raycast so the soldier's
+//        // CanvasGroup does not shadow the dragon sitting underneath.
 
-//        // ── Raycast to find a DragonRiderSeat under the pointer ──────────────
+//        // ── Raycast all UI elements under the pointer ─────────────────────────
 //        var results = new List<RaycastResult>();
 //        EventSystem.current.RaycastAll(eventData, results);
 
 //        DragonRiderSeat targetSeat = null;
+//        DragonController targetDC = null;
+
 //        foreach (var r in results)
 //        {
-//            targetSeat = r.gameObject.GetComponentInParent<DragonRiderSeat>();
-//            if (targetSeat != null) break;
+//            // Walk UP to the DragonController from any hit child
+//            // (body, wing, seat root — all share the dragon root as an ancestor).
+//            var dragon = r.gameObject.GetComponentInParent<DragonController>();
+//            if (dragon == null) continue;
+
+//            // Walk DOWN to the seat from the dragon root.
+//            var seat = dragon.GetComponentInChildren<DragonRiderSeat>();
+//            if (seat == null) continue;
+
+//            targetDC = dragon;
+//            targetSeat = seat;
+//            break;
 //        }
 
-//        // Restore raycast blocking now that detection is done
+//        // Restore raycast blocking — detection is done.
 //        _canvasGroup.blocksRaycasts = true;
 
 //        if (targetSeat != null && !targetSeat.IsOccupied)
 //        {
-//            // ── Dropped on an empty dragon seat → mount ───────────────────────
-//            // Save ground home BEFORE mounting so DismountFromDragon can return here.
+//            // ── Valid drop on an unoccupied dragon ────────────────────────────
+//            //
+//            // Save the ground home BEFORE mounting so DismountFromDragon()
+//            // can return here later.
 //            _mountHomeParent = _homeParent;
 //            _mountHomePos = _homeAnchoredPosition;
-//            targetSeat.MountSoldier(this);
+
+//            // Route through the DragonController so it can decide whether to
+//            // swap prefabs (plain → rider variant) or mount in place.
+//            targetDC.PerformMount(this, targetSeat);
+//        }
+//        else if (targetSeat != null && targetSeat.IsOccupied)
+//        {
+//            // Dragon already has a rider — snap back silently.
+//            Debug.Log("[SoldierDragDrop] Dragon seat is occupied — snapping back.");
+//            SnapBack();
 //        }
 //        else if (_rootCanvas != null && transform.parent == _rootCanvas.transform)
 //        {
-//            // ── Dropped on empty space → snap back ───────────────────────────
+//            // Dropped on empty space — snap back to patrol area.
 //            SnapBack();
 //        }
 //    }
 
-//    // ─── Drop Outcomes ────────────────────────────────────────────────────────
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // DROP OUTCOMES
+//    // ══════════════════════════════════════════════════════════════════════════
 
-//    /// <summary>
-//    /// Returns the soldier to its home position and resumes patrol.
-//    /// Called automatically when the drag ends over empty space.
-//    /// </summary>
+//    /// <summary>Returns the soldier to its home position and resumes patrol.</summary>
 //    public void SnapBack()
 //    {
 //        transform.SetParent(_homeParent, true);
 //        _rect.anchoredPosition = _homeAnchoredPosition;
-
-//        // RefreshFlip re-applies the correct localScale.x sign after SetParent,
-//        // which can corrupt localScale when parent Canvas Scalers differ.
-//        //_controller?.RefreshFlip();
 //        _controller?.SetPatrolling(true);
-
 //        Debug.Log("[SoldierDragDrop] Snapped back to home.");
 //    }
 
 //    /// <summary>
-//    /// Called by the drop target (WizardBox) after accepting the soldier.
-//    ///
-//    /// Resets _isDragging and blocksRaycasts HERE (not just in OnEndDrag) because
-//    /// the drop target calls SetActive(false) immediately after, which prevents
-//    /// Unity from delivering OnEndDrag to the disabled GameObject.
+//    /// Called by a drop target (WizardBox) after accepting the soldier.
+//    /// Resets flags here because SetActive(false) prevents OnEndDrag from firing.
 //    /// </summary>
 //    public void OnSuccessfulDrop()
 //    {
@@ -587,19 +291,8 @@
 //    }
 
 //    /// <summary>
-//    /// Call this from WizardBox "Retrieve" instead of directly calling SetParent.
-//    ///
-//    ///   spawnParent   — the Transform to parent the soldier under (spawn area)
-//    ///   spawnPosition — optional anchoredPosition override inside that parent
-//    ///
-//    /// What it does:
-//    ///   • Re-parents soldier to spawnParent
-//    ///   • Optionally moves to spawnPosition
-//    ///   • Y-rotation flip is unaffected by SetParent — no refresh needed
-//    ///   • Calls SetPatrolling(true) which recalculates patrol bounds from
-//    ///     the soldier's new position before resuming
-//    ///   • Resets drag state flags
-//    ///   • Records new home for next drag's snap-back
+//    /// Re-parents the soldier to spawnParent and resumes patrol.
+//    /// Call from WizardBox "Retrieve" instead of calling SetParent directly.
 //    /// </summary>
 //    public void Retrieve(Transform spawnParent, Vector2? spawnPosition = null)
 //    {
@@ -617,276 +310,148 @@
 //        _canvasGroup.blocksRaycasts = true;
 //        _isDragging = false;
 
-//        // Record new home so the next drag's SnapBack comes back here.
 //        RecordHome();
-
-//        // SetPatrolling(true) internally recalculates patrol bounds from the
-//        // soldier's current anchoredPosition, fixing the "patrol area drifts"
-//        // bug after the soldier lands at a new position.
-//        //_controller?.RefreshFlip();
 //        _controller?.SetPatrolling(true);
 
 //        Debug.Log($"[SoldierDragDrop] Retrieved to '{spawnParent.name}'.");
 //    }
 
-//    // ─── Dragon Mount / Dismount ─────────────────────────────────────────────────
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // DRAGON MOUNT
+//    // ══════════════════════════════════════════════════════════════════════════
 
 //    /// <summary>
-//    /// Called by DragonRiderSeat.MountSoldier.
-//    /// Reparents the soldier to the seat, positions it at seatOffset,
-//    /// stops patrol, and resets the visual flip so dragon's flip takes over.
+//    /// Called by DragonRiderSeat.MountSoldier() — either from the plain dragon's
+//    /// own seat (classic fallback) or from the newly spawned rider dragon's seat
+//    /// (prefab-swap path via PerformMount).
+//    ///
+//    /// Order:
+//    ///   1. Auto-equip helmet if missing.
+//    ///   2. Stop patrol and freeze facing direction.
+//    ///   3. Reparent soldier under the seat at seatOffset.
+//    ///   4. Switch ALL sprite layers to the Riding animation.
 //    /// </summary>
 //    public void MountOnDragon(DragonRiderSeat seat, Vector2 seatOffset)
 //    {
 //        _currentSeat = seat;
 
-//        // Stop patrolling — soldier sits still while riding
-//        _controller?.SetPatrolling(false);
+//        // 1. Auto-equip helmet BEFORE reparenting so CharacterEquipment.Equip()
+//        //    fires while the soldier is still at canvas-root level.
+//        EnsureHelmetEquipped();
 
-//        // Reset the soldier's own visual flip to neutral.
-//        // The dragon's localScale flip is inherited through the hierarchy,
-//        // so the soldier automatically faces the correct direction.
-//        _controller?.ResetFlipForMount();
+//        // 2. Stop patrol and freeze facing direction.
+//        _controller?.EnterRidingState();
 
-//        // Reparent to the seat (keeps world scale stable with worldPositionStays:false)
+//        // 3. Reparent under the seat at the configured offset.
 //        transform.SetParent(seat.transform, false);
 //        _rect.anchoredPosition = seatOffset;
-
-//        // Record home as the seat position so re-drags snap back here if needed
 //        RecordHome();
 
-//        Debug.Log($"[SoldierDragDrop] '{name}' mounted on dragon seat '{seat.name}'.");
+//        // 4. All layers (face, armor, helmet…) switch to their riding sprites.
+//        _animator?.SetState(AnimationState.Riding);
+
+//        Debug.Log($"[SoldierDragDrop] '{name}' mounted on '{seat.transform.parent?.name}'.");
 //    }
 
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // DRAGON DISMOUNT
+//    // ══════════════════════════════════════════════════════════════════════════
+
 //    /// <summary>
-//    /// Returns the soldier to the ground patrol area it came from.
-//    /// Call this from a "Retrieve" button or any game event that dismounts the rider.
+//    /// Returns the soldier to the ground patrol area and triggers the
+//    /// rider-dragon → plain-dragon prefab swap.
+//    ///
+//    /// Call this from a "Retrieve" button or any dismount game event.
+//    ///
+//    /// SAFE ORDER enforced internally:
+//    ///   1. Capture rider dragon DC before clearing _currentSeat.
+//    ///   2. Release seat.
+//    ///   3. Reparent soldier to ground home.
+//    ///   4. THEN call PerformDismount() so the soldier is no longer a
+//    ///      child of the rider dragon when it is destroyed.
 //    /// </summary>
 //    public void DismountFromDragon()
 //    {
+//        // Capture the rider dragon DC before we null _currentSeat.
+//        DragonController riderDragonDC = null;
 //        if (_currentSeat != null)
 //        {
+//            riderDragonDC = _currentSeat.GetComponentInParent<DragonController>();
 //            _currentSeat.ReleaseSoldier();
 //            _currentSeat = null;
 //        }
 
 //        if (_mountHomeParent == null)
 //        {
-//            Debug.LogWarning("[SoldierDragDrop] DismountFromDragon: no mount home recorded — snapping to current home.");
+//            Debug.LogWarning("[SoldierDragDrop] DismountFromDragon: no mount home " +
+//                             "recorded — snapping to current home.");
 //            SnapBack();
+//            // Even when snapping back, swap the rider dragon out.
+//            riderDragonDC?.PerformDismount();
 //            return;
 //        }
 
+//        // ── Reparent soldier to ground BEFORE destroying the rider dragon ──────
 //        transform.SetParent(_mountHomeParent, false);
 //        _rect.anchoredPosition = _mountHomePos;
 
-//        // Restore facing direction for ground patrol
-//        _controller?.RefreshFlip();
-//        _controller?.SetPatrolling(true);
+//        // Restore patrol and facing direction.
+//        _controller?.ExitRidingState();
 
-//        // Update home so the next drag snaps back to the patrol area
+//        // Return all sprite layers to idle animation.
+//        _animator?.SetState(AnimationState.Idle);
+
 //        RecordHome();
+//        _mountHomeParent = null;   // consumed — prevent stale reuse
 
-//        // Clear mount home so we don't accidentally reuse a stale value
-//        _mountHomeParent = null;
+//        // ── NOW safe to swap the rider dragon back to the plain dragon ─────────
+//        riderDragonDC?.PerformDismount();
 
 //        Debug.Log($"[SoldierDragDrop] '{name}' dismounted — returned to ground.");
 //    }
 
-//    // ─── Helper ───────────────────────────────────────────────────────────────
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // HELMET AUTO-EQUIP
+//    // ══════════════════════════════════════════════════════════════════════════
 
-//    private void RecordHome()
+//    /// <summary>
+//    /// If the soldier has no Helmet equipped, looks up the default helmet
+//    /// for their Armor in ArmorHelmetTable and equips it automatically.
+//    ///
+//    /// Lookup order (ArmorHelmetTable.GetDefaultHelmet):
+//    ///   1. Entry matching the soldier's equipped armor → paired defaultHelmet.
+//    ///   2. fallbackHelmet — used when no armor or no matching entry.
+//    ///   3. null           — logs a warning; soldier mounts without helmet.
+//    /// </summary>
+//    private void EnsureHelmetEquipped()
 //    {
-//        _homeParent = transform.parent;
-//        _homeAnchoredPosition = _rect.anchoredPosition;
-//    }
-//}
+//        if (_equipment == null) return;
 
-//using UnityEngine;
-//using UnityEngine.EventSystems;
-//using UnityEngine.UI;
+//        // Already has a helmet — nothing to do.
+//        if (_equipment.GetEquipped(EquipmentSlot.Helmet) != null) return;
 
-///// <summary>
-///// AREA FORGE - SoldierDragDrop
-/////
-///// ── BUG FIX: Soldier never flips after drag/retrieve ──────────────────────────
-/////   Every SetParent(x, worldPositionStays: true) call makes Unity recompute
-/////   localScale to preserve world scale across parents with different Canvas
-/////   Scaler factors. This corrupts the sign of localScale.x that SoldierController
-/////   uses to track facing direction. Fix: call _controller.RefreshFlip() after
-/////   every re-parent to restore the correct sign from the authoritative _direction.
-/////
-///// ── BUG FIX: Patrol area shifts after retrieve ────────────────────────────────
-/////   Handled inside SoldierController.SetPatrolling(true) — it now always
-/////   recalculates patrol bounds from the soldier's current position before
-/////   resuming, so the patrol range is always centred on where the soldier stands.
-/////
-///// ── BUG FIX: Can't re-drag after retrieve ─────────────────────────────────────
-/////   Unity skips OnEndDrag on a disabled GameObject. AcceptSoldier calls
-/////   SetActive(false), so _isDragging and blocksRaycasts stay stuck.
-/////   Fix: reset both flags in OnSuccessfulDrop() (called before SetActive(false)).
-/////
-///// ── Setup ──────────────────────────────────────────────────────────────────────
-/////   1. Attach to SoldierPrefab root (same GO as CanvasGroup, SoldierStats).
-/////   2. The root Canvas must have a GraphicRaycaster.
-/////   3. An EventSystem must exist in the scene.
-/////   4. The SPAWN PANEL must be a plain RectTransform + Image (Raycast Target ON).
-/////      Do NOT add any Layout Group — it overrides anchoredPosition every frame
-/////      and stops the soldier from moving (animations play, position is frozen).
-///// </summary>
-//[RequireComponent(typeof(CanvasGroup))]
-//public class SoldierDragDrop : MonoBehaviour,
-//    IBeginDragHandler, IDragHandler, IEndDragHandler
-//{
-//    // ─── State ────────────────────────────────────────────────────────────────
+//        EquipmentItem armor = _equipment.GetEquipped(EquipmentSlot.Armor);
+//        EquipmentItem helmet = helmetTable != null
+//            ? helmetTable.GetDefaultHelmet(armor)
+//            : null;
 
-//    private CanvasGroup _canvasGroup;
-//    private RectTransform _rect;
-//    private SoldierController _controller;
-
-//    private Canvas _rootCanvas;
-//    private Transform _homeParent;
-//    private Vector2 _homeAnchoredPosition;
-//    private bool _isDragging;
-
-//    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
-
-//    private void Awake()
-//    {
-//        _canvasGroup = GetComponent<CanvasGroup>();
-//        _rect = GetComponent<RectTransform>();
-//        _controller = GetComponent<SoldierController>();
-//    }
-
-//    private void Start()
-//    {
-//        RecordHome();
-//    }
-
-//    // ─── Drag Handlers ────────────────────────────────────────────────────────
-
-//    public void OnBeginDrag(PointerEventData eventData)
-//    {
-//        if (_isDragging) return;
-
-//        // Re-find root canvas every drag — cached value breaks after retrieve
-//        // re-parents the soldier to a different panel.
-//        _rootCanvas = GetComponentInParent<Canvas>();
-//        while (_rootCanvas != null && !_rootCanvas.isRootCanvas)
-//            _rootCanvas = _rootCanvas.transform.parent?.GetComponentInParent<Canvas>();
-
-//        if (_rootCanvas == null)
+//        if (helmet != null)
 //        {
-//            Debug.LogError("[SoldierDragDrop] No root Canvas found. " +
-//                           "Make sure the soldier is inside a Canvas.");
-//            return;
+//            _equipment.Equip(helmet);
+//            Debug.Log($"[SoldierDragDrop] Auto-equipped '{helmet.itemName}' " +
+//                      $"(armor: '{armor?.itemName ?? "none"}') on mount.", this);
 //        }
-
-//        RecordHome();
-
-//        _isDragging = true;
-//        _controller?.SetPatrolling(false);
-
-//        // ── Re-parent to root canvas ──────────────────────────────────────────
-//        transform.SetParent(_rootCanvas.transform, true);
-//        transform.SetAsLastSibling();
-
-//        _canvasGroup.blocksRaycasts = false;
-//    }
-
-//    public void OnDrag(PointerEventData eventData)
-//    {
-//        if (_rootCanvas == null) return;
-//        _rect.anchoredPosition += eventData.delta / _rootCanvas.scaleFactor;
-//    }
-
-//    public void OnEndDrag(PointerEventData eventData)
-//    {
-//        // NOTE: This may NOT fire if the drop target called SetActive(false) on us
-//        // inside OnDrop. OnSuccessfulDrop() also resets these flags for that case.
-//        _isDragging = false;
-//        _canvasGroup.blocksRaycasts = true;
-
-//        if (_rootCanvas != null && transform.parent == _rootCanvas.transform)
-//            SnapBack();
-//    }
-
-//    // ─── Drop Outcomes ────────────────────────────────────────────────────────
-
-//    /// <summary>
-//    /// Returns the soldier to its home position and resumes patrol.
-//    /// Called automatically when the drag ends over empty space.
-//    /// </summary>
-//    public void SnapBack()
-//    {
-//        transform.SetParent(_homeParent, true);
-//        _rect.anchoredPosition = _homeAnchoredPosition;
-
-//        // SetPatrolling(true) recalculates patrol bounds from current position
-//        // before resuming, so the patrol range is centred on the soldier.
-//        _controller?.SetPatrolling(true);
-
-//        Debug.Log("[SoldierDragDrop] Snapped back to home.");
-//    }
-
-//    /// <summary>
-//    /// Called by the drop target (WizardBox) after accepting the soldier.
-//    ///
-//    /// Resets _isDragging and blocksRaycasts HERE (not just in OnEndDrag) because
-//    /// the drop target calls SetActive(false) immediately after, which prevents
-//    /// Unity from delivering OnEndDrag to the disabled GameObject.
-//    /// </summary>
-//    public void OnSuccessfulDrop()
-//    {
-//        _isDragging = false;
-//        _canvasGroup.blocksRaycasts = true;
-//        _controller?.SetPatrolling(false);
-//        Debug.Log("[SoldierDragDrop] Accepted by drop target.");
-//    }
-
-//    /// <summary>
-//    /// Call this from WizardBox "Retrieve" instead of directly calling SetParent.
-//    ///
-//    ///   spawnParent   — the Transform to parent the soldier under (spawn area)
-//    ///   spawnPosition — optional anchoredPosition override inside that parent
-//    ///
-//    /// What it does:
-//    ///   • Re-parents soldier to spawnParent
-//    ///   • Optionally moves to spawnPosition
-//    ///   • Y-rotation flip is unaffected by SetParent — no refresh needed
-//    ///   • Calls SetPatrolling(true) which recalculates patrol bounds from
-//    ///     the soldier's new position before resuming
-//    ///   • Resets drag state flags
-//    ///   • Records new home for next drag's snap-back
-//    /// </summary>
-//    public void Retrieve(Transform spawnParent, Vector2? spawnPosition = null)
-//    {
-//        if (spawnParent == null)
+//        else
 //        {
-//            Debug.LogError("[SoldierDragDrop] Retrieve: spawnParent is null.");
-//            return;
+//            Debug.LogWarning($"[SoldierDragDrop] No default helmet found for " +
+//                             $"armor '{armor?.itemName ?? "none"}'. " +
+//                             "Set fallbackHelmet in ArmorHelmetTable.", this);
 //        }
-
-//        transform.SetParent(spawnParent, true);
-
-//        if (spawnPosition.HasValue)
-//            _rect.anchoredPosition = spawnPosition.Value;
-
-//        _canvasGroup.blocksRaycasts = true;
-//        _isDragging = false;
-
-//        // Record new home so the next drag's SnapBack comes back here.
-//        RecordHome();
-
-//        // SetPatrolling(true) internally recalculates patrol bounds from the
-//        // soldier's current anchoredPosition, fixing the "patrol area drifts"
-//        // bug after the soldier lands at a new position.
-//        _controller?.SetPatrolling(true);
-
-//        Debug.Log($"[SoldierDragDrop] Retrieved to '{spawnParent.name}'.");
 //    }
 
-//    // ─── Helper ───────────────────────────────────────────────────────────────
+//    // ══════════════════════════════════════════════════════════════════════════
+//    // HELPER
+//    // ══════════════════════════════════════════════════════════════════════════
 
 //    private void RecordHome()
 //    {
@@ -901,65 +466,126 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// AREA FORGE - SoldierDragDrop
+/// AREA FORGE — SoldierDragDrop
 ///
-/// ── BUG FIX: Soldier never flips after drag/retrieve ──────────────────────────
-///   Every SetParent(x, worldPositionStays: true) call makes Unity recompute
-///   localScale to preserve world scale across parents with different Canvas
-///   Scaler factors. This corrupts the sign of localScale.x that SoldierController
-///   uses to track facing direction. Fix: call _controller.RefreshFlip() after
-///   every re-parent to restore the correct sign from the authoritative _direction.
+/// Attach to the Soldier prefab root alongside:
+///   CanvasGroup, CharacterEquipment, CharacterVisuals, SpriteLayerAnimator.
 ///
-/// ── BUG FIX: Patrol area shifts after retrieve ────────────────────────────────
-///   Handled inside SoldierController.SetPatrolling(true) — it now always
-///   recalculates patrol bounds from the soldier's current position before
-///   resuming, so the patrol range is always centred on where the soldier stands.
+/// ════════════════════════════════════════════════════════════════════
+///  DRAG BEHAVIOUR
+/// ════════════════════════════════════════════════════════════════════
 ///
-/// ── BUG FIX: Can't re-drag after retrieve ─────────────────────────────────────
-///   Unity skips OnEndDrag on a disabled GameObject. AcceptSoldier calls
-///   SetActive(false), so _isDragging and blocksRaycasts stay stuck.
-///   Fix: reset both flags in OnSuccessfulDrop() (called before SetActive(false)).
+///  OnBeginDrag  Lifts the soldier to canvas-root level so it draws on
+///               top of all panels. If the soldier was riding a dragon,
+///               the seat is released and the rider dragon swaps back
+///               to the plain dragon AFTER the soldier is safely at
+///               canvas-root (so the soldier is not destroyed with the
+///               rider dragon GameObject).
 ///
-/// ── Setup ──────────────────────────────────────────────────────────────────────
-///   1. Attach to SoldierPrefab root (same GO as CanvasGroup, SoldierStats).
-///   2. The root Canvas must have a GraphicRaycaster.
-///   3. An EventSystem must exist in the scene.
-///   4. The SPAWN PANEL must be a plain RectTransform + Image (Raycast Target ON).
-///      Do NOT add any Layout Group — it overrides anchoredPosition every frame
-///      and stops the soldier from moving (animations play, position is frozen).
+///  OnDrag       Moves the soldier under the pointer.
+///
+///  OnEndDrag    Raycasts under the pointer:
+///                 → DragonController found → PerformMount()
+///                    (which either swaps to rider prefab or falls back
+///                     to classic in-place mount depending on setup)
+///                 → Seat occupied          → SnapBack
+///                 → Empty space            → SnapBack
+///
+/// ════════════════════════════════════════════════════════════════════
+///  MOUNT / DISMOUNT
+/// ════════════════════════════════════════════════════════════════════
+///
+///  OnEndDrag routes through DragonController.PerformMount() instead of
+///  calling DragonRiderSeat.MountSoldier() directly. This lets the dragon
+///  controller decide whether to swap prefabs or mount in place.
+///
+///  When the soldier is dragged off the rider dragon (OnBeginDrag with
+///  wasMounted=true), DragonController.PerformDismount() is called AFTER
+///  the soldier is already at canvas-root — never while still a child.
+///
+///  DismountFromDragon() (programmatic dismount, e.g. Retrieve button)
+///  follows the same safe order: reparent soldier → then PerformDismount.
+///
+/// ════════════════════════════════════════════════════════════════════
+///  HELMET AUTO-EQUIP
+/// ════════════════════════════════════════════════════════════════════
+///
+///  If the soldier has no Helmet equipped when they mount, the system
+///  looks up the correct default in ArmorHelmetTable (matched to their
+///  Armor) and calls CharacterEquipment.Equip() automatically.
+///
+/// ════════════════════════════════════════════════════════════════════
+///  SETUP
+/// ════════════════════════════════════════════════════════════════════
+///
+///  1. Attach to SoldierPrefab root alongside CanvasGroup,
+///     CharacterEquipment, CharacterVisuals, SpriteLayerAnimator.
+///  2. Drag your ArmorHelmetTable ScriptableObject into helmetTable.
+///  3. Root Canvas must have a GraphicRaycaster.
+///  4. An EventSystem must exist in the scene.
+///  5. Spawn panel must be a RectTransform + Image (Raycast Target ON).
+///     No Layout Group — it overrides anchoredPosition every frame.
 /// </summary>
 [RequireComponent(typeof(CanvasGroup))]
 public class SoldierDragDrop : MonoBehaviour,
     IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    // ─── State ────────────────────────────────────────────────────────────────
+    // ── Inspector ─────────────────────────────────────────────────────────────
+
+    [Header("Dragon Mount Settings")]
+    [Tooltip("Maps each armor to its default helmet.\n" +
+             "Create via: right-click Project → Create → AreaForge → Armor Helmet Table.\n" +
+             "Used to auto-equip a helmet when a helmetless soldier mounts a dragon.")]
+    [SerializeField] private ArmorHelmetTable helmetTable;
+
+    // ── Component References ──────────────────────────────────────────────────
 
     private CanvasGroup _canvasGroup;
     private RectTransform _rect;
-    private SoldierController _controller;
+    private SoldierController _controller;     // optional — patrol + flip
+    private CharacterEquipment _equipment;      // tracks equipped items
+    private SpriteLayerAnimator _animator;       // drives per-layer animation
+
+    // ── Drag State ────────────────────────────────────────────────────────────
 
     private Canvas _rootCanvas;
     private Transform _homeParent;
     private Vector2 _homeAnchoredPosition;
     private bool _isDragging;
 
-    // ─── Dragon Rider State ───────────────────────────────────────────────────
+    // ── Dragon Rider State ────────────────────────────────────────────────────
 
-    // The seat this soldier is currently riding on (null if on the ground).
+    /// <summary>Seat this soldier is currently riding on. Null = on the ground.</summary>
     private DragonRiderSeat _currentSeat;
 
-    // The home parent/position recorded BEFORE mounting — used by DismountFromDragon
-    // to send the soldier back to the patrol area, not to the seat.
+    /// <summary>
+    /// Ground parent recorded before mounting so DismountFromDragon() can
+    /// return the soldier to its patrol area, not back to the seat.
+    /// </summary>
     private Transform _mountHomeParent;
     private Vector2 _mountHomePos;
 
-    // ─── Unity Lifecycle ──────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // LIFECYCLE
+    // ══════════════════════════════════════════════════════════════════════════
 
     private void Awake()
     {
         _canvasGroup = GetComponent<CanvasGroup>();
         _rect = GetComponent<RectTransform>();
-        _controller = GetComponent<SoldierController>();
+        _controller = GetComponent<SoldierController>();    // optional
+        _equipment = GetComponent<CharacterEquipment>();
+        _animator = GetComponent<SpriteLayerAnimator>();
+
+        if (_equipment == null)
+            Debug.LogWarning("[SoldierDragDrop] CharacterEquipment not found on " +
+                             $"'{name}'. Helmet auto-equip will be skipped.", this);
+        if (_animator == null)
+            Debug.LogWarning("[SoldierDragDrop] SpriteLayerAnimator not found on " +
+                             $"'{name}'. Riding animation will not play.", this);
+        if (helmetTable == null)
+            Debug.LogWarning("[SoldierDragDrop] helmetTable is not assigned on " +
+                             $"'{name}'. Soldiers will mount without a helmet.", this);
     }
 
     private void Start()
@@ -967,22 +593,31 @@ public class SoldierDragDrop : MonoBehaviour,
         RecordHome();
     }
 
-    // ─── Drag Handlers ────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // DRAG — BEGIN
+    // ══════════════════════════════════════════════════════════════════════════
 
     public void OnBeginDrag(PointerEventData eventData)
     {
         if (_isDragging) return;
 
-        // ── If riding a dragon, release the seat before lifting off ──────────
-        // Track whether we came from a mount so we can fix the snap-back home below.
+        // ── If riding, release the seat and capture the rider dragon DC ───────
+        //
+        // We capture the DragonController BEFORE clearing _currentSeat so we
+        // can call PerformDismount() later (after the soldier is safely at
+        // canvas-root — never while still a child of the rider dragon).
         bool wasMounted = _currentSeat != null;
+        DragonController mountedDragonDC = null;
+
         if (wasMounted)
         {
+            mountedDragonDC = _currentSeat.GetComponentInParent<DragonController>();
             _currentSeat.ReleaseSoldier();
             _currentSeat = null;
+            _animator?.SetState(AnimationState.Idle);
         }
 
-        // Re-find root canvas every drag — cached value breaks after retrieve
+        // Re-find root canvas every drag — cached value breaks after Retrieve
         // re-parents the soldier to a different panel.
         _rootCanvas = GetComponentInParent<Canvas>();
         while (_rootCanvas != null && !_rootCanvas.isRootCanvas)
@@ -995,11 +630,8 @@ public class SoldierDragDrop : MonoBehaviour,
             return;
         }
 
-        // RecordHome() saves transform.parent as home. When dismounting, the
-        // current parent is still the dragon seat — so home would wrongly become
-        // the seat, and SnapBack() would re-attach the soldier to the dragon.
-        // Fix: after RecordHome(), override with the original ground home that
-        // was stored in _mountHomeParent at the time of mounting.
+        // RecordHome() would save the rider seat as home while mounted.
+        // Override with the original ground home that was stored at mount time.
         RecordHome();
         if (wasMounted && _mountHomeParent != null)
         {
@@ -1011,12 +643,21 @@ public class SoldierDragDrop : MonoBehaviour,
         _isDragging = true;
         _controller?.SetPatrolling(false);
 
-        // ── Re-parent to root canvas ──────────────────────────────────────────
+        // ── Reparent to root canvas BEFORE calling PerformDismount() ──────────
+        // The soldier must not be a child of the rider dragon when it is
+        // destroyed by PerformDismount, or the soldier would be destroyed too.
         transform.SetParent(_rootCanvas.transform, true);
         transform.SetAsLastSibling();
-
         _canvasGroup.blocksRaycasts = false;
+
+        // ── Swap rider dragon → plain dragon now that the soldier is safe ──────
+        if (wasMounted)
+            mountedDragonDC?.PerformDismount();
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // DRAG — MOVE
+    // ══════════════════════════════════════════════════════════════════════════
 
     public void OnDrag(PointerEventData eventData)
     {
@@ -1024,68 +665,88 @@ public class SoldierDragDrop : MonoBehaviour,
         _rect.anchoredPosition += eventData.delta / _rootCanvas.scaleFactor;
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // DRAG — END
+    // ══════════════════════════════════════════════════════════════════════════
+
     public void OnEndDrag(PointerEventData eventData)
     {
-        // NOTE: This may NOT fire if the drop target called SetActive(false) on us
-        // inside OnDrop. OnSuccessfulDrop() also resets these flags for that case.
         _isDragging = false;
-        // Keep blocksRaycasts FALSE until AFTER the raycast so the soldier's own
-        // CanvasGroup doesn't shadow the seat/zone underneath.
+        // Keep blocksRaycasts FALSE until AFTER the raycast so the soldier's
+        // CanvasGroup does not shadow the dragon sitting underneath.
 
-        // ── Raycast to find a DragonRiderSeat under the pointer ──────────────
+        // ── Raycast all UI elements under the pointer ─────────────────────────
         var results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventData, results);
 
         DragonRiderSeat targetSeat = null;
+        DragonController targetDC = null;
+
         foreach (var r in results)
         {
-            targetSeat = r.gameObject.GetComponentInParent<DragonRiderSeat>();
-            if (targetSeat != null) break;
+            // Walk UP to the DragonController from any hit child.
+            var dragon = r.gameObject.GetComponentInParent<DragonController>();
+            if (dragon == null) continue;
+
+            // Walk DOWN for a seat — may be null on the PLAIN dragon variant
+            // (which has no DragonRiderSeat).  We accept null here and let
+            // PerformMount decide what to do (prefab-swap vs mount-in-place).
+            targetDC = dragon;
+            targetSeat = dragon.GetComponentInChildren<DragonRiderSeat>();
+            break;
         }
 
-        // Restore raycast blocking now that detection is done
+        // Restore raycast blocking — detection is done.
         _canvasGroup.blocksRaycasts = true;
 
-        if (targetSeat != null && !targetSeat.IsOccupied)
+        // A valid mount target is:
+        //   • Any DragonController found (targetDC != null)   AND
+        //   • Either no seat (plain dragon) OR an unoccupied seat
+        bool seatFree = targetSeat == null || !targetSeat.IsOccupied;
+
+        if (targetDC != null && seatFree)
         {
-            // ── Dropped on an empty dragon seat → mount ───────────────────────
-            // Save ground home BEFORE mounting so DismountFromDragon can return here.
+            // ── Valid drop ────────────────────────────────────────────────────
+            //
+            // Save the ground home BEFORE mounting so DismountFromDragon()
+            // can return here later.
             _mountHomeParent = _homeParent;
             _mountHomePos = _homeAnchoredPosition;
-            targetSeat.MountSoldier(this);
+
+            // PerformMount handles two cases internally:
+            //   targetSeat == null  → plain dragon  → swap to rider-dragon prefab
+            //   targetSeat != null  → rider dragon   → mount in place
+            targetDC.PerformMount(this, targetSeat);
+        }
+        else if (targetSeat != null && targetSeat.IsOccupied)
+        {
+            // Dragon already has a rider — snap back silently.
+            Debug.Log("[SoldierDragDrop] Dragon seat is occupied — snapping back.");
+            SnapBack();
         }
         else if (_rootCanvas != null && transform.parent == _rootCanvas.transform)
         {
-            // ── Dropped on empty space → snap back ───────────────────────────
+            // Dropped on empty space — snap back to patrol area.
             SnapBack();
         }
     }
 
-    // ─── Drop Outcomes ────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // DROP OUTCOMES
+    // ══════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Returns the soldier to its home position and resumes patrol.
-    /// Called automatically when the drag ends over empty space.
-    /// </summary>
+    /// <summary>Returns the soldier to its home position and resumes patrol.</summary>
     public void SnapBack()
     {
         transform.SetParent(_homeParent, true);
         _rect.anchoredPosition = _homeAnchoredPosition;
-
-        // RefreshFlip re-applies the correct localScale.x sign after SetParent,
-        // which can corrupt localScale when parent Canvas Scalers differ.
-        //_controller?.RefreshFlip();
         _controller?.SetPatrolling(true);
-
         Debug.Log("[SoldierDragDrop] Snapped back to home.");
     }
 
     /// <summary>
-    /// Called by the drop target (WizardBox) after accepting the soldier.
-    ///
-    /// Resets _isDragging and blocksRaycasts HERE (not just in OnEndDrag) because
-    /// the drop target calls SetActive(false) immediately after, which prevents
-    /// Unity from delivering OnEndDrag to the disabled GameObject.
+    /// Called by a drop target (WizardBox) after accepting the soldier.
+    /// Resets flags here because SetActive(false) prevents OnEndDrag from firing.
     /// </summary>
     public void OnSuccessfulDrop()
     {
@@ -1096,19 +757,8 @@ public class SoldierDragDrop : MonoBehaviour,
     }
 
     /// <summary>
-    /// Call this from WizardBox "Retrieve" instead of directly calling SetParent.
-    ///
-    ///   spawnParent   — the Transform to parent the soldier under (spawn area)
-    ///   spawnPosition — optional anchoredPosition override inside that parent
-    ///
-    /// What it does:
-    ///   • Re-parents soldier to spawnParent
-    ///   • Optionally moves to spawnPosition
-    ///   • Y-rotation flip is unaffected by SetParent — no refresh needed
-    ///   • Calls SetPatrolling(true) which recalculates patrol bounds from
-    ///     the soldier's new position before resuming
-    ///   • Resets drag state flags
-    ///   • Records new home for next drag's snap-back
+    /// Re-parents the soldier to spawnParent and resumes patrol.
+    /// Call from WizardBox "Retrieve" instead of calling SetParent directly.
     /// </summary>
     public void Retrieve(Transform spawnParent, Vector2? spawnPosition = null)
     {
@@ -1126,85 +776,152 @@ public class SoldierDragDrop : MonoBehaviour,
         _canvasGroup.blocksRaycasts = true;
         _isDragging = false;
 
-        // Record new home so the next drag's SnapBack comes back here.
         RecordHome();
-
-        // SetPatrolling(true) internally recalculates patrol bounds from the
-        // soldier's current anchoredPosition, fixing the "patrol area drifts"
-        // bug after the soldier lands at a new position.
-        //_controller?.RefreshFlip();
         _controller?.SetPatrolling(true);
 
         Debug.Log($"[SoldierDragDrop] Retrieved to '{spawnParent.name}'.");
     }
 
-    // ─── Dragon Mount / Dismount ─────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // DRAGON MOUNT
+    // ══════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Called by DragonRiderSeat.MountSoldier.
-    /// Reparents the soldier to the seat, positions it at seatOffset,
-    /// stops patrol, and resets the visual flip so dragon's flip takes over.
+    /// Called by DragonRiderSeat.MountSoldier() — either from the plain dragon's
+    /// own seat (classic fallback) or from the newly spawned rider dragon's seat
+    /// (prefab-swap path via PerformMount).
+    ///
+    /// Order:
+    ///   1. Auto-equip helmet if missing.
+    ///   2. Stop patrol and freeze facing direction.
+    ///   3. Reparent soldier under the seat at seatOffset.
+    ///   4. Switch ALL sprite layers to the Riding animation.
     /// </summary>
     public void MountOnDragon(DragonRiderSeat seat, Vector2 seatOffset)
     {
         _currentSeat = seat;
 
-        // ── CHANGE: single call replaces SetPatrolling(false) + ResetFlipForMount()
-        //    and also switches to the Riding animation state automatically.
+        // 1. Auto-equip helmet BEFORE reparenting so CharacterEquipment.Equip()
+        //    fires while the soldier is still at canvas-root level.
+        EnsureHelmetEquipped();
+
+        // 2. Stop patrol and freeze facing direction.
         _controller?.EnterRidingState();
 
-        // Reparent to the seat (keeps world scale stable with worldPositionStays:false)
+        // 3. Reparent under the seat at the configured offset.
         transform.SetParent(seat.transform, false);
         _rect.anchoredPosition = seatOffset;
-
-        // Record home as the seat position so re-drags snap back here if needed
         RecordHome();
 
-        Debug.Log($"[SoldierDragDrop] '{name}' mounted on dragon seat '{seat.name}'.");
+        // 4. All layers (face, armor, helmet…) switch to their riding sprites.
+        _animator?.SetState(AnimationState.Riding);
+
+        Debug.Log($"[SoldierDragDrop] '{name}' mounted on '{seat.transform.parent?.name}'.");
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // DRAGON DISMOUNT
+    // ══════════════════════════════════════════════════════════════════════════
+
     /// <summary>
-    /// Returns the soldier to the ground patrol area it came from.
-    /// Call this from a "Retrieve" button or any game event that dismounts the rider.
+    /// Returns the soldier to the ground patrol area and triggers the
+    /// rider-dragon → plain-dragon prefab swap.
+    ///
+    /// Call this from a "Retrieve" button or any dismount game event.
+    ///
+    /// SAFE ORDER enforced internally:
+    ///   1. Capture rider dragon DC before clearing _currentSeat.
+    ///   2. Release seat.
+    ///   3. Reparent soldier to ground home.
+    ///   4. THEN call PerformDismount() so the soldier is no longer a
+    ///      child of the rider dragon when it is destroyed.
     /// </summary>
     public void DismountFromDragon()
     {
+        // Capture the rider dragon DC before we null _currentSeat.
+        DragonController riderDragonDC = null;
         if (_currentSeat != null)
         {
+            riderDragonDC = _currentSeat.GetComponentInParent<DragonController>();
             _currentSeat.ReleaseSoldier();
             _currentSeat = null;
         }
 
         if (_mountHomeParent == null)
         {
-            Debug.LogWarning("[SoldierDragDrop] DismountFromDragon: no mount home recorded — snapping to current home.");
+            Debug.LogWarning("[SoldierDragDrop] DismountFromDragon: no mount home " +
+                             "recorded — snapping to current home.");
             SnapBack();
+            // Even when snapping back, swap the rider dragon out.
+            riderDragonDC?.PerformDismount();
             return;
         }
 
+        // ── Reparent soldier to ground BEFORE destroying the rider dragon ──────
         transform.SetParent(_mountHomeParent, false);
         _rect.anchoredPosition = _mountHomePos;
 
-        // ── CHANGE: single call replaces RefreshFlip() + SetPatrolling(true)
-        //    and also exits the Riding animation state, resuming Walk + rest cycle.
+        // Restore patrol and facing direction.
         _controller?.ExitRidingState();
 
-        // Update home so the next drag snaps back to the patrol area
-        RecordHome();
+        // Return all sprite layers to idle animation.
+        _animator?.SetState(AnimationState.Idle);
 
-        // Clear mount home so we don't accidentally reuse a stale value
-        _mountHomeParent = null;
+        RecordHome();
+        _mountHomeParent = null;   // consumed — prevent stale reuse
+
+        // ── NOW safe to swap the rider dragon back to the plain dragon ─────────
+        riderDragonDC?.PerformDismount();
 
         Debug.Log($"[SoldierDragDrop] '{name}' dismounted — returned to ground.");
     }
 
-    // ─── Helper ───────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // HELMET AUTO-EQUIP
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// If the soldier has no Helmet equipped, looks up the default helmet
+    /// for their Armor in ArmorHelmetTable and equips it automatically.
+    ///
+    /// Lookup order (ArmorHelmetTable.GetDefaultHelmet):
+    ///   1. Entry matching the soldier's equipped armor → paired defaultHelmet.
+    ///   2. fallbackHelmet — used when no armor or no matching entry.
+    ///   3. null           — logs a warning; soldier mounts without helmet.
+    /// </summary>
+    private void EnsureHelmetEquipped()
+    {
+        if (_equipment == null) return;
+
+        // Already has a helmet — nothing to do.
+        if (_equipment.GetEquipped(EquipmentSlot.Helmet) != null) return;
+
+        EquipmentItem armor = _equipment.GetEquipped(EquipmentSlot.Armor);
+        EquipmentItem helmet = helmetTable != null
+            ? helmetTable.GetDefaultHelmet(armor)
+            : null;
+
+        if (helmet != null)
+        {
+            _equipment.Equip(helmet);
+            Debug.Log($"[SoldierDragDrop] Auto-equipped '{helmet.itemName}' " +
+                      $"(armor: '{armor?.itemName ?? "none"}') on mount.", this);
+        }
+        else
+        {
+            Debug.LogWarning($"[SoldierDragDrop] No default helmet found for " +
+                             $"armor '{armor?.itemName ?? "none"}'. " +
+                             "Set fallbackHelmet in ArmorHelmetTable.", this);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // HELPER
+    // ══════════════════════════════════════════════════════════════════════════
 
     private void RecordHome()
     {
         _homeParent = transform.parent;
         _homeAnchoredPosition = _rect.anchoredPosition;
     }
-
-
 }

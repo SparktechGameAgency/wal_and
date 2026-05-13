@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 957cf6a6b81030240b48b3ef72bd6fa8, type: 3}
+  m_Name: ArmorHelmetTable
+  m_EditorClassIdentifier: Assembly-CSharp::ArmorHelmetTable
+  entries:
+  - armor: {fileID: 11400000, guid: a4698c16484c00942a6c68ab43bb79ff, type: 2}
+    defaultHelmet: {fileID: 11400000, guid: 385f696acc638db4bab1122052e20ecc, type: 2}
+  - armor: {fileID: 11400000, guid: 0e945c062e7f8e145addbf0dafe0ad78, type: 2}
+    defaultHelmet: {fileID: 11400000, guid: cb7ad828e6b593e45a125e2d0a530a3a, type: 2}
+  - armor: {fileID: 11400000, guid: 64c437fb0e14d144abf4af04706e1304, type: 2}
+    defaultHelmet: {fileID: 11400000, guid: 279978247e76fa840bf71890108aaa0f, type: 2}
+  - armor: {fileID: 11400000, guid: f585bd1f16407be4ca02c53e29310300, type: 2}
+    defaultHelmet: {fileID: 11400000, guid: 9e60ea6ea16c74d43a4e2180404c310b, type: 2}
+  - armor: {fileID: 11400000, guid: a27cc21d116f90a4b8f985d01d23a790, type: 2}
+    defaultHelmet: {fileID: 11400000, guid: 0f8cb3d7b66ea984196ec9173b22fd1c, type: 2}
+  - armor: {fileID: 11400000, guid: 8c6689317bc923e44acf77130f1815e6, type: 2}
+    defaultHelmet: {fileID: 11400000, guid: abb819c9583083240a6529e3905d9e01, type: 2}
+  fallbackHelmet: {fileID: 11400000, guid: 385f696acc638db4bab1122052e20ecc, type: 2}

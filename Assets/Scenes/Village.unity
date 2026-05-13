@@ -1078,7 +1078,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -48}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &37349868
@@ -7908,7 +7908,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -33019,7 +33019,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a29e2f3ecb6c344d9a35e340f0ad6bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteLayerAnimator
-  fps: 8
+  idleFps: 6
+  walkFps: 10
+  ridingFps: 8
+  deathFps: 6
 --- !u!1 &1107889967
 GameObject:
   m_ObjectHideFlags: 0
@@ -47030,12 +47033,12 @@ RectTransform:
   - {fileID: 1013807373}
   - {fileID: 838092578}
   - {fileID: 153245732}
+  - {fileID: 189177063}
   - {fileID: 648713231}
   - {fileID: 1742043566}
   - {fileID: 1781583443}
   - {fileID: 2145323683}
   - {fileID: 1082174783}
-  - {fileID: 189177063}
   m_Father: {fileID: 1049198870}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -49532,7 +49535,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1809193951
 RectTransform:
   m_ObjectHideFlags: 0
