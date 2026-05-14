@@ -40,4 +40,15 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 76fdb8b0624979043969c96c3e506bb3, type: 3}
   - {fileID: 21300000, guid: 43d79889c5220974ca4c20e2e93c9fc1, type: 3}
   - {fileID: 21300000, guid: d3e91178a48801f4a818eee98457ec65, type: 3}
+  riderIdleSprites:
+  - {fileID: 21300000, guid: 28435c7deeaa95c4c8019c6d1e89f8f6, type: 3}
+  - {fileID: 21300000, guid: a6cebffb5e5efac4b8eedad97deeba35, type: 3}
+  - {fileID: 21300000, guid: 76382009dca2f864c96e31764a658f20, type: 3}
+  - {fileID: 21300000, guid: 390566ab7513423459341902c18c82de, type: 3}
+  riderFlySprites:
+  - {fileID: 21300000, guid: 5ee14d812688086479b99a4a01adf408, type: 3}
+  - {fileID: 21300000, guid: c2c6360214e9a1a48b5dcce1aef1d648, type: 3}
+  - {fileID: 21300000, guid: 302f82a2e9f5eb445978f1f61c947886, type: 3}
+  - {fileID: 21300000, guid: df4aaf565c5740d43baea3468033784b, type: 3}
+  - {fileID: 21300000, guid: 96e9e7dce6f0757468dd2111592868b2, type: 3}
   bodyTypeVariants: []

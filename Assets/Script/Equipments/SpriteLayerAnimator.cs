@@ -98,9 +98,10 @@ using System.Collections.Generic;
 ///  adding a new animation state or body type requires no changes here.
 ///
 ///  When SoldierDragDrop.MountOnDragon() fires, it calls
-///  SetState(AnimationState.Riding). Every slot immediately jumps to
-///  frame 0 of its riding sprites (or falls back to idle sprites for
-///  items that have none). When the soldier dismounts, SoldierDragDrop
+///  SetState(AnimationState.RiderIdle). Every slot immediately jumps to
+///  frame 0 of its rider-idle sprites (or falls back to idle sprites for
+///  items that have none). DragonController then promotes to RiderFly
+///  while airborne. When the soldier dismounts, SoldierDragDrop
 ///  calls SetState(AnimationState.Idle).
 ///
 /// ════════════════════════════════════════════════════════════════════
@@ -109,7 +110,7 @@ using System.Collections.Generic;
 ///
 ///  idleFps     Frames per second while Idle    (try 6)
 ///  walkFps     Frames per second while Walking (try 10)
-///  ridingFps   Frames per second while Riding  (try 8)
+///  ridingFps   Frames per second while Riding (RiderIdle or RiderFly) (try 8)
 ///  deathFps    Frames per second while dying   (try 6)
 ///
 ///  Each state can feel different:
@@ -141,7 +142,7 @@ public class SpriteLayerAnimator : MonoBehaviour
     [Tooltip("FPS while Walking. Try 10–12 for a brisk walk.")]
     [Min(1f)][SerializeField] private float walkFps = 10f;
 
-    [Tooltip("FPS while Riding (sitting on dragon). Try 6–9 for a gentle sway.")]
+    [Tooltip("FPS while Riding (RiderIdle / RiderFly — sitting or leaning on dragon). Try 6–9 for a gentle sway.")]
     [Min(1f)][SerializeField] private float ridingFps = 8f;
 
     [Tooltip("FPS for the Death animation. Try 5–8 depending on how snappy the fall looks.")]
@@ -237,7 +238,7 @@ public class SpriteLayerAnimator : MonoBehaviour
     /// Switches the soldier's animation state.
     ///
     /// Called by:
-    ///   SoldierDragDrop.MountOnDragon() → SetState(Riding)
+    ///   SoldierDragDrop.MountOnDragon() → SetState(RiderIdle)
     ///   SoldierDragDrop.ExitRiding()    → SetState(Idle)
     ///   SoldierController (if present)  → SetState(Walk / Death)
     ///
@@ -279,7 +280,8 @@ public class SpriteLayerAnimator : MonoBehaviour
     private float FpsForState(AnimationState state) => state switch
     {
         AnimationState.Walk => walkFps,
-        AnimationState.Riding => ridingFps,
+        AnimationState.RiderIdle => ridingFps,
+        AnimationState.RiderFly => ridingFps,
         AnimationState.Death => deathFps,
         _ => idleFps,
     };

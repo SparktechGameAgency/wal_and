@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: DragonData
   m_EditorClassIdentifier: Assembly-CSharp::DragonData
   dragonName: Fire Dragon
-  hatchDuration: 10
+  hatchDuration: 5
   eggCrackTrigger: Crack
   crackAnimationDuration: 1.5
   dragonIdleTrigger: Idle

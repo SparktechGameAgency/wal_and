@@ -25,4 +25,6 @@ MonoBehaviour:
     defaultHelmet: {fileID: 11400000, guid: 0f8cb3d7b66ea984196ec9173b22fd1c, type: 2}
   - armor: {fileID: 11400000, guid: 8c6689317bc923e44acf77130f1815e6, type: 2}
     defaultHelmet: {fileID: 11400000, guid: abb819c9583083240a6529e3905d9e01, type: 2}
+  - armor: {fileID: 11400000, guid: 33ba77f5451745042ace9addad95d616, type: 2}
+    defaultHelmet: {fileID: 11400000, guid: 385f696acc638db4bab1122052e20ecc, type: 2}
   fallbackHelmet: {fileID: 11400000, guid: 385f696acc638db4bab1122052e20ecc, type: 2}

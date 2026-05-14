@@ -127,6 +127,4 @@ MonoBehaviour:
   dragonData: {fileID: 11400000, guid: fe97ab483b582e24b8a047ba34ffaf25, type: 2}
   rootCanvas: {fileID: 0}
   spriteDefaultFacesLeft: 1
-  riderVariantPrefab: {fileID: 5747055853561432504, guid: 401d7cb198da4ea41b9e888920b80e45, type: 3}
-  plainVariantPrefab: {fileID: 0}
   homeSlot: {fileID: 0}

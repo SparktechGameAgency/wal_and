@@ -56239,7 +56239,7 @@ MonoBehaviour:
   fenceRoot: {fileID: 1938357368}
   nestRoot1: {fileID: 2071933311}
   nestRoot2: {fileID: 345171640}
-  dragonPrefab: {fileID: 5541636149426539412, guid: 86831e27d1e52bf4eaf1b138c8c77c67, type: 3}
+  dragonPrefab: {fileID: 5747055853561432504, guid: 401d7cb198da4ea41b9e888920b80e45, type: 3}
   dragonSpawnPoint: {fileID: 1498024959}
   dragonObjectOverride: {fileID: 0}
 --- !u!1 &2136595631

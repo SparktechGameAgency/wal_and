@@ -85,7 +85,7 @@ public class DragonData : ScriptableObject
     [Header("Timer — how long the egg sits before cracking")]
     [Tooltip("Seconds the countdown runs before the crack animation plays.")]
     [Min(1f)]
-    public float hatchDuration = 30f;
+    public float hatchDuration = 5f;
 
     // ── Egg crack animation ───────────────────────────────────────────────────
     [Header("Egg Crack Animation")]

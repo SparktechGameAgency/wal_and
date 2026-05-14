@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 4425901914717966699}
   - component: {fileID: 6520370418694540027}
   - component: {fileID: 8211613029315315200}
-  - component: {fileID: 3872253153365722102}
   m_Layer: 0
   m_Name: Body
   m_TagString: Untagged
@@ -76,28 +75,81 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!95 &3872253153365722102
-Animator:
-  serializedVersion: 7
+--- !u!1 &1810867319852583705
+GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 883845994202237425}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5900160569222408655}
+  - component: {fileID: 6477284979326848657}
+  - component: {fileID: 8446172944459594240}
+  m_Layer: 0
+  m_Name: Face
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &5900160569222408655
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1810867319852583705}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3691344574522616685}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -0.000024318695, y: 0.0000038146973}
+  m_SizeDelta: {x: 210, y: 224.6}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &6477284979326848657
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1810867319852583705}
+  m_CullTransparentMesh: 1
+--- !u!114 &8446172944459594240
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1810867319852583705}
   m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: af49354c1ef9d6a40bf0dc83e8df28d1, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &5022927716492419678
 GameObject:
   m_ObjectHideFlags: 0
@@ -109,7 +161,7 @@ GameObject:
   - component: {fileID: 3116748028220189700}
   - component: {fileID: 1741436224002432421}
   - component: {fileID: 562926663528483463}
-  - component: {fileID: 5810538860453879163}
+  - component: {fileID: 4162320074330827806}
   m_Layer: 0
   m_Name: Rider
   m_TagString: Untagged
@@ -128,12 +180,13 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 3691344574522616685}
   m_Father: {fileID: 3778513770520249348}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 4.6, y: -27.1}
+  m_AnchoredPosition: {x: 0, y: -22.6}
   m_SizeDelta: {x: 210, y: 224.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1741436224002432421
@@ -157,7 +210,7 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5022927716492419678}
   m_CullTransparentMesh: 1
---- !u!114 &5810538860453879163
+--- !u!114 &4162320074330827806
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -170,14 +223,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 047c0b70425916c478cf8a677d915408, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -201,6 +254,7 @@ GameObject:
   - component: {fileID: 9128650418899194173}
   - component: {fileID: 147051859977637429}
   - component: {fileID: 938728460706534895}
+  - component: {fileID: 6620568405412943515}
   m_Layer: 0
   m_Name: DragonRide
   m_TagString: Untagged
@@ -265,8 +319,6 @@ MonoBehaviour:
   dragonData: {fileID: 11400000, guid: fe97ab483b582e24b8a047ba34ffaf25, type: 2}
   rootCanvas: {fileID: 0}
   spriteDefaultFacesLeft: 1
-  riderVariantPrefab: {fileID: 0}
-  plainVariantPrefab: {fileID: 5541636149426539412, guid: 86831e27d1e52bf4eaf1b138c8c77c67, type: 3}
   homeSlot: {fileID: 0}
 --- !u!114 &147051859977637429
 MonoBehaviour:
@@ -304,6 +356,164 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &6620568405412943515
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5747055853561432504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 450d72eb17bdc6b4a8c387e2dade4573, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DragonBodyAnimator
+  bodyImage: {fileID: 8211613029315315200}
+  idleSprites:
+  - {fileID: 21300000, guid: bdfde57c87e226f4c96ea958e73e4390, type: 3}
+  - {fileID: 21300000, guid: 333e6099ef1bf4c45abf198c69f14935, type: 3}
+  - {fileID: 21300000, guid: dff3a1cfcbccbc247a360c246852dc22, type: 3}
+  - {fileID: 21300000, guid: a3191f98d89ef494b9cb71dfea4c74b3, type: 3}
+  idleFps: 5
+  flySprites:
+  - {fileID: 21300000, guid: a13b34ef5155e4146ad4f21d85f1904f, type: 3}
+  - {fileID: 21300000, guid: 7ba170cecdec3e84aa5ab7cfb90ba661, type: 3}
+  - {fileID: 21300000, guid: 3b2c27f5f1a73fd4daf835ff76024431, type: 3}
+  - {fileID: 21300000, guid: 9c8010c677dccba46a6f324783b57a7c, type: 3}
+  - {fileID: 21300000, guid: 23047b1da20798d488c359e8c0f97b04, type: 3}
+  flyFps: 10
+--- !u!1 &5861220122828285455
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3691344574522616685}
+  - component: {fileID: 4179500343764090309}
+  m_Layer: 0
+  m_Name: DragonRiderVisual
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &3691344574522616685
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5861220122828285455}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5900160569222408655}
+  - {fileID: 7122071222821577034}
+  - {fileID: 5222813171158996661}
+  m_Father: {fileID: 3116748028220189700}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -0.000024318695, y: 20}
+  m_SizeDelta: {x: 210, y: 224.6}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &4179500343764090309
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5861220122828285455}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f01683a6d97c404f98abcbedad4ae7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DragonRiderVisual
+  bodyLayer: {fileID: 4373277063928624782}
+  faceLayer: {fileID: 8446172944459594240}
+  hairLayer: {fileID: 0}
+  helmetLayer: {fileID: 5372837936006861706}
+  weaponLayer: {fileID: 0}
+  ridingFps: 8
+--- !u!1 &7541377637026185333
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5222813171158996661}
+  - component: {fileID: 4022433618568123438}
+  - component: {fileID: 4373277063928624782}
+  m_Layer: 0
+  m_Name: Armor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &5222813171158996661
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7541377637026185333}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3691344574522616685}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -0.000024318695, y: 0.0000038146973}
+  m_SizeDelta: {x: 210, y: 224.6}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &4022433618568123438
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7541377637026185333}
+  m_CullTransparentMesh: 1
+--- !u!114 &4373277063928624782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7541377637026185333}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 3af715ebfd92e9948894299e4a2cba71, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -404,9 +614,9 @@ MonoBehaviour:
   wingImage: {fileID: 4390551348432470889}
   idleSprites:
   - {fileID: 21300000, guid: ad31a0aa80d71b04da983bdd96d735d8, type: 3}
-  - {fileID: 21300000, guid: ca83d710eea60e94fac9f848b026c68f, type: 3}
-  - {fileID: 21300000, guid: 7c73d1d955376a64f970793531f7ed99, type: 3}
-  - {fileID: 21300000, guid: 9c99942fbcd350348a8f835552b12705, type: 3}
+  - {fileID: 21300000, guid: c1a405aaf7ff90e419c310f9427e2bb5, type: 3}
+  - {fileID: 21300000, guid: aadbc2694b36b3f48b9b32e762d6e3aa, type: 3}
+  - {fileID: 21300000, guid: c0533026ea7e31247aa5f0bd0db77578, type: 3}
   idleFps: 5
   flySprites:
   - {fileID: 21300000, guid: 2575860004041f145bdc4ae4f7f3e365, type: 3}
@@ -415,3 +625,78 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 5e51fd458776d5a44b84bbc55f46deba, type: 3}
   - {fileID: 21300000, guid: cc65ed49476652b4e80c6f2b672f2ac7, type: 3}
   flyFps: 10
+--- !u!1 &7934418444282838216
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7122071222821577034}
+  - component: {fileID: 6061872717383672205}
+  - component: {fileID: 5372837936006861706}
+  m_Layer: 0
+  m_Name: Helmet
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &7122071222821577034
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7934418444282838216}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3691344574522616685}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -0.000024318695, y: 0.0000038146973}
+  m_SizeDelta: {x: 210, y: 224.6}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &6061872717383672205
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7934418444282838216}
+  m_CullTransparentMesh: 1
+--- !u!114 &5372837936006861706
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7934418444282838216}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: e1aa14f95adb7b146818b225293b16d3, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
