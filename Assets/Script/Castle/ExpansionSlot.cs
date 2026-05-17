@@ -1,59 +1,428 @@
+
+
+
+////////using UnityEngine;
+////////using UnityEngine.UI;
+////////using UnityEngine.EventSystems;
+////////using TMPro;
+////////using System.Collections;
+
+////////public class ExpansionSlot : MonoBehaviour, IPointerClickHandler,
+////////                                            IPointerEnterHandler,
+////////                                            IPointerExitHandler
+////////{
+////////    [Header("Cost")]
+////////    public int blockCost = 100;
+
+////////    [Header("UI References")]
+////////    public Image borderImage;
+////////    public TextMeshProUGUI costLabel;
+
+////////    [Header("Colors")]
+////////    public Color normalColor = new Color(1f, 1f, 1f, 0.7f);
+////////    public Color hoverColor = new Color(1f, 0.9f, 0.3f, 1f);
+////////    public Color cantAffordColor = new Color(1f, 0.3f, 0.3f, 0.7f);
+
+////////    private int _row, _col;
+////////    private CastleGrid _grid;
+////////    private bool _initialized = false;
+////////    private bool _isProcessing = false; // prevent double-click
+
+////////    public void Init(int row, int col, CastleGrid grid)
+////////    {
+////////        _row = row;
+////////        _col = col;
+////////        _grid = grid;
+////////        _initialized = true;
+////////        UpdateDisplay();
+////////    }
+
+////////    private void UpdateDisplay()
+////////    {
+////////        if (costLabel != null)
+////////            costLabel.text = blockCost.ToString("N0");
+////////        RefreshBorderColor();
+////////    }
+
+////////    private void RefreshBorderColor()
+////////    {
+////////        if (borderImage == null) return;
+////////        if (CurrencyManager.Instance == null) return;
+////////        bool canAfford = CurrencyManager.Instance.Coins >= blockCost;
+////////        borderImage.color = canAfford ? normalColor : cantAffordColor;
+////////    }
+
+////////    public void OnPointerClick(PointerEventData eventData)
+////////    {
+////////        // Guard: prevent processing if already handled or not ready
+////////        if (_isProcessing) return;
+////////        if (!_initialized)
+////////        {
+////////            Debug.LogWarning("[ExpansionSlot] Clicked but not initialized!");
+////////            return;
+////////        }
+////////        if (_grid == null)
+////////        {
+////////            Debug.LogWarning("[ExpansionSlot] CastleGrid reference is null!");
+////////            return;
+////////        }
+////////        if (CurrencyManager.Instance == null)
+////////        {
+////////            Debug.LogWarning("[ExpansionSlot] CurrencyManager not found!");
+////////            return;
+////////        }
+////////        if (_grid.castleBlockPrefab == null)
+////////        {
+////////            Debug.LogWarning("[ExpansionSlot] castleBlockPrefab not assigned on CastleGrid!");
+////////            return;
+////////        }
+
+////////        _isProcessing = true;
+
+////////        if (!CurrencyManager.Instance.SpendCoins(blockCost))
+////////        {
+////////            Debug.Log("[ExpansionSlot] Not enough coins!");
+////////            StartCoroutine(FlashRed());
+////////            _isProcessing = false;
+////////            return;
+////////        }
+
+////////        Debug.Log($"[ExpansionSlot] Placing block at row={_row} col={_col}");
+////////        _grid.PlaceBlockAt(_row, _col, _grid.castleBlockPrefab);
+
+////////        // _isProcessing stays true — this GameObject gets destroyed
+////////        // by RefreshExpansionSlots right after PlaceBlockAt
+////////    }
+
+////////    public void OnPointerEnter(PointerEventData eventData)
+////////    {
+////////        transform.localScale = Vector3.one * 1.08f;
+////////        if (borderImage != null) borderImage.color = hoverColor;
+////////    }
+
+////////    public void OnPointerExit(PointerEventData eventData)
+////////    {
+////////        transform.localScale = Vector3.one;
+////////        RefreshBorderColor();
+////////    }
+
+////////    private IEnumerator FlashRed()
+////////    {
+////////        if (borderImage == null) yield break;
+////////        borderImage.color = Color.red;
+////////        yield return new WaitForSeconds(0.25f);
+////////        RefreshBorderColor();
+////////    }
+////////}
+
+//////using UnityEngine;
+//////using UnityEngine.UI;
+//////using UnityEngine.EventSystems;
+//////using TMPro;
+//////using System.Collections;
+
+///////// <summary>
+///////// Overlay on an empty cell adjacent to castle blocks.
+/////////
+///////// TWO interactions:
+/////////   1. Click          → spend coins, place a new castle block here (unchanged)
+/////////   2. Drag unit here → NO new block. Find the block directly BELOW this cell
+/////////                       (row - 1) and seat the unit in its CannonZone or SoldierZone.
+///////// </summary>
+//////public class ExpansionSlot : MonoBehaviour,
+//////    IPointerClickHandler,
+//////    IPointerEnterHandler,
+//////    IPointerExitHandler,
+//////    IDropHandler
+//////{
+//////    [Header("Cost")]
+//////    public int blockCost = 100;
+
+//////    [Header("UI References")]
+//////    public Image borderImage;
+//////    public TextMeshProUGUI costLabel;
+
+//////    [Header("Colors")]
+//////    public Color normalColor = new Color(1f, 1f, 1f, 0.70f);
+//////    public Color hoverColor = new Color(1f, 0.9f, 0.3f, 1.00f);
+//////    public Color hoverUnitColor = new Color(0.3f, 1f, 0.3f, 1.00f); // green when unit hovers
+//////    public Color cantAffordColor = new Color(1f, 0.3f, 0.3f, 0.70f);
+
+//////    private int _row, _col;
+//////    private CastleGrid _grid;
+//////    private bool _initialized = false;
+//////    private bool _isProcessing = false;
+
+//////    // ─────────────────────────────────────────────────────────────
+//////    public void Init(int row, int col, CastleGrid grid)
+//////    {
+//////        _row = row; _col = col; _grid = grid;
+//////        _initialized = true;
+//////        UpdateDisplay();
+//////    }
+
+//////    private void UpdateDisplay()
+//////    {
+//////        if (costLabel != null) costLabel.text = blockCost.ToString("N0");
+//////        RefreshBorderColor();
+//////    }
+
+//////    private void RefreshBorderColor()
+//////    {
+//////        if (borderImage == null || CurrencyManager.Instance == null) return;
+//////        borderImage.color = CurrencyManager.Instance.Coins >= blockCost
+//////            ? normalColor : cantAffordColor;
+//////    }
+
+//////    // ── 1. Click → buy + place a NEW block here ───────────────────
+
+//////    public void OnPointerClick(PointerEventData eventData)
+//////    {
+//////        if (eventData.dragging) return; // tail of a drag — not a real click
+//////        if (_isProcessing) return;
+//////        if (!_initialized || _grid == null) return;
+//////        if (CurrencyManager.Instance == null) return;
+//////        if (_grid.castleBlockPrefab == null) return;
+
+//////        _isProcessing = true;
+
+//////        if (!CurrencyManager.Instance.SpendCoins(blockCost))
+//////        {
+//////            Debug.Log("[ExpansionSlot] Not enough coins.");
+//////            StartCoroutine(FlashRed());
+//////            _isProcessing = false;
+//////            return;
+//////        }
+
+//////        Debug.Log($"[ExpansionSlot] Placing block at ({_row},{_col})");
+//////        _grid.PlaceBlockAt(_row, _col, _grid.castleBlockPrefab);
+//////        // GameObject destroyed by RefreshExpansionSlots inside PlaceBlockAt
+//////    }
+
+//////    // ── 2. Drop unit → seat it on the block BELOW, no new block ──
+
+//////    public void OnDrop(PointerEventData eventData)
+//////    {
+//////        var unit = CastleUnitDraggable.CurrentlyDragging;
+//////        if (unit == null) return;
+
+//////        // The block that this expansion slot sits above is one row below
+//////        int blockRow = _row - 1;
+
+//////        GridCell blockCell = _grid != null ? _grid.GetCell(blockRow, _col) : null;
+//////        if (blockCell == null || !blockCell.HasBlock)
+//////        {
+//////            Debug.Log($"[ExpansionSlot] No block at ({blockRow},{_col}) — unit snaps back.");
+//////            return;
+//////        }
+
+//////        CastleUnitDropZone zone = blockCell.FindDropZoneForType(unit.unitType);
+//////        if (zone == null || zone.HasUnit)
+//////        {
+//////            Debug.Log($"[ExpansionSlot] No free {unit.unitType} zone on block ({blockRow},{_col}).");
+//////            return;
+//////        }
+
+//////        zone.PlaceUnit(unit);
+//////        CastleUnitDraggable.NotifyDropSucceeded(); // prevents snap-back
+//////        Debug.Log($"[ExpansionSlot] {unit.unitType} seated on block ({blockRow},{_col}) via expansion slot.");
+//////    }
+
+//////    // ── Hover ─────────────────────────────────────────────────────
+
+//////    public void OnPointerEnter(PointerEventData eventData)
+//////    {
+//////        transform.localScale = Vector3.one * 1.08f;
+//////        if (borderImage == null) return;
+//////        borderImage.color = CastleUnitDraggable.CurrentlyDragging != null
+//////            ? hoverUnitColor   // green = "drop here to place on block below"
+//////            : hoverColor;
+//////    }
+
+//////    public void OnPointerExit(PointerEventData eventData)
+//////    {
+//////        transform.localScale = Vector3.one;
+//////        RefreshBorderColor();
+//////    }
+
+//////    private IEnumerator FlashRed()
+//////    {
+//////        if (borderImage == null) yield break;
+//////        borderImage.color = Color.red;
+//////        yield return new WaitForSeconds(0.25f);
+//////        RefreshBorderColor();
+//////    }
+//////}
+
 ////using UnityEngine;
+////using UnityEngine.UI;
+////using UnityEngine.EventSystems;
+////using TMPro;
+////using System.Collections;
 
-////public class ExpansionCoin : MonoBehaviour
+/////// <summary>
+/////// Overlay on an empty cell adjacent to castle blocks.
+///////
+/////// TWO interactions:
+///////   1. Click          → spend coins, place a new castle block here.
+///////   2. Drag unit here → NO new block. Find the block directly BELOW (_row - 1)
+///////                       and seat the unit in its CannonZone or SoldierZone.
+/////// </summary>
+////public class ExpansionSlot : MonoBehaviour,
+////    IPointerClickHandler,
+////    IPointerEnterHandler,
+////    IPointerExitHandler,
+////    IDropHandler
 ////{
-////    [Header("Cost to expand")]
-////    public int expansionCost = 50;
+////    [Header("Cost")]
+////    public int blockCost = 100;
 
-////    private ExpansionDirection _direction;
+////    [Header("UI References")]
+////    public Image borderImage;
+////    public TextMeshProUGUI costLabel;
+
+////    [Header("Colors")]
+////    public Color normalColor = new Color(1f, 1f, 1f, 0.70f);
+////    public Color hoverColor = new Color(1f, 0.9f, 0.3f, 1.00f);
+////    public Color hoverUnitColor = new Color(0.3f, 1f, 0.3f, 1.00f);  // green when any unit hovers
+////    public Color cantAffordColor = new Color(1f, 0.3f, 0.3f, 0.70f);
+
+////    private int _row, _col;
 ////    private CastleGrid _grid;
-////    private bool _setup = false;
+////    private bool _initialized = false;
+////    private bool _isProcessing = false;
 
-////    // Simple bobbing animation
-////    private Vector3 _startPos;
-////    [Header("Animation")]
-////    public float bobSpeed = 2f;
-////    public float bobAmount = 0.1f;
-
-////    public void Setup(ExpansionDirection direction, CastleGrid grid)
+////    // ─────────────────────────────────────────────────────────────
+////    public void Init(int row, int col, CastleGrid grid)
 ////    {
-////        _direction = direction;
-////        _grid = grid;
-////        _setup = true;
-////        _startPos = transform.position;
+////        _row = row; _col = col; _grid = grid;
+////        _initialized = true;
+////        UpdateDisplay();
 ////    }
 
-////    private void Update()
+////    private void UpdateDisplay()
 ////    {
-////        // Bob up and down
-////        float y = Mathf.Sin(Time.time * bobSpeed) * bobAmount;
-////        transform.position = _startPos + new Vector3(0f, y, 0f);
+////        if (costLabel != null) costLabel.text = blockCost.ToString("N0");
+////        RefreshBorderColor();
 ////    }
 
-////    private void OnMouseDown()
+////    private void RefreshBorderColor()
 ////    {
-////        if (!_setup) return;
+////        if (borderImage == null || CurrencyManager.Instance == null) return;
+////        borderImage.color = CurrencyManager.Instance.Coins >= blockCost
+////            ? normalColor : cantAffordColor;
+////    }
 
-////        if (CurrencyManager.Instance.SpendCoins(expansionCost))
+////    // ── 1. Click → buy + place a NEW block ───────────────────────
+
+////    public void OnPointerClick(PointerEventData eventData)
+////    {
+////        if (eventData.dragging) return;
+////        if (_isProcessing) return;
+////        if (!_initialized || _grid == null) return;
+////        if (CurrencyManager.Instance == null) return;
+////        if (_grid.castleBlockPrefab == null) return;
+
+////        _isProcessing = true;
+
+////        if (!CurrencyManager.Instance.SpendCoins(blockCost))
 ////        {
-////            _grid.ExpandGrid(_direction);
+////            Debug.Log("[ExpansionSlot] Not enough coins.");
+////            StartCoroutine(FlashRed());
+////            _isProcessing = false;
+////            return;
 ////        }
-////        else
-////        {
-////            Debug.Log("[ExpansionCoin] Not enough coins to expand!");
-////            // TODO: Play a "no coins" animation/sound
-////        }
+
+////        Debug.Log($"[ExpansionSlot] Placing block at ({_row},{_col}).");
+////        _grid.PlaceBlockAt(_row, _col, _grid.castleBlockPrefab);
 ////    }
 
-////    private void OnMouseEnter()
+////    // ── 2. Drop unit → seat it on the block BELOW, no new block ──
+
+////    public void OnDrop(PointerEventData eventData)
 ////    {
-////        // Highlight the coin on hover (scale up)
-////        transform.localScale = Vector3.one * 1.2f;
+////        var unit = CastleUnitDraggable.CurrentlyDragging;
+
+////        // ── Full debug trace so you can see exactly where it fails ──
+////        if (unit == null)
+////        {
+////            Debug.Log("[ExpansionSlot] OnDrop — CurrentlyDragging is null.");
+////            return;
+////        }
+
+////        Debug.Log($"[ExpansionSlot] OnDrop — unit={unit.unitType}, " +
+////                  $"expansion at ({_row},{_col}), looking for block at ({_row - 1},{_col}).");
+
+////        if (_grid == null)
+////        {
+////            Debug.LogWarning("[ExpansionSlot] _grid is null — was Init() called?");
+////            return;
+////        }
+
+////        int blockRow = _row - 1;
+////        GridCell blockCell = _grid.GetCell(blockRow, _col);
+
+////        if (blockCell == null)
+////        {
+////            Debug.Log($"[ExpansionSlot] No GridCell at ({blockRow},{_col}). Unit snaps back.");
+////            return;
+////        }
+////        if (!blockCell.HasBlock)
+////        {
+////            Debug.Log($"[ExpansionSlot] GridCell at ({blockRow},{_col}) has no block. Unit snaps back.");
+////            return;
+////        }
+
+////        // FindDropZoneForType searches the cell's CastleBlockUnitSlot children
+////        // for a CastleUnitDropZone whose acceptedType matches unit.unitType.
+////        CastleUnitDropZone zone = blockCell.FindDropZoneForType(unit.unitType);
+
+////        if (zone == null)
+////        {
+////            Debug.Log($"[ExpansionSlot] No {unit.unitType} drop zone found on block " +
+////                      $"({blockRow},{_col}). " +
+////                      $"Check CastleBlockUnitSlot is on the cell and its Awake() has run.");
+////            return;
+////        }
+////        if (zone.HasUnit)
+////        {
+////            Debug.Log($"[ExpansionSlot] {unit.unitType} zone on block ({blockRow},{_col}) " +
+////                      $"is already occupied. Unit snaps back.");
+////            return;
+////        }
+
+////        zone.PlaceUnit(unit);
+////        CastleUnitDraggable.NotifyDropSucceeded();
+
+////        Debug.Log($"[ExpansionSlot] {unit.unitType} successfully seated on " +
+////                  $"block ({blockRow},{_col}) via expansion slot.");
 ////    }
 
-////    private void OnMouseExit()
+////    // ── Hover ─────────────────────────────────────────────────────
+
+////    public void OnPointerEnter(PointerEventData eventData)
+////    {
+////        transform.localScale = Vector3.one * 1.08f;
+////        if (borderImage == null) return;
+
+////        // Green when a unit is being dragged (any type), yellow otherwise
+////        borderImage.color = CastleUnitDraggable.CurrentlyDragging != null
+////            ? hoverUnitColor
+////            : hoverColor;
+////    }
+
+////    public void OnPointerExit(PointerEventData eventData)
 ////    {
 ////        transform.localScale = Vector3.one;
+////        RefreshBorderColor();
+////    }
+
+////    private IEnumerator FlashRed()
+////    {
+////        if (borderImage == null) yield break;
+////        borderImage.color = Color.red;
+////        yield return new WaitForSeconds(0.25f);
+////        RefreshBorderColor();
 ////    }
 ////}
 
@@ -63,78 +432,161 @@
 //using TMPro;
 //using System.Collections;
 
-//public class ExpansionSlot : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
+///// <summary>
+///// Overlay on an empty cell adjacent to castle blocks.
+/////
+///// TWO interactions:
+/////   1. Click          → spend coins, place a new castle block here.
+/////   2. Drag unit here → NO new block. Find the block directly BELOW (_row - 1),
+/////                       seat the cannon in its CannonZone, and hide THIS slot.
+/////                       The slot shows again when the cannon is moved or removed.
+///// </summary>
+//public class ExpansionSlot : MonoBehaviour,
+//    IPointerClickHandler,
+//    IPointerEnterHandler,
+//    IPointerExitHandler,
+//    IDropHandler
 //{
 //    [Header("Cost")]
-//    public int woodCost = 1300;
+//    public int blockCost = 100;
 
 //    [Header("UI References")]
-//    public TextMeshProUGUI costLabel;
-//    public Image costIcon;
 //    public Image borderImage;
+//    public TextMeshProUGUI costLabel;
 
 //    [Header("Colors")]
-//    public Color normalColor = Color.white;
-//    public Color hoverColor = new Color(1f, 0.9f, 0.4f);
-//    public Color blockedColor = new Color(1f, 0.3f, 0.3f);
+//    public Color normalColor = new Color(1f, 1f, 1f, 0.70f);
+//    public Color hoverColor = new Color(1f, 0.9f, 0.3f, 1.00f);
+//    public Color hoverUnitColor = new Color(0.3f, 1f, 0.3f, 1.00f);
+//    public Color cantAffordColor = new Color(1f, 0.3f, 0.3f, 0.70f);
 
 //    private int _row, _col;
 //    private CastleGrid _grid;
+//    private bool _initialized = false;
+//    private bool _isProcessing = false;
 
+//    // ─────────────────────────────────────────────────────────────
 //    public void Init(int row, int col, CastleGrid grid)
 //    {
-//        _row = row;
-//        _col = col;
-//        _grid = grid;
-//        RefreshDisplay();
+//        _row = row; _col = col; _grid = grid;
+//        _initialized = true;
+//        UpdateDisplay();
 //    }
 
-//    private void RefreshDisplay()
+//    private void UpdateDisplay()
 //    {
-//        if (costLabel != null)
-//            costLabel.text = woodCost.ToString("N0");
-
-//        bool canAfford = CurrencyManager.Instance != null &&
-//                         CurrencyManager.Instance.Coins >= woodCost;
-
-//        if (borderImage != null)
-//            borderImage.color = canAfford ? normalColor : blockedColor;
+//        if (costLabel != null) costLabel.text = blockCost.ToString("N0");
+//        RefreshBorderColor();
 //    }
+
+//    private void RefreshBorderColor()
+//    {
+//        if (borderImage == null || CurrencyManager.Instance == null) return;
+//        borderImage.color = CurrencyManager.Instance.Coins >= blockCost
+//            ? normalColor : cantAffordColor;
+//    }
+
+//    // ── 1. Click → buy + place a NEW block ───────────────────────
 
 //    public void OnPointerClick(PointerEventData eventData)
 //    {
-//        if (CurrencyManager.Instance.SpendCoins(woodCost))
+//        if (eventData.dragging) return;
+//        if (_isProcessing) return;
+//        if (!_initialized || _grid == null) return;
+//        if (CurrencyManager.Instance == null) return;
+//        if (_grid.castleBlockPrefab == null) return;
+
+//        _isProcessing = true;
+
+//        if (!CurrencyManager.Instance.SpendCoins(blockCost))
 //        {
-//            _grid.PlaceBlockAt(_row, _col, _grid.castleBlockPrefab);
-//        }
-//        else
-//        {
-//            Debug.Log("[ExpansionSlot] Not enough coins!");
+//            Debug.Log("[ExpansionSlot] Not enough coins.");
 //            StartCoroutine(FlashRed());
+//            _isProcessing = false;
+//            return;
 //        }
+
+//        Debug.Log($"[ExpansionSlot] Placing block at ({_row},{_col}).");
+//        _grid.PlaceBlockAt(_row, _col, _grid.castleBlockPrefab);
 //    }
+
+//    // ── 2. Drop unit → seat it on the block BELOW, hide this slot ─
+
+//    public void OnDrop(PointerEventData eventData)
+//    {
+//        var unit = CastleUnitDraggable.CurrentlyDragging;
+
+//        if (unit == null)
+//        {
+//            Debug.Log("[ExpansionSlot] OnDrop — nothing being dragged.");
+//            return;
+//        }
+
+//        if (_grid == null)
+//        {
+//            Debug.LogWarning("[ExpansionSlot] _grid is null — was Init() called?");
+//            return;
+//        }
+
+//        int blockRow = _row - 1;
+//        GridCell blockCell = _grid.GetCell(blockRow, _col);
+
+//        if (blockCell == null || !blockCell.HasBlock)
+//        {
+//            Debug.Log($"[ExpansionSlot] No block at ({blockRow},{_col}). Unit snaps back.");
+//            return;
+//        }
+
+//        CastleUnitDropZone zone = blockCell.FindDropZoneForType(unit.unitType);
+
+//        if (zone == null)
+//        {
+//            Debug.Log($"[ExpansionSlot] No {unit.unitType} drop zone on block ({blockRow},{_col}).");
+//            return;
+//        }
+//        if (zone.HasUnit)
+//        {
+//            Debug.Log($"[ExpansionSlot] {unit.unitType} zone on block ({blockRow},{_col}) is occupied.");
+//            return;
+//        }
+
+//        // ── Hide this expansion slot BEFORE placing the unit ──────
+//        // The zone will store this reference and show it again when
+//        // the cannon is moved away or removed.
+//        zone.LinkedExpansionSlot = this;
+//        gameObject.SetActive(false);
+
+//        zone.PlaceUnit(unit);
+//        CastleUnitDraggable.NotifyDropSucceeded();
+
+//        Debug.Log($"[ExpansionSlot] {unit.unitType} seated on block ({blockRow},{_col}) — slot hidden.");
+//    }
+
+//    // ── Hover ─────────────────────────────────────────────────────
 
 //    public void OnPointerEnter(PointerEventData eventData)
 //    {
-//        transform.localScale = Vector3.one * 1.05f;
-//        if (borderImage != null) borderImage.color = hoverColor;
+//        transform.localScale = Vector3.one * 1.08f;
+//        if (borderImage == null) return;
+//        borderImage.color = CastleUnitDraggable.CurrentlyDragging != null
+//            ? hoverUnitColor
+//            : hoverColor;
 //    }
 
 //    public void OnPointerExit(PointerEventData eventData)
 //    {
 //        transform.localScale = Vector3.one;
-//        RefreshDisplay();
+//        RefreshBorderColor();
 //    }
 
 //    private IEnumerator FlashRed()
 //    {
 //        if (borderImage == null) yield break;
 //        borderImage.color = Color.red;
-//        yield return new WaitForSeconds(0.3f);
-//        RefreshDisplay();
+//        yield return new WaitForSeconds(0.25f);
+//        RefreshBorderColor();
 //    }
 //}
-
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -142,9 +594,25 @@ using UnityEngine.EventSystems;
 using TMPro;
 using System.Collections;
 
-public class ExpansionSlot : MonoBehaviour, IPointerClickHandler,
-                                            IPointerEnterHandler,
-                                            IPointerExitHandler
+/// <summary>
+/// Overlay on an empty cell adjacent to castle blocks.
+///
+/// TWO interactions:
+///   1. Click          → spend coins, place a new castle block here.
+///   2. Drag unit here → NO new block. Find the block directly BELOW (_row - 1),
+///                       seat the cannon in its CannonZone, and hide THIS slot.
+///                       The slot shows again when the cannon is moved or removed.
+///
+/// FIX 2 — On Init, if the block below already exists and its drop zone has no
+/// linked expansion slot yet (e.g. the cannon was placed via direct drop rather
+/// than through this slot), this slot pre-registers itself so re-dragging the
+/// cannon always has a slot to reveal.
+/// </summary>
+public class ExpansionSlot : MonoBehaviour,
+    IPointerClickHandler,
+    IPointerEnterHandler,
+    IPointerExitHandler,
+    IDropHandler
 {
     [Header("Cost")]
     public int blockCost = 100;
@@ -154,85 +622,155 @@ public class ExpansionSlot : MonoBehaviour, IPointerClickHandler,
     public TextMeshProUGUI costLabel;
 
     [Header("Colors")]
-    public Color normalColor = new Color(1f, 1f, 1f, 0.7f);
-    public Color hoverColor = new Color(1f, 0.9f, 0.3f, 1f);
-    public Color cantAffordColor = new Color(1f, 0.3f, 0.3f, 0.7f);
+    public Color normalColor = new Color(1f, 1f, 1f, 0.70f);
+    public Color hoverColor = new Color(1f, 0.9f, 0.3f, 1.00f);
+    public Color hoverUnitColor = new Color(0.3f, 1f, 0.3f, 1.00f);
+    public Color cantAffordColor = new Color(1f, 0.3f, 0.3f, 0.70f);
 
     private int _row, _col;
     private CastleGrid _grid;
     private bool _initialized = false;
-    private bool _isProcessing = false; // prevent double-click
+    private bool _isProcessing = false;
 
+    // ─────────────────────────────────────────────────────────────
     public void Init(int row, int col, CastleGrid grid)
     {
-        _row = row;
-        _col = col;
-        _grid = grid;
+        _row = row; _col = col; _grid = grid;
         _initialized = true;
         UpdateDisplay();
+
+        // FIX 2 — Pre-link this slot to the drop zone of the block directly
+        // below. This covers the case where a cannon was placed on the zone
+        // via direct drop (bypassing this slot), leaving LinkedExpansionSlot
+        // null and preventing re-drag from ever revealing a slot.
+        PreLinkToBlockBelow();
+    }
+
+    /// <summary>
+    /// If the block below already exists and its cannon drop zone has no linked
+    /// expansion slot, register this slot so DetachUnit() can reveal it later.
+    /// Only runs when the slot isn't already hidden (i.e. it's currently active).
+    /// </summary>
+    private void PreLinkToBlockBelow()
+    {
+        if (_grid == null) return;
+
+        int blockRow = _row - 1;
+        GridCell blockCell = _grid.GetCell(blockRow, _col);
+        if (blockCell == null || !blockCell.HasBlock) return;
+
+        // Link to every drop zone on the block that has no slot yet.
+        // (Typically only the Cannon zone uses expansion slots, but this
+        //  handles future soldier-slot expansions too.)
+        foreach (CastleUnitDropZone zone in
+                 blockCell.GetComponentsInChildren<CastleUnitDropZone>(includeInactive: true))
+        {
+            if (zone.LinkedExpansionSlot == null)
+            {
+                zone.LinkedExpansionSlot = this;
+                Debug.Log($"[ExpansionSlot] Pre-linked to {zone.acceptedType} zone " +
+                          $"on block ({blockRow},{_col}).");
+            }
+        }
     }
 
     private void UpdateDisplay()
     {
-        if (costLabel != null)
-            costLabel.text = blockCost.ToString("N0");
+        if (costLabel != null) costLabel.text = blockCost.ToString("N0");
         RefreshBorderColor();
     }
 
     private void RefreshBorderColor()
     {
-        if (borderImage == null) return;
-        if (CurrencyManager.Instance == null) return;
-        bool canAfford = CurrencyManager.Instance.Coins >= blockCost;
-        borderImage.color = canAfford ? normalColor : cantAffordColor;
+        if (borderImage == null || CurrencyManager.Instance == null) return;
+        borderImage.color = CurrencyManager.Instance.Coins >= blockCost
+            ? normalColor : cantAffordColor;
     }
+
+    // ── 1. Click → buy + place a NEW block ───────────────────────
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        // Guard: prevent processing if already handled or not ready
+        if (eventData.dragging) return;
         if (_isProcessing) return;
-        if (!_initialized)
-        {
-            Debug.LogWarning("[ExpansionSlot] Clicked but not initialized!");
-            return;
-        }
-        if (_grid == null)
-        {
-            Debug.LogWarning("[ExpansionSlot] CastleGrid reference is null!");
-            return;
-        }
-        if (CurrencyManager.Instance == null)
-        {
-            Debug.LogWarning("[ExpansionSlot] CurrencyManager not found!");
-            return;
-        }
-        if (_grid.castleBlockPrefab == null)
-        {
-            Debug.LogWarning("[ExpansionSlot] castleBlockPrefab not assigned on CastleGrid!");
-            return;
-        }
+        if (!_initialized || _grid == null) return;
+        if (CurrencyManager.Instance == null) return;
+        if (_grid.castleBlockPrefab == null) return;
 
         _isProcessing = true;
 
         if (!CurrencyManager.Instance.SpendCoins(blockCost))
         {
-            Debug.Log("[ExpansionSlot] Not enough coins!");
+            Debug.Log("[ExpansionSlot] Not enough coins.");
             StartCoroutine(FlashRed());
             _isProcessing = false;
             return;
         }
 
-        Debug.Log($"[ExpansionSlot] Placing block at row={_row} col={_col}");
+        Debug.Log($"[ExpansionSlot] Placing block at ({_row},{_col}).");
         _grid.PlaceBlockAt(_row, _col, _grid.castleBlockPrefab);
-
-        // _isProcessing stays true — this GameObject gets destroyed
-        // by RefreshExpansionSlots right after PlaceBlockAt
     }
+
+    // ── 2. Drop unit → seat it on the block BELOW, hide this slot ─
+
+    public void OnDrop(PointerEventData eventData)
+    {
+        var unit = CastleUnitDraggable.CurrentlyDragging;
+
+        if (unit == null)
+        {
+            Debug.Log("[ExpansionSlot] OnDrop — nothing being dragged.");
+            return;
+        }
+
+        if (_grid == null)
+        {
+            Debug.LogWarning("[ExpansionSlot] _grid is null — was Init() called?");
+            return;
+        }
+
+        int blockRow = _row - 1;
+        GridCell blockCell = _grid.GetCell(blockRow, _col);
+
+        if (blockCell == null || !blockCell.HasBlock)
+        {
+            Debug.Log($"[ExpansionSlot] No block at ({blockRow},{_col}). Unit snaps back.");
+            return;
+        }
+
+        CastleUnitDropZone zone = blockCell.FindDropZoneForType(unit.unitType);
+
+        if (zone == null)
+        {
+            Debug.Log($"[ExpansionSlot] No {unit.unitType} drop zone on block ({blockRow},{_col}).");
+            return;
+        }
+        if (zone.HasUnit)
+        {
+            Debug.Log($"[ExpansionSlot] {unit.unitType} zone on block ({blockRow},{_col}) is occupied.");
+            return;
+        }
+
+        // Link and hide this slot BEFORE placing the unit so DetachUnit()
+        // can show it again if the cannon is moved away later.
+        zone.LinkedExpansionSlot = this;
+        gameObject.SetActive(false);
+
+        zone.PlaceUnit(unit);
+        CastleUnitDraggable.NotifyDropSucceeded();
+
+        Debug.Log($"[ExpansionSlot] {unit.unitType} seated on block ({blockRow},{_col}) — slot hidden.");
+    }
+
+    // ── Hover ─────────────────────────────────────────────────────
 
     public void OnPointerEnter(PointerEventData eventData)
     {
         transform.localScale = Vector3.one * 1.08f;
-        if (borderImage != null) borderImage.color = hoverColor;
+        if (borderImage == null) return;
+        borderImage.color = CastleUnitDraggable.CurrentlyDragging != null
+            ? hoverUnitColor
+            : hoverColor;
     }
 
     public void OnPointerExit(PointerEventData eventData)

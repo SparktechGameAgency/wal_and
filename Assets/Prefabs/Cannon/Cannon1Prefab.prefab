@@ -12,6 +12,8 @@ GameObject:
   - component: {fileID: 4897012512774274271}
   - component: {fileID: 5724093436136033703}
   - component: {fileID: 8999559707386903512}
+  - component: {fileID: -5817898488576858252}
+  - component: {fileID: 439945830421125501}
   m_Layer: 0
   m_Name: Cannon1Prefab
   m_TagString: Untagged
@@ -88,3 +90,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b050b608f8c5a740abb8349265b234a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CannonController
+--- !u!225 &-5817898488576858252
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6958234874427915691}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
+--- !u!114 &439945830421125501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6958234874427915691}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a28931098c27894a99079c96802bae3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CastleUnitDraggable
+  unitType: 0
+  variantId: 1
