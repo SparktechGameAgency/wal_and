@@ -137,7 +137,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -167,9 +167,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CastleUnitDropZone
   acceptedType: 0
   centeredUnitSize: {x: 56, y: 56}
-  normalColor: {r: 1, g: 1, b: 1, a: 0.15}
+  normalColor: {r: 1, g: 1, b: 1, a: 0.14901961}
   hoverValidColor: {r: 0.3, g: 1, b: 0.3, a: 0.55}
-  hoverInvalidColor: {r: 1, g: 0.3, b: 0.3, a: 0.35}
+  hoverInvalidColor: {r: 1, g: 0.3, b: 0.3, a: 0.17254902}
 --- !u!1 &4885474423245658952
 GameObject:
   m_ObjectHideFlags: 0
