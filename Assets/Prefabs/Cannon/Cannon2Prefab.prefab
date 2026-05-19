@@ -14,6 +14,8 @@ GameObject:
   - component: {fileID: 1258050027782183028}
   - component: {fileID: -7713966186892689877}
   - component: {fileID: -611921280783743939}
+  - component: {fileID: 6168875228100082365}
+  - component: {fileID: 1771954616563081656}
   m_Layer: 0
   m_Name: Cannon2Prefab
   m_TagString: Untagged
@@ -32,13 +34,14 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1285578254442880044}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -181.62994, y: -50.2}
-  m_SizeDelta: {x: 120, y: 80}
+  m_SizeDelta: {x: 216, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &5006965892955200651
 CanvasRenderer:
@@ -68,7 +71,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e7586dc615b6c474b9683816b087c613, type: 3}
+  m_Sprite: {fileID: 21300000, guid: ac103ea67985f9e4592fcad9fd7a3bc2, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -116,3 +119,84 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CastleUnitDraggable
   unitType: 0
   variantId: 2
+  stretchToFillSlot: 0
+  placedSize: {x: 120, y: 80}
+  dragGhostSize: {x: 120, y: 80}
+--- !u!114 &6168875228100082365
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 495375933528977137}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05fc342021366ef47ba3b76e7dd0436b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpriteAnimator
+  frames:
+  - {fileID: 21300000, guid: ac103ea67985f9e4592fcad9fd7a3bc2, type: 3}
+  - {fileID: 21300000, guid: 2b9f0f41d909c044f8089149ddd7b1a7, type: 3}
+  - {fileID: 21300000, guid: ff456cdd691a1e64fab3ca883af820dd, type: 3}
+  - {fileID: 21300000, guid: a53e2af391bcf424a886299de05dc4bf, type: 3}
+  - {fileID: 21300000, guid: 5f3ec32381a494a48a95900e0ad9f140, type: 3}
+  - {fileID: 21300000, guid: ac103ea67985f9e4592fcad9fd7a3bc2, type: 3}
+  fps: 12
+  loop: 0
+  spawnOnFrame: 3
+--- !u!114 &1771954616563081656
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 495375933528977137}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b33757d838129564aad0ac57808eeb26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CannonAutoShooter
+  cannonAnimator: {fileID: 6168875228100082365}
+  projectileSpawner: {fileID: 1285578254442880044}
+  projectilePrefab: {fileID: 3877521994219633573, guid: 56ee342a42ffe904a9dcc1b1c8a42325, type: 3}
+  projectileSize: {x: 20, y: 20}
+  detectionRadius: 600
+  fireInterval: 2
+  damage: 50
+  flightDuration: 1.2
+  showGizmo: 1
+--- !u!1 &1619957057784094519
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1285578254442880044}
+  m_Layer: 0
+  m_Name: ProjectileSpawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1285578254442880044
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1619957057784094519}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2257849046359364361}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -3.2, y: 10.3}
+  m_SizeDelta: {x: 30, y: 30}
+  m_Pivot: {x: 0.5, y: 0.5}
