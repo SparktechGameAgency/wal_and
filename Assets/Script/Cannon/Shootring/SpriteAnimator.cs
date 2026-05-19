@@ -1,0 +1,179 @@
+//using System;
+//using System.Collections;
+//using UnityEngine;
+//using UnityEngine.UI;
+
+//public class SpriteAnimator : MonoBehaviour
+//{
+//    [Header("Frames")]
+//    public Sprite[] frames;
+//    public float fps = 12f;
+//    public bool loop = false;
+
+//    [Header("Spawn Frame")]
+//    [Tooltip("Projectile spawns on this frame index (0 = first frame)")]
+//    public int spawnOnFrame = 3;
+
+//    private Image image;
+//    private Coroutine playRoutine;
+
+//    public Action onSpawnFrame;
+//    public Action onComplete;
+
+//    void Awake()
+//    {
+//        image = GetComponent<Image>();
+
+//        if (frames != null && frames.Length > 0)
+//            image.sprite = frames[0];
+//    }
+
+//    public void Play()
+//    {
+//        if (playRoutine != null)
+//            StopCoroutine(playRoutine);
+
+//        playRoutine = StartCoroutine(Animate());
+//    }
+
+//    public void Stop()
+//    {
+//        if (playRoutine != null)
+//            StopCoroutine(playRoutine);
+
+//        if (frames != null && frames.Length > 0)
+//            image.sprite = frames[0];
+//    }
+
+//    public float GetDuration()
+//    {
+//        if (frames == null || frames.Length == 0 || fps <= 0) return 0f;
+//        return frames.Length / fps;
+//    }
+
+//    IEnumerator Animate()
+//    {
+//        float delay = 1f / fps;
+
+//        for (int i = 0; i < frames.Length; i++)
+//        {
+//            image.sprite = frames[i];
+
+//            if (i == spawnOnFrame)
+//                onSpawnFrame?.Invoke();
+
+//            yield return new WaitForSeconds(delay);
+//        }
+
+//        onComplete?.Invoke();
+//    }
+//}
+
+using System;
+using System.Collections;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class SpriteAnimator : MonoBehaviour
+{
+    [Header("Frames")]
+    public Sprite[] frames;
+    public float fps = 12f;
+    public bool loop = false;
+
+    [Header("Spawn Frame")]
+    [Tooltip("Projectile spawns on this frame index (0 = first frame)")]
+    public int spawnOnFrame = 3;
+
+    private Image image;
+    private Coroutine playRoutine;
+
+    public Action onSpawnFrame;
+    public Action onComplete;
+
+    void Awake()
+    {
+        // Try this GameObject first, then search children
+        image = GetComponent<Image>();
+        if (image == null)
+            image = GetComponentInChildren<Image>();
+
+        if (image == null)
+        {
+            Debug.LogError($"[SpriteAnimator] No Image component found on '{gameObject.name}' " +
+                           "or its children. Animation cannot play.");
+            return;
+        }
+
+        // Clamp spawnOnFrame so it always falls inside the frames array
+        if (frames != null && frames.Length > 0)
+        {
+            spawnOnFrame = Mathf.Clamp(spawnOnFrame, 0, frames.Length - 1);
+            image.sprite = frames[0];
+        }
+    }
+
+    public void Play()
+    {
+        if (image == null)
+        {
+            Debug.LogError($"[SpriteAnimator] Cannot play — Image is null on '{gameObject.name}'.");
+            onComplete?.Invoke();   // unlock isFiring so the button still works
+            return;
+        }
+
+        if (frames == null || frames.Length == 0)
+        {
+            Debug.LogError($"[SpriteAnimator] Cannot play — No frames assigned on '{gameObject.name}'.");
+            onComplete?.Invoke();
+            return;
+        }
+
+        if (playRoutine != null)
+            StopCoroutine(playRoutine);
+
+        playRoutine = StartCoroutine(Animate());
+    }
+
+    public void Stop()
+    {
+        if (playRoutine != null)
+            StopCoroutine(playRoutine);
+
+        if (image != null && frames != null && frames.Length > 0)
+            image.sprite = frames[0];
+    }
+
+    public float GetDuration()
+    {
+        if (frames == null || frames.Length == 0 || fps <= 0) return 0f;
+        return frames.Length / fps;
+    }
+
+    IEnumerator Animate()
+    {
+        float delay = 1f / fps;
+
+        // Clamp again at runtime in case frames array was changed after Awake
+        int safeSpawnFrame = Mathf.Clamp(spawnOnFrame, 0, frames.Length - 1);
+
+        for (int i = 0; i < frames.Length; i++)
+        {
+            if (frames[i] == null)
+            {
+                Debug.LogWarning($"[SpriteAnimator] Frame {i} is null on '{gameObject.name}'. Skipping.");
+                yield return new WaitForSeconds(delay);
+                continue;
+            }
+
+            image.sprite = frames[i];
+
+            if (i == safeSpawnFrame)
+                onSpawnFrame?.Invoke();
+
+            yield return new WaitForSeconds(delay);
+        }
+
+        onComplete?.Invoke();
+    }
+}
