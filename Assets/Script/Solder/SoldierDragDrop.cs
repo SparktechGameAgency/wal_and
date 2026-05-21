@@ -19056,4 +19056,15 @@ public class SoldierDragDrop : MonoBehaviour,
 
         Debug.Log($"[SoldierDragDrop] '{name}' dismounted from horse — returned to ground.");
     }
+
+    public void ClearHorseSeatForTransfer()
+    {
+        // Null out the seat so IsOnHorse returns false.
+        // Do NOT clear _mountHorseHomeParent / _mountHorseHomePos.
+        // Do NOT call ExitRidingState — the soldier stays in riding state
+        // so EnterRidingState / SetActive(false) in the next PerformMount
+        // runs cleanly without a redundant coroutine restart.
+        _currentHorseSeat = null;
+        Debug.Log($"[SoldierDragDrop] '{name}' seat cleared for transfer (home preserved).");
+    }
 }
