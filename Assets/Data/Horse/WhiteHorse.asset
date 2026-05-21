@@ -25,6 +25,35 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 14761fde00d4aba4cb3fd557686b555d, type: 3}
   - {fileID: 21300000, guid: 1a10411783fee234886c6678871d199f, type: 3}
   idleFPS: 6
+  runSprites:
+  - {fileID: 21300000, guid: d3e9636840c16504189e25df88e6da31, type: 3}
+  - {fileID: 21300000, guid: 6970dcd5d10c52042af4e97107fcbff9, type: 3}
+  - {fileID: 21300000, guid: ad9b3a6bf0d238f4e93afe8deaa57e7d, type: 3}
+  - {fileID: 21300000, guid: 286c509a8a331e14ca0154fee690930a, type: 3}
+  - {fileID: 21300000, guid: 90085d9ab26740647ac879e0d60870ad, type: 3}
+  - {fileID: 21300000, guid: 4dfa7d8956d723245a40c55c8a11b24c, type: 3}
+  runFPS: 10
+  runCyclesBeforeIdle: 0
+  attackSprites:
+  - {fileID: 21300000, guid: b68d7176f3625844cb1e543a7a623c57, type: 3}
+  - {fileID: 21300000, guid: ea851aad730031a4e93cca2ff3e94fbb, type: 3}
+  - {fileID: 21300000, guid: 95c14993c119c0940a25ec08371b64de, type: 3}
+  - {fileID: 21300000, guid: 87764b9f09702ad4a927ef04472a4280, type: 3}
+  - {fileID: 21300000, guid: efbeea8bbfc9b824196e1005e8b85da9, type: 3}
+  - {fileID: 21300000, guid: ff14b568c7d1309489ae862fd0fc232f, type: 3}
+  - {fileID: 21300000, guid: 23fc8074fff6cd04698a5f71ea8f0cb6, type: 3}
+  - {fileID: 21300000, guid: 838db16f591f20349bea942fbd14125d, type: 3}
+  - {fileID: 21300000, guid: 71e394b05b626a04b9f5eb9044a6423c, type: 3}
+  attackFPS: 12
+  attackCyclesBeforeIdle: 1
+  deadSprites:
+  - {fileID: 21300000, guid: 9d1c58f9c9ae2bb43a2a3dad32307dc5, type: 3}
+  - {fileID: 21300000, guid: 2f254d1e064690e4594b1ca729acebb3, type: 3}
+  - {fileID: 21300000, guid: c317a24daf93cf741ad5324d07568f2a, type: 3}
+  - {fileID: 21300000, guid: 67d622822234f7d4f93ade2da31ea3cb, type: 3}
+  - {fileID: 21300000, guid: 657c62f7471275b45b7ff205a10b99ee, type: 3}
+  - {fileID: 21300000, guid: be54b1a3dbc1f614ead687f898ae0f28, type: 3}
+  deadFPS: 8
   health: 50
   ability: 50
   damage: 60
