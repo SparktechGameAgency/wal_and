@@ -14,24 +14,70 @@
 ///// ════════════════════════════════════════════════════════════════════
 /////
 /////  OnBeginDrag  Lifts the soldier to canvas-root level so it draws on
-/////               top of all panels. If riding a dragon or stationed at
-/////               a cannon slot, releases the position first.
+/////               top of all panels.
+/////               If the soldier was riding a dragon, the seat is released,
+/////               the soldier's own visuals are restored (alpha 1), and
+/////               DragonController.PerformDismount() hides the rider visual
+/////               — all AFTER the soldier is safely at canvas-root.
 /////
 /////  OnDrag       Moves the soldier under the pointer.
 /////
 /////  OnEndDrag    Raycasts under the pointer:
 /////                 → DragonController with free seat → PerformMount()
-/////                 → CannonSlot                      → PlaceAtCannonSlot()
-/////                 → Occupied seat                   → SnapBack
-/////                 → Empty space                     → SnapBack
+/////                 → Occupied seat (unlocked rider)  → Swap riders
+/////                 → Occupied seat (locked rider)    → SnapBack
+/////                 → Empty space                    → SnapBack
 /////
 ///// ════════════════════════════════════════════════════════════════════
-/////  CANNON SLOT
+/////  MOUNT FLOW
 ///// ════════════════════════════════════════════════════════════════════
 /////
-/////  Drag a soldier onto a CannonSlot to place them behind the cannon.
-/////  CurrentlyDragging (static) is set in OnBeginDrag and cleared in
-/////  OnEndDrag — CannonSlot.OnDrop reads it to accept the soldier.
+/////  SoldierDragDrop.OnEndDrag
+/////    └─ DragonController.PerformMount(soldier, seat)
+/////         ├─ DragonRiderSeat.MountSoldier(soldier)
+/////         │    └─ soldier.MountOnDragon(seat, offset)
+/////         │         ├─ EnsureHelmetEquipped()
+/////         │         ├─ Reparent soldier under seat
+/////         │         ├─ HideOwnVisuals()    ← alpha=0, blocksRaycasts=true, interactable=true
+/////         │         └─ SpriteLayerAnimator → RiderIdle
+/////         └─ DragonRiderVisual.ShowForSoldier()  ← dragon shows armored rider
+/////
+///// ════════════════════════════════════════════════════════════════════
+/////  ATTACH / LOCK SYSTEM
+///// ════════════════════════════════════════════════════════════════════
+/////
+/////  After mount, the soldier is UNLOCKED by default:
+/////    blocksRaycasts = true  → player can click the rider area and drag
+/////                              the soldier off the dragon normally.
+/////
+/////  DragonController.OnBeginDrag blocks dragon drag while rider is unlocked,
+/////  so clicking the dragon accidentally doesn't move it.
+/////
+/////  After the player clicks the Attach button, SetLocked(true) is called:
+/////    blocksRaycasts = false → clicks pass through the invisible soldier
+/////                              down to the dragon body image, letting
+/////                              the player drag the whole dragon+rider unit
+/////                              to a FlyZone.
+/////    interactable   = false → OnBeginDrag on the soldier is suppressed.
+/////
+/////  Clicking Attached again calls SetLocked(false) — restores draggability.
+/////  DismountFromDragon() always resets to unlocked.
+/////
+///// ════════════════════════════════════════════════════════════════════
+/////  DISMOUNT FLOW
+///// ════════════════════════════════════════════════════════════════════
+/////
+/////  SoldierDragDrop.OnBeginDrag  (soldier dragged off dragon)
+/////    ├─ seat.ReleaseSoldier()
+/////    ├─ ShowOwnVisuals()                         ← soldier turns visible again
+/////    ├─ Reparent soldier to canvas root
+/////    └─ DragonController.PerformDismount()       ← dragon hides rider visual
+/////
+/////  SoldierDragDrop.DismountFromDragon()          (programmatic, e.g. Retrieve button)
+/////    ├─ seat.ReleaseSoldier()
+/////    ├─ Reparent soldier to ground home
+/////    ├─ ShowOwnVisuals()
+/////    └─ DragonController.PerformDismount()
 /////
 ///// ════════════════════════════════════════════════════════════════════
 /////  SETUP
@@ -53,7 +99,7 @@
 
 //    [Header("Dragon Mount Settings")]
 //    [Tooltip("Maps each armor to its default helmet.\n" +
-//             "Create via: right-click Project → Create → AreaForge → Armor Helmet Table.\n" +
+//             "Create via: right-click Project -> Create -> AreaForge -> Armor Helmet Table.\n" +
 //             "Used to auto-equip a helmet when a helmetless soldier mounts a dragon.")]
 //    [SerializeField] private ArmorHelmetTable helmetTable;
 
@@ -86,6 +132,8 @@
 
 //    // ── Lock State ────────────────────────────────────────────────────────────
 
+//    // When true the soldier cannot be dragged off the seat.
+//    // Toggled by DragonAttachButton via SetLocked(). Reset to false on any dismount.
 //    private bool _isLocked = false;
 
 //    /// <summary>True while this soldier is sitting on a dragon seat.</summary>
@@ -93,22 +141,6 @@
 
 //    /// <summary>True while this soldier is locked to a dragon seat by the Attach button.</summary>
 //    public bool IsLocked => _isLocked;
-
-//    // ══════════════════════════════════════════════════════════════════════════
-//    // CANNON SLOT STATE  (NEW)
-//    // ══════════════════════════════════════════════════════════════════════════
-
-//    /// <summary>
-//    /// Set to this instance in OnBeginDrag, cleared in OnEndDrag.
-//    /// CannonSlot.OnDrop reads this to know which soldier is being dragged.
-//    /// </summary>
-//    public static SoldierDragDrop CurrentlyDragging { get; private set; }
-
-//    /// <summary>The cannon slot this soldier is currently stationed at. Null = not at a cannon.</summary>
-//    private CannonSlot _currentCannonSlot;
-
-//    /// <summary>True while this soldier is stationed at a cannon slot.</summary>
-//    public bool IsAtCannon => _currentCannonSlot != null;
 
 //    // ══════════════════════════════════════════════════════════════════════════
 //    // LIFECYCLE
@@ -146,18 +178,11 @@
 //    {
 //        if (_isDragging) return;
 
-//        // Locked to the dragon — drag disabled until Attach is toggled off.
+//        // Locked to the dragon — drag is disabled until the player clicks
+//        // Attached (which calls SetLocked(false)). With _isLocked=true the
+//        // CanvasGroup has interactable=false so Unity shouldn't route drag
+//        // events here at all, but this is a safety guard.
 //        if (_isLocked) return;
-
-//        // ── Expose this instance for CannonSlot.OnDrop ────────────────────────
-//        CurrentlyDragging = this;
-
-//        // ── Release cannon slot if stationed there ────────────────────────────
-//        if (_currentCannonSlot != null)
-//        {
-//            _currentCannonSlot.ReleaseSoldier(notify: false);
-//            _currentCannonSlot = null;
-//        }
 
 //        // ── Capture mounted dragon before clearing the seat ───────────────────
 //        bool wasMounted = _currentSeat != null;
@@ -168,10 +193,12 @@
 //            mountedDragonDC = _currentSeat.GetComponentInParent<DragonController>();
 //            _currentSeat.ReleaseSoldier();
 //            _currentSeat = null;
+//            // Restore sprite layers before they become visible again.
 //            _animator?.SetState(AnimationState.Idle);
 //        }
 
-//        // Re-find root canvas every drag.
+//        // Re-find root canvas every drag — cached value breaks after Retrieve
+//        // re-parents the soldier to a different panel.
 //        _rootCanvas = GetComponentInParent<Canvas>();
 //        while (_rootCanvas != null && !_rootCanvas.isRootCanvas)
 //            _rootCanvas = _rootCanvas.transform.parent?.GetComponentInParent<Canvas>();
@@ -180,7 +207,6 @@
 //        {
 //            Debug.LogError("[SoldierDragDrop] No root Canvas found. " +
 //                           "Make sure the soldier is inside a Canvas.");
-//            CurrentlyDragging = null;
 //            return;
 //        }
 
@@ -190,13 +216,13 @@
 //        {
 //            _homeParent = _mountHomeParent;
 //            _homeAnchoredPosition = _mountHomePos;
-//            _mountHomeParent = null;
+//            _mountHomeParent = null;   // consumed — prevent stale reuse
 //        }
 
 //        _isDragging = true;
 //        _controller?.SetPatrolling(false);
 
-//        // Restore own visuals before reparenting (in case coming from dragon).
+//        // Restore soldier's own visuals BEFORE reparenting so alpha=1 when visible.
 //        if (wasMounted)
 //            ShowOwnVisuals();
 
@@ -207,7 +233,8 @@
 //        _canvasGroup.alpha = 0.75f;
 //        _canvasGroup.blocksRaycasts = false;
 
-//        // Notify dragon to hide its rider visual.
+//        // Notify dragon to hide its rider visual now that the soldier is safe
+//        // at canvas-root (never call this while soldier is still a child of dragon).
 //        if (wasMounted)
 //            mountedDragonDC?.PerformDismount();
 //    }
@@ -230,58 +257,36 @@
 //    {
 //        _isDragging = false;
 //        // Keep blocksRaycasts FALSE until AFTER the raycast so the soldier's
-//        // CanvasGroup does not shadow targets sitting underneath.
+//        // CanvasGroup does not shadow the dragon sitting underneath.
 
 //        var results = new List<RaycastResult>();
 //        EventSystem.current.RaycastAll(eventData, results);
 
 //        DragonRiderSeat targetSeat = null;
 //        DragonController targetDC = null;
-//        CannonSlot targetCannon = null;   // NEW
 
 //        foreach (var r in results)
 //        {
-//            // ── Check for cannon slot ─────────────────────────────────────────
-//            if (targetCannon == null)
-//                targetCannon = r.gameObject.GetComponentInParent<CannonSlot>();
+//            var dragon = r.gameObject.GetComponentInParent<DragonController>();
+//            if (dragon == null) continue;
 
-//            // ── Check for dragon ──────────────────────────────────────────────
-//            if (targetDC == null)
-//            {
-//                var dragon = r.gameObject.GetComponentInParent<DragonController>();
-//                if (dragon != null)
-//                {
-//                    targetDC = dragon;
-//                    targetSeat = dragon.GetComponentInChildren<DragonRiderSeat>();
-//                }
-//            }
-
-//            if (targetCannon != null && targetDC != null) break;
+//            targetDC = dragon;
+//            targetSeat = dragon.GetComponentInChildren<DragonRiderSeat>();
+//            break;
 //        }
 
 //        _canvasGroup.blocksRaycasts = true;
 //        _canvasGroup.alpha = 1f;
 
-//        // ── Clear the static drag reference ───────────────────────────────────
-//        CurrentlyDragging = null;
-
-//        // ── Cannon slot drop (NEW) ────────────────────────────────────────────
-//        if (targetCannon != null)
-//        {
-//            // CannonSlot.OnDrop already fired via Unity's IDropHandler,
-//            // so PlaceAtCannonSlot was called there. Just ensure visuals are right.
-//            ShowOwnVisuals();
-//            _controller?.SetPatrolling(false);
-//            return;
-//        }
-
-//        // ── Dragon drop (original logic) ──────────────────────────────────────
 //        bool seatFree = targetSeat == null || !targetSeat.IsOccupied;
 
 //        if (targetDC != null && targetSeat != null && seatFree)
 //        {
+//            // Valid drop on an unoccupied dragon.
+//            // Save ground home BEFORE mounting so DismountFromDragon() can return here.
 //            _mountHomeParent = _homeParent;
 //            _mountHomePos = _homeAnchoredPosition;
+
 //            targetDC.PerformMount(this, targetSeat);
 //        }
 //        else if (targetSeat != null && targetSeat.IsOccupied)
@@ -290,11 +295,13 @@
 
 //            if (currentRider != null && currentRider._isLocked)
 //            {
+//                // Rider is locked (Attached) — swap blocked. Snap this soldier back.
 //                Debug.Log("[SoldierDragDrop] Swap blocked — current rider is Attached.");
 //                SnapBack();
 //            }
 //            else if (currentRider != null)
 //            {
+//                // Swap: return current rider home, then mount this soldier.
 //                Debug.Log($"[SoldierDragDrop] Swapping '{currentRider.name}' out for '{name}'.");
 //                _mountHomeParent = _homeParent;
 //                _mountHomePos = _homeAnchoredPosition;
@@ -308,6 +315,7 @@
 //        }
 //        else
 //        {
+//            // Dropped on empty space — return to patrol area.
 //            SnapBack();
 //        }
 //    }
@@ -327,7 +335,7 @@
 //    }
 
 //    /// <summary>
-//    /// Called by a drop target after accepting the soldier.
+//    /// Called by a drop target (WizardBox) after accepting the soldier.
 //    /// Resets flags because SetActive(false) prevents OnEndDrag from firing.
 //    /// </summary>
 //    public void OnSuccessfulDrop()
@@ -366,83 +374,42 @@
 //    }
 
 //    // ══════════════════════════════════════════════════════════════════════════
-//    // CANNON SLOT MOUNT / RELEASE  (NEW)
-//    // ══════════════════════════════════════════════════════════════════════════
-
-//    /// <summary>
-//    /// Called by CannonSlot.AssignSoldier() — reparents the soldier to the
-//    /// cannon's SoldierSpawnpoint and records the new home.
-//    ///
-//    /// Safe to call whether the soldier was at a dragon, another cannon slot,
-//    /// or the ground spawn area.
-//    /// </summary>
-//    public void PlaceAtCannonSlot(CannonSlot slot, Transform spawnpoint)
-//    {
-//        if (slot == null || spawnpoint == null) return;
-
-//        // Release any existing dragon seat first
-//        if (_currentSeat != null)
-//        {
-//            var dc = _currentSeat.GetComponentInParent<DragonController>();
-//            _currentSeat.ReleaseSoldier();
-//            _currentSeat = null;
-//            dc?.PerformDismount();
-//        }
-
-//        // Release previous cannon slot without notifying (we're already moving)
-//        if (_currentCannonSlot != null && _currentCannonSlot != slot)
-//            _currentCannonSlot.ReleaseSoldier(notify: false);
-
-//        _currentCannonSlot = slot;
-
-//        // Reparent to the cannon's SoldierSpawnpoint
-//        transform.SetParent(spawnpoint, worldPositionStays: false);
-//        _rect.anchoredPosition = Vector2.zero;
-//        _rect.localScale = Vector3.one;
-
-//        // Record this position as home so SnapBack() returns here
-//        RecordHome();
-
-//        // Restore visuals and stop patrol
-//        ShowOwnVisuals();
-//        _animator?.SetState(AnimationState.Idle);
-//        _controller?.ExitRidingState();
-
-//        Debug.Log($"[SoldierDragDrop] '{name}' placed at cannon slot '{slot.name}'.");
-//    }
-
-//    /// <summary>
-//    /// Called by CannonSlot when the block is destroyed or the soldier is removed.
-//    /// Snaps the soldier back to their original home position.
-//    /// </summary>
-//    public void RemoveFromCannonSlot()
-//    {
-//        if (_currentCannonSlot == null) return;
-//        _currentCannonSlot = null;
-//        SnapBack();
-//        Debug.Log($"[SoldierDragDrop] '{name}' removed from cannon slot.");
-//    }
-
-//    // ══════════════════════════════════════════════════════════════════════════
 //    // DRAGON MOUNT
 //    // ══════════════════════════════════════════════════════════════════════════
 
 //    /// <summary>
 //    /// Called by DragonRiderSeat.MountSoldier() when the dragon accepts this soldier.
+//    ///
+//    /// Order:
+//    ///   1. Auto-equip helmet if missing.
+//    ///   2. Stop patrol and freeze facing direction.
+//    ///   3. Reparent soldier under the seat at seatOffset.
+//    ///   4. Hide the soldier's own visuals (dragon's rider visual takes over).
+//    ///      HideOwnVisuals sets blocksRaycasts=true — the UNLOCKED default,
+//    ///      meaning the player can drag the soldier off immediately without
+//    ///      needing to click Attach first.
+//    ///   5. Switch SpriteLayerAnimator to RiderIdle state.
 //    /// </summary>
 //    public void MountOnDragon(DragonRiderSeat seat, Vector2 seatOffset)
 //    {
 //        _currentSeat = seat;
 
+//        // 1. Auto-equip helmet BEFORE reparenting.
 //        EnsureHelmetEquipped();
 
+//        // 2. Stop patrol.
 //        _controller?.EnterRidingState();
 
+//        // 3. Reparent under the seat.
 //        transform.SetParent(seat.transform, worldPositionStays: false);
 //        _rect.anchoredPosition = seatOffset;
 //        RecordHome();
 
+//        // 4. Hide soldier's own visuals — dragon's rider visual shows instead.
+//        //    blocksRaycasts=true is set here → UNLOCKED default state.
 //        HideOwnVisuals();
+
+//        // 5. Switch animation state.
 //        _animator?.SetState(AnimationState.RiderIdle);
 
 //        Debug.Log($"[SoldierDragDrop] '{name}' mounted on '{seat.transform.parent?.name}'.");
@@ -453,7 +420,15 @@
 //    // ══════════════════════════════════════════════════════════════════════════
 
 //    /// <summary>
-//    /// Returns the soldier to the ground patrol area and hides the dragon's rider visual.
+//    /// Returns the soldier to the ground patrol area and hides the dragon's
+//    /// rider visual.
+//    ///
+//    /// Safe order:
+//    ///   1. Capture dragon DC before clearing _currentSeat.
+//    ///   2. Release seat.
+//    ///   3. Reparent soldier to ground home.
+//    ///   4. Restore soldier's visuals + unlock.
+//    ///   5. Call PerformDismount() on the dragon.
 //    /// </summary>
 //    public void DismountFromDragon()
 //    {
@@ -475,16 +450,24 @@
 //            return;
 //        }
 
+//        // Reparent soldier to ground home.
 //        transform.SetParent(_mountHomeParent, worldPositionStays: false);
 //        _rect.anchoredPosition = _mountHomePos;
 
+//        // Restore patrol and facing direction.
 //        _controller?.ExitRidingState();
+
+//        // Restore sprite layers to idle.
 //        _animator?.SetState(AnimationState.Idle);
-//        ShowOwnVisuals();
+
+//        // Unlock and restore full visibility + raycast blocking.
+//        _isLocked = false;
+//        ShowOwnVisuals();   // sets alpha=1, blocksRaycasts=true, interactable=true
 
 //        RecordHome();
-//        _mountHomeParent = null;
+//        _mountHomeParent = null;   // consumed — prevent stale reuse
 
+//        // Notify dragon to hide its rider visual.
 //        riderDragonDC?.PerformDismount();
 
 //        Debug.Log($"[SoldierDragDrop] '{name}' dismounted — returned to ground.");
@@ -496,7 +479,22 @@
 
 //    /// <summary>
 //    /// Locks or unlocks the soldier to the current dragon seat.
-//    /// Called by DragonAttachButton.
+//    /// Called by DragonAttachButton when the player clicks Attach / Attached.
+//    ///
+//    ///   locked = true
+//    ///     • _isLocked = true         → OnBeginDrag guard activates
+//    ///     • interactable   = false   → EventSystem ignores drag events on soldier
+//    ///     • blocksRaycasts = false   → clicks pass THROUGH to the dragon body
+//    ///                                  so DragonController.OnBeginDrag fires,
+//    ///                                  letting the player drag dragon to FlyZone
+//    ///
+//    ///   locked = false
+//    ///     • _isLocked = false        → OnBeginDrag guard deactivates
+//    ///     • interactable   = true    → drag events fire on soldier again
+//    ///     • blocksRaycasts = true    → clicks land on the soldier, not dragon,
+//    ///                                  so the player can drag the soldier off
+//    ///
+//    /// Has no effect if the soldier is not currently mounted.
 //    /// </summary>
 //    public void SetLocked(bool locked)
 //    {
@@ -510,11 +508,13 @@
 
 //        if (locked)
 //        {
+//            // Clicks pass through the invisible soldier to the dragon below.
 //            _canvasGroup.blocksRaycasts = false;
 //            _canvasGroup.interactable = false;
 //        }
 //        else
 //        {
+//            // Clicks land on the soldier — player can drag them off the dragon.
 //            _canvasGroup.blocksRaycasts = true;
 //            _canvasGroup.interactable = true;
 //        }
@@ -527,13 +527,24 @@
 //    // VISUAL SHOW / HIDE
 //    // ══════════════════════════════════════════════════════════════════════════
 
+//    /// <summary>
+//    /// Hides the soldier's own sprite layers (alpha 0).
+//    /// blocksRaycasts=true and interactable=true are preserved so the soldier
+//    /// is in the UNLOCKED mounted state — draggable off the dragon by default.
+//    /// Called by MountOnDragon(). The dragon's rider visual displays instead.
+//    /// </summary>
 //    private void HideOwnVisuals()
 //    {
 //        _canvasGroup.alpha = 0f;
-//        _canvasGroup.blocksRaycasts = true;
+//        _canvasGroup.blocksRaycasts = true;   // UNLOCKED default: soldier is draggable
 //        _canvasGroup.interactable = true;
 //    }
 
+//    /// <summary>
+//    /// Restores the soldier's own sprite layers to fully visible.
+//    /// Also ensures the CanvasGroup is in the correct unlocked state.
+//    /// Called on dismount (drag-off or programmatic).
+//    /// </summary>
 //    private void ShowOwnVisuals()
 //    {
 //        _canvasGroup.alpha = 1f;
@@ -545,6 +556,11 @@
 //    // HELMET AUTO-EQUIP
 //    // ══════════════════════════════════════════════════════════════════════════
 
+//    /// <summary>
+//    /// If the soldier has no Helmet equipped, looks up the default helmet for
+//    /// their Armor in ArmorHelmetTable and equips it automatically.
+//    /// This ensures the dragon's rider visual shows the correct helmet sprite.
+//    /// </summary>
 //    private void EnsureHelmetEquipped()
 //    {
 //        if (_equipment == null) return;
@@ -578,68 +594,6 @@
 //        _homeParent = transform.parent;
 //        _homeAnchoredPosition = _rect.anchoredPosition;
 //    }
-
-//    public void MountOnHorse(HorseSeat seat, Vector2 seatOffset)
-//    {
-//        // Record where the soldier was standing so we can return there on dismount
-//        _mountHorseHomeParent = _homeParent;
-//        _mountHorseHomePos = _homeAnchoredPosition;
-
-//        _currentHorseSeat = seat;
-
-//        // Make sure there's a helmet (matches existing dragon behaviour)
-//        EnsureHelmetEquipped();
-
-//        // Stop patrol / flip before reparenting
-//        _controller?.EnterRidingState();
-
-//        // Sit on the horse
-//        transform.SetParent(seat.transform, worldPositionStays: false);
-//        _rect.anchoredPosition = seatOffset;
-//        RecordHome();
-
-//        // Hide this soldier's own canvas layers — HorseController owns the visuals
-//        // from here; the soldier is just parented under the seat for transform sync.
-//        // We keep alpha=1 so the soldier's own sprites ARE visible while mounted
-//        // (unlike dragon mounting where the dragon shows a separate rider visual).
-//        // If you want a separate horse-rider visual instead, set alpha=0 here.
-//        ShowOwnVisuals();   // soldier's own sprites visible on horseback
-//        _animator?.SetState(AnimationState.HorseIdle);
-
-//        Debug.Log($"[SoldierDragDrop] '{name}' mounted on horse seat '{seat.name}'.");
-//    }
-
-//    public void DismountFromHorse()
-//    {
-//        if (_currentHorseSeat != null)
-//        {
-//            _currentHorseSeat.ReleaseSoldier();
-//            _currentHorseSeat = null;
-//        }
-
-//        if (_mountHorseHomeParent == null)
-//        {
-//            Debug.LogWarning("[SoldierDragDrop] DismountFromHorse: no mount home recorded — snapping to current home.");
-//            _animator?.SetState(AnimationState.Idle);
-//            _controller?.ExitRidingState();
-//            SnapBack();
-//            return;
-//        }
-
-//        transform.SetParent(_mountHorseHomeParent, worldPositionStays: false);
-//        _rect.anchoredPosition = _mountHorseHomePos;
-
-//        _controller?.ExitRidingState();
-//        _animator?.SetState(AnimationState.Idle);
-//        ShowOwnVisuals();
-
-//        RecordHome();
-//        _mountHorseHomeParent = null;
-
-//        Debug.Log($"[SoldierDragDrop] '{name}' dismounted from horse — returned to ground.");
-//    }
-
-
 //}
 
 using System.Collections.Generic;
@@ -658,31 +612,24 @@ using UnityEngine.UI;
 /// ════════════════════════════════════════════════════════════════════
 ///
 ///  OnBeginDrag  Lifts the soldier to canvas-root level so it draws on
-///               top of all panels. If riding a dragon, horse, or stationed
-///               at a cannon slot, releases the position first.
+///               top of all panels. If riding a dragon or stationed at
+///               a cannon slot, releases the position first.
 ///
 ///  OnDrag       Moves the soldier under the pointer.
 ///
 ///  OnEndDrag    Raycasts under the pointer:
-///                 → HorseController with free seat  → PerformMount()
 ///                 → DragonController with free seat → PerformMount()
 ///                 → CannonSlot                      → PlaceAtCannonSlot()
-///                 → Occupied seat / empty space     → SnapBack
+///                 → Occupied seat                   → SnapBack
+///                 → Empty space                     → SnapBack
 ///
 /// ════════════════════════════════════════════════════════════════════
-///  HORSE MOUNT
+///  CANNON SLOT
 /// ════════════════════════════════════════════════════════════════════
 ///
-///  Drop a soldier onto a Horse prefab.
-///  HorseController.OnDrop → PerformMount(soldier) →
-///  HorseSeat.MountSoldier → SoldierDragDrop.MountOnHorse.
-///
-///  The soldier's own CanvasGroup is hidden (alpha = 0).
-///  HorseRiderVisual drives the 4 body-part Images (Face/Armor/Helmet/Weapon)
-///  on the SoldierSeat child using the soldier's equipped EquipmentItems.
-///
-///  Drag the soldier off the horse → OnBeginDrag detects _currentHorseSeat
-///  → calls HorseController.PerformDismount() → soldier returns home.
+///  Drag a soldier onto a CannonSlot to place them behind the cannon.
+///  CurrentlyDragging (static) is set in OnBeginDrag and cleared in
+///  OnEndDrag — CannonSlot.OnDrop reads it to accept the soldier.
 ///
 /// ════════════════════════════════════════════════════════════════════
 ///  SETUP
@@ -705,7 +652,7 @@ public class SoldierDragDrop : MonoBehaviour,
     [Header("Dragon Mount Settings")]
     [Tooltip("Maps each armor to its default helmet.\n" +
              "Create via: right-click Project → Create → AreaForge → Armor Helmet Table.\n" +
-             "Used to auto-equip a helmet when a helmetless soldier mounts a dragon or horse.")]
+             "Used to auto-equip a helmet when a helmetless soldier mounts a dragon.")]
     [SerializeField] private ArmorHelmetTable helmetTable;
 
     // ── Component References ──────────────────────────────────────────────────
@@ -725,11 +672,11 @@ public class SoldierDragDrop : MonoBehaviour,
 
     // ── Dragon Rider State ────────────────────────────────────────────────────
 
-    /// <summary>Dragon seat this soldier is currently riding on. Null = not on a dragon.</summary>
+    /// <summary>Seat this soldier is currently riding on. Null = on the ground.</summary>
     private DragonRiderSeat _currentSeat;
 
     /// <summary>
-    /// Ground parent recorded before dragon mounting so DismountFromDragon() can
+    /// Ground parent recorded before mounting so DismountFromDragon() can
     /// return the soldier to its patrol area, not back to the seat.
     /// </summary>
     private Transform _mountHomeParent;
@@ -745,7 +692,9 @@ public class SoldierDragDrop : MonoBehaviour,
     /// <summary>True while this soldier is locked to a dragon seat by the Attach button.</summary>
     public bool IsLocked => _isLocked;
 
-    // ── Cannon Slot State ─────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // CANNON SLOT STATE  (NEW)
+    // ══════════════════════════════════════════════════════════════════════════
 
     /// <summary>
     /// Set to this instance in OnBeginDrag, cleared in OnEndDrag.
@@ -758,20 +707,6 @@ public class SoldierDragDrop : MonoBehaviour,
 
     /// <summary>True while this soldier is stationed at a cannon slot.</summary>
     public bool IsAtCannon => _currentCannonSlot != null;
-
-    // ── Horse Rider State ─────────────────────────────────────────────────────
-
-    /// <summary>The HorseSeat this soldier is currently riding on. Null = not on a horse.</summary>
-    private HorseSeat _currentHorseSeat;
-
-    /// <summary>Parent transform recorded before horse mounting — used to return the soldier after dismount.</summary>
-    private Transform _mountHorseHomeParent;
-
-    /// <summary>AnchoredPosition recorded before horse mounting — used to return the soldier after dismount.</summary>
-    private Vector2 _mountHorseHomePos;
-
-    /// <summary>True while this soldier is seated on a horse.</summary>
-    public bool IsOnHorse => _currentHorseSeat != null;
 
     // ══════════════════════════════════════════════════════════════════════════
     // LIFECYCLE
@@ -834,18 +769,6 @@ public class SoldierDragDrop : MonoBehaviour,
             _animator?.SetState(AnimationState.Idle);
         }
 
-        // ── Release horse seat if stationed there ─────────────────────────────
-        bool wasOnHorse = _currentHorseSeat != null;
-        HorseController mountedHorseHC = null;
-
-        if (wasOnHorse)
-        {
-            mountedHorseHC = _currentHorseSeat.GetComponentInParent<HorseController>();
-            _currentHorseSeat.ReleaseSoldier();
-            _currentHorseSeat = null;
-            _animator?.SetState(AnimationState.Idle);
-        }
-
         // Re-find root canvas every drag.
         _rootCanvas = GetComponentInParent<Canvas>();
         while (_rootCanvas != null && !_rootCanvas.isRootCanvas)
@@ -859,9 +782,8 @@ public class SoldierDragDrop : MonoBehaviour,
             return;
         }
 
-        // Record home, then override with pre-mount ground position if dismounting.
+        // If dismounting, override home with the ground position saved at mount time.
         RecordHome();
-
         if (wasMounted && _mountHomeParent != null)
         {
             _homeParent = _mountHomeParent;
@@ -869,18 +791,11 @@ public class SoldierDragDrop : MonoBehaviour,
             _mountHomeParent = null;
         }
 
-        if (wasOnHorse && _mountHorseHomeParent != null)
-        {
-            _homeParent = _mountHorseHomeParent;
-            _homeAnchoredPosition = _mountHorseHomePos;
-            _mountHorseHomeParent = null;
-        }
-
         _isDragging = true;
         _controller?.SetPatrolling(false);
 
-        // Restore own visuals before reparenting (in case coming from dragon or horse).
-        if (wasMounted || wasOnHorse)
+        // Restore own visuals before reparenting (in case coming from dragon).
+        if (wasMounted)
             ShowOwnVisuals();
 
         // Reparent to root canvas so the soldier draws above all panels.
@@ -893,10 +808,6 @@ public class SoldierDragDrop : MonoBehaviour,
         // Notify dragon to hide its rider visual.
         if (wasMounted)
             mountedDragonDC?.PerformDismount();
-
-        // Notify horse to hide rider layers and reset to Idle.
-        if (wasOnHorse)
-            mountedHorseHC?.PerformDismount();
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -924,8 +835,7 @@ public class SoldierDragDrop : MonoBehaviour,
 
         DragonRiderSeat targetSeat = null;
         DragonController targetDC = null;
-        CannonSlot targetCannon = null;
-        HorseController targetHorse = null;
+        CannonSlot targetCannon = null;   // NEW
 
         foreach (var r in results)
         {
@@ -944,15 +854,7 @@ public class SoldierDragDrop : MonoBehaviour,
                 }
             }
 
-            // ── Check for horse ───────────────────────────────────────────────
-            if (targetHorse == null)
-            {
-                var hc = r.gameObject.GetComponentInParent<HorseController>();
-                if (hc != null && !hc.IsOccupied)
-                    targetHorse = hc;
-            }
-
-            if (targetCannon != null && targetDC != null && targetHorse != null) break;
+            if (targetCannon != null && targetDC != null) break;
         }
 
         _canvasGroup.blocksRaycasts = true;
@@ -961,7 +863,7 @@ public class SoldierDragDrop : MonoBehaviour,
         // ── Clear the static drag reference ───────────────────────────────────
         CurrentlyDragging = null;
 
-        // ── Cannon slot drop ──────────────────────────────────────────────────
+        // ── Cannon slot drop (NEW) ────────────────────────────────────────────
         if (targetCannon != null)
         {
             // CannonSlot.OnDrop already fired via Unity's IDropHandler,
@@ -971,16 +873,7 @@ public class SoldierDragDrop : MonoBehaviour,
             return;
         }
 
-        // ── Horse drop ────────────────────────────────────────────────────────
-        if (targetHorse != null)
-        {
-            _mountHorseHomeParent = _homeParent;
-            _mountHorseHomePos = _homeAnchoredPosition;
-            targetHorse.PerformMount(this);
-            return;
-        }
-
-        // ── Dragon drop ───────────────────────────────────────────────────────
+        // ── Dragon drop (original logic) ──────────────────────────────────────
         bool seatFree = targetSeat == null || !targetSeat.IsOccupied;
 
         if (targetDC != null && targetSeat != null && seatFree)
@@ -1071,7 +964,7 @@ public class SoldierDragDrop : MonoBehaviour,
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // CANNON SLOT MOUNT / RELEASE
+    // CANNON SLOT MOUNT / RELEASE  (NEW)
     // ══════════════════════════════════════════════════════════════════════════
 
     /// <summary>
@@ -1092,15 +985,6 @@ public class SoldierDragDrop : MonoBehaviour,
             _currentSeat.ReleaseSoldier();
             _currentSeat = null;
             dc?.PerformDismount();
-        }
-
-        // Release any existing horse seat first
-        if (_currentHorseSeat != null)
-        {
-            var hc = _currentHorseSeat.GetComponentInParent<HorseController>();
-            _currentHorseSeat.ReleaseSoldier();
-            _currentHorseSeat = null;
-            hc?.PerformDismount();
         }
 
         // Release previous cannon slot without notifying (we're already moving)
@@ -1291,87 +1175,5 @@ public class SoldierDragDrop : MonoBehaviour,
     {
         _homeParent = transform.parent;
         _homeAnchoredPosition = _rect.anchoredPosition;
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // HORSE MOUNT
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Called by HorseSeat.MountSoldier() when the horse accepts this soldier.
-    ///
-    /// The soldier is reparented under the seat so it moves with the horse.
-    /// Its own CanvasGroup is hidden (alpha = 0) — HorseRiderVisual drives
-    /// the 4 body-part Images (Face/Armor/Helmet/Weapon) on the seat instead.
-    /// </summary>
-    public void MountOnHorse(HorseSeat seat, Vector2 seatOffset)
-    {
-        // Record where the soldier was standing so we can return there on dismount
-        _mountHorseHomeParent = _homeParent;
-        _mountHorseHomePos = _homeAnchoredPosition;
-
-        _currentHorseSeat = seat;
-
-        // Auto-equip a helmet if the soldier has none (mirrors dragon behaviour)
-        EnsureHelmetEquipped();
-
-        // Stop patrol / flip animations before reparenting
-        _controller?.EnterRidingState();
-
-        // Reparent under the seat so the soldier moves with the horse
-        transform.SetParent(seat.transform, worldPositionStays: false);
-        _rect.anchoredPosition = seatOffset;
-        RecordHome();
-
-        // Hide the soldier's own canvas — HorseRiderVisual owns the visual display.
-        // The CanvasGroup is still blocking raycasts so the soldier can be dragged off.
-        HideOwnVisuals();
-
-        // Tell the SpriteLayerAnimator the soldier is now in HorseIdle
-        // (HorseController.SetState will also call this after mount, but setting
-        //  it here removes any single-frame flash on mount).
-        _animator?.SetState(AnimationState.HorseIdle);
-
-        Debug.Log($"[SoldierDragDrop] '{name}' mounted on horse seat '{seat.name}'.");
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // HORSE DISMOUNT  (programmatic — e.g. Dismount button or drag-off)
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Returns the soldier to the ground and restores its own visuals.
-    /// Called by HorseController.PerformDismount() or drag-off via OnBeginDrag.
-    /// </summary>
-    public void DismountFromHorse()
-    {
-        if (_currentHorseSeat != null)
-        {
-            _currentHorseSeat.ReleaseSoldier();
-            _currentHorseSeat = null;
-        }
-
-        if (_mountHorseHomeParent == null)
-        {
-            Debug.LogWarning("[SoldierDragDrop] DismountFromHorse: no mount home recorded " +
-                             "— snapping to current home.");
-            _animator?.SetState(AnimationState.Idle);
-            _controller?.ExitRidingState();
-            ShowOwnVisuals();
-            SnapBack();
-            return;
-        }
-
-        transform.SetParent(_mountHorseHomeParent, worldPositionStays: false);
-        _rect.anchoredPosition = _mountHorseHomePos;
-
-        _controller?.ExitRidingState();
-        _animator?.SetState(AnimationState.Idle);
-        ShowOwnVisuals();
-
-        RecordHome();
-        _mountHorseHomeParent = null;
-
-        Debug.Log($"[SoldierDragDrop] '{name}' dismounted from horse — returned to ground.");
     }
 }
