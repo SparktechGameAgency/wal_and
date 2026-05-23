@@ -160,7 +160,7 @@ MonoBehaviour:
   projectileSpawner: {fileID: 1285578254442880044}
   projectilePrefab: {fileID: 3877521994219633573, guid: 56ee342a42ffe904a9dcc1b1c8a42325, type: 3}
   projectileSize: {x: 20, y: 20}
-  detectionRadius: 100
+  detectionRadius: 600
   fireInterval: 2
   damage: 50
   flightDuration: 1.2

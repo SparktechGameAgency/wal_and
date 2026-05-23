@@ -25,39 +25,6 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 190257f5d5928b149a1fceb3cabfdced, type: 3}
   - {fileID: 21300000, guid: 0901638959a31994598524c975747810, type: 3}
   idleFPS: 6
-  runSprites:
-  - {fileID: 21300000, guid: 526f1987d1987de4fbab6c4c7cc646e7, type: 3}
-  - {fileID: 21300000, guid: d8d019f089a159740921b8c705697e0b, type: 3}
-  - {fileID: 21300000, guid: 589fa14708f9a454094e6535d06cf4bb, type: 3}
-  - {fileID: 21300000, guid: c10f6cb4f00ee1c45964e8107c1477ce, type: 3}
-  - {fileID: 21300000, guid: e948cfd4e0eefdf468eebcc43ead1156, type: 3}
-  - {fileID: 21300000, guid: 0775e2a6b209aac4aa8253be57805c25, type: 3}
-  - {fileID: 21300000, guid: f682f5b1dfc8d1146b686b6899dad543, type: 3}
-  - {fileID: 21300000, guid: b60be7db3c565504ca86eabc086922bf, type: 3}
-  runFPS: 10
-  runCyclesBeforeIdle: 0
-  attackSprites:
-  - {fileID: 21300000, guid: 2e79849a8df99b547b38e00d890f7d53, type: 3}
-  - {fileID: 21300000, guid: 894d9877e02dc5145b8b44ab77d0da3e, type: 3}
-  - {fileID: 21300000, guid: f0cc2a6ade183f9439012523455d822d, type: 3}
-  - {fileID: 21300000, guid: 0196c99f112fdd34494d5b02abbe3e87, type: 3}
-  - {fileID: 21300000, guid: f67fc3547a6e2d640adf6f7148454a24, type: 3}
-  - {fileID: 21300000, guid: 8c954719cc455d1479dececc95e88a9a, type: 3}
-  - {fileID: 21300000, guid: b07faa868d85c94478dd27977705161f, type: 3}
-  - {fileID: 21300000, guid: 0fc898828bfeae049a72809f51dca771, type: 3}
-  - {fileID: 21300000, guid: c407e1610fc483945aa24f30b99e8fef, type: 3}
-  attackFPS: 12
-  attackCyclesBeforeIdle: 1
-  deadSprites:
-  - {fileID: 21300000, guid: 9ee48f2ee319ff04e94722326d34c030, type: 3}
-  - {fileID: 21300000, guid: 5eb42e47b7e32724db33712348e36820, type: 3}
-  - {fileID: 21300000, guid: 4e60fed690d73554e8d32c8a694ce8e2, type: 3}
-  - {fileID: 21300000, guid: 2dc67765c57b6f74890d3a72b2a8575d, type: 3}
-  - {fileID: 21300000, guid: 3b7247064a6fba84c82e19880db06239, type: 3}
-  - {fileID: 21300000, guid: 9f2c9b1e6c759e94eb984e49b08b495a, type: 3}
-  - {fileID: 21300000, guid: 6c5d206663f11e84792021d4b40a373b, type: 3}
-  - {fileID: 21300000, guid: eb29b4c12b86ed54d9f7f268353e8c05, type: 3}
-  deadFPS: 8
   health: 45
   ability: 55
   damage: 55
