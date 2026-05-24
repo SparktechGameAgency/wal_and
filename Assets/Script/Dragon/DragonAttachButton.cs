@@ -2,49 +2,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// AREA FORGE — DragonAttachButton
-///
-/// Attach to the Button GameObject that sits on the dragon's UI.
-/// Requires a TMP_Text child (the button label), a reference to the
-/// DragonRiderSeat this button controls, and access to the DragonController
-/// (found automatically via GetComponentInParent — no extra wiring needed).
-///
-/// ════════════════════════════════════════════════════════════════════
-///  VISIBILITY RULES
-/// ════════════════════════════════════════════════════════════════════
-///
-///   DragonState.Idle     → button VISIBLE   (dragon is in the dragon area)
-///   DragonState.Flying   → button HIDDEN    (dragon is patrolling a fly zone)
-///   DragonState.Dragging → button HIDDEN    (dragon is being dragged)
-///
-///  Visibility is driven through a CanvasGroup on this GameObject so
-///  Update() keeps running regardless of visibility state.
-///  (Using SetActive(false) would stop Update and leave the button
-///  permanently hidden after the first flight.)
-///
-/// ════════════════════════════════════════════════════════════════════
-///  ATTACH / LOCK BEHAVIOUR
-/// ════════════════════════════════════════════════════════════════════
-///
-///  • Button is only clickable when the dragon is Idle AND a soldier is seated.
-///  • First click  → locks the soldier  → label → "Attached".
-///  • Second click → unlocks the soldier → label → "Attach".
-///  • While flying the button is invisible so it cannot be clicked.
-///    When the dragon returns to Idle the button reappears with the
-///    current lock state already reflected in the label.
-///
-/// ════════════════════════════════════════════════════════════════════
-///  SETUP
-/// ════════════════════════════════════════════════════════════════════
-///
-///  1. Create a Button (UI → Button - TextMeshPro) as a child of the dragon.
-///  2. Add this script to that Button GameObject.
-///     A CanvasGroup is added automatically (RequireComponent).
-///  3. Drag the DragonRiderSeat component into the `seat` field.
-///  4. DragonController is found automatically — no extra wiring needed.
-///  5. No onClick wiring needed in the Inspector; this script handles it.
-/// </summary>
 [RequireComponent(typeof(Button))]
 [RequireComponent(typeof(CanvasGroup))]
 public class DragonAttachButton : MonoBehaviour

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5377405833974073006}
   - component: {fileID: 6141846477335361901}
   - component: {fileID: 4861585956177242717}
+  - component: {fileID: 8751349323837947856}
   m_Layer: 0
   m_Name: CannonZone
   m_TagString: Untagged
@@ -61,7 +62,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 0
+  m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -94,6 +95,18 @@ MonoBehaviour:
   normalColor: {r: 1, g: 1, b: 1, a: 0.14901961}
   hoverValidColor: {r: 0.3, g: 1, b: 0.3, a: 0.55}
   hoverInvalidColor: {r: 1, g: 0.3, b: 0.3, a: 0.17254902}
+--- !u!114 &8751349323837947856
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4765531366772598656}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1aa1ac810534a044c818a3bd8acc6fb7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CastleBlockUnitSlot
 --- !u!1 &4885474423245658952
 GameObject:
   m_ObjectHideFlags: 0

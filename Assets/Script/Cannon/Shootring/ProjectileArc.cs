@@ -30,7 +30,7 @@ public class ProjectileArc : MonoBehaviour
     // asset and ignores code defaults, which is why the arc stayed huge even after
     // changing the value in code. This const is the single source of truth.
     // To change the arc, edit ARC_HEIGHT here and save — no Inspector tweak needed.
-    public const float ARC_HEIGHT =2 ;
+    public const float ARC_HEIGHT =0.5f ;
 
     [Tooltip("Seconds the projectile takes to reach the target.")]
     public float flightDuration = 1.2f;

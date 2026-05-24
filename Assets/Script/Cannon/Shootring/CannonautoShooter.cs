@@ -313,7 +313,7 @@ public class CannonAutoShooter : MonoBehaviour
     // Arc height is hardcoded to 20 pixels (nearly flat trajectory).
     // Using a const prevents stale serialized values in old prefabs/scenes
     // from silently overriding the intended value.
-    private const float arcHeight = 20f;
+    private const float arcHeight = 0.5f;
 
     [Tooltip("Seconds for the projectile to reach the target.")]
     public float flightDuration = 1.2f;

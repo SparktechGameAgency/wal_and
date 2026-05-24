@@ -187,6 +187,7 @@ GameObject:
   - component: {fileID: 8247960293241123332}
   - component: {fileID: 3071090146720968435}
   - component: {fileID: 5985837581694113316}
+  - component: {fileID: 7189579974511932181}
   m_Layer: 0
   m_Name: Enemy
   m_TagString: Untagged
@@ -268,3 +269,18 @@ MonoBehaviour:
   moveSpeed: 0.1
   moveDirection: {x: -1, y: 0, z: 0}
   healthBarFill: {fileID: 4343956637176707005}
+--- !u!114 &7189579974511932181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3624833215839755768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59c355ff3820d234e8c13df33fb5c856, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SoldierStats
+  maxHealth: 100
+  abilityPower: 10
+  attackDamage: 15

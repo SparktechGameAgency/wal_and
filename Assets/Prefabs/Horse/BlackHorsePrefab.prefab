@@ -38,7 +38,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 185, y: 185}
+  m_SizeDelta: {x: 160, y: 160}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3595958711777222053
 CanvasRenderer:
@@ -90,6 +90,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b9054b904e0ad594688cd1363dc9c311, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HorseController
+  horseAnimSO: {fileID: 0}
+  saddleAnimSO: {fileID: 0}
+  horseImage: {fileID: 0}
+  saddleImage: {fileID: 0}
+  seat: {fileID: 0}
+  riderVisual: {fileID: 0}
 --- !u!114 &-7537665622904427061
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -104,6 +110,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HorseDragHandler
   horseData: {fileID: 0}
   destroyOnSuccessfulDrop: 0
+  ownerSlot: {fileID: 0}
+  inventoryIndex: -1
 --- !u!225 &12701891100823552
 CanvasGroup:
   m_ObjectHideFlags: 0
