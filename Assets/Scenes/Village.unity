@@ -46367,6 +46367,7 @@ MonoBehaviour:
   castleSlots:
   - {fileID: 0}
   - {fileID: 0}
+  - {fileID: 0}
   buyTabButton: {fileID: 1684527330}
   inventoryTabButton: {fileID: 203308967}
   backButton: {fileID: 909650915}
