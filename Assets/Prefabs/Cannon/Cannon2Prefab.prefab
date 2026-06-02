@@ -121,6 +121,7 @@ MonoBehaviour:
   variantId: 2
   stretchToFillSlot: 0
   placedSize: {x: 120, y: 80}
+  dragEnabled: 1
   dragGhostSize: {x: 120, y: 80}
 --- !u!114 &6168875228100082365
 MonoBehaviour:
@@ -159,7 +160,7 @@ MonoBehaviour:
   cannonAnimator: {fileID: 6168875228100082365}
   projectileSpawner: {fileID: 1285578254442880044}
   projectilePrefab: {fileID: 3877521994219633573, guid: 56ee342a42ffe904a9dcc1b1c8a42325, type: 3}
-  projectileSize: {x: 20, y: 20}
+  projectileSize: {x: 15, y: 15}
   detectionRadius: 100
   fireInterval: 2
   damage: 50
