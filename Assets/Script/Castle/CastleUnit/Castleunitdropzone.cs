@@ -1833,6 +1833,47 @@ public class CastleUnitDropZone : MonoBehaviour,
         // PlaceUnit() will show it again when a cannon is placed.
         if (!HasUnit)
             _soldierImage?.SetActive(false);
+
+        // Cannon zones start non-interactive and invisible — only the cannon
+        // section reveals them. We do NOT deactivate the whole GameObject because
+        // the cannon prefab placed inside must always remain visible.
+        if (acceptedType == CastleUnitType.Cannon && !HasUnit)
+            SetInteractable(false);
+    }
+
+    /// <summary>
+    /// Show or hide every CastleUnitDropZone that accepts Cannons.
+    /// Call this when entering/leaving the Cannon panel section.
+    /// Does NOT touch the whole GameObject — only the zone overlay visibility
+    /// and raycast target, so placed cannon prefabs stay visible at all times.
+    /// Zones that are already filled (HasUnit == true) stay non-interactive always.
+    /// </summary>
+    public static void SetCannonZonesVisible(bool visible)
+    {
+        foreach (var zone in FindObjectsOfType<CastleUnitDropZone>(includeInactive: false))
+        {
+            if (zone.acceptedType != CastleUnitType.Cannon) continue;
+            // A filled zone is never interactive — cannon is already there.
+            if (zone.HasUnit) { zone.SetInteractable(false); continue; }
+            zone.SetInteractable(visible);
+        }
+    }
+
+    /// <summary>Public wrapper so external classes (e.g. CastleUnitDraggable) can set interactability.</summary>
+    public void SetInteractablePublic(bool on) => SetInteractable(on);
+
+    /// <summary>
+    /// Enables or disables the zone overlay: background alpha and raycast target.
+    /// The zone GameObject itself stays active so placed cannon children are visible.
+    /// </summary>
+    private void SetInteractable(bool on)
+    {
+        if (_bg == null) return;
+        _bg.raycastTarget = on;
+        // Show the zone background colour when interactive, fully transparent when not.
+        Color c = _bg.color;
+        c.a = on ? normalColor.a : 0f;
+        _bg.color = c;
     }
 
     // ── Standard drag-drop path ───────────────────────────────────
@@ -1843,14 +1884,50 @@ public class CastleUnitDropZone : MonoBehaviour,
 
         if (unit == null) { Debug.Log("[DropZone] OnDrop — nothing dragged."); return; }
         if (unit.unitType != acceptedType) { Debug.Log("[DropZone] Type mismatch."); return; }
-        if (HasUnit) { Debug.Log("[DropZone] Already occupied."); return; }
 
-        // Auto-link the expansion slot above this block if not linked yet.
-        // This handles the case where the cannon was dropped directly onto the
-        // zone (bypassing ExpansionSlot.OnDrop) so LinkedExpansionSlot is null.
+        // ── SWAP: this zone already has a cannon — swap the two ──────────────
+        if (HasUnit)
+        {
+            // Read the source zone from the static set at BeginDrag — do NOT read
+            // unit.transform.parent because by now it is the root canvas, not the zone.
+            CastleUnitDropZone sourceZone = CastleUnitDraggable.OriginalZone;
+
+            if (sourceZone == null || sourceZone == this)
+            {
+                Debug.Log("[DropZone] Swap — no valid source zone, ignoring.");
+                return;
+            }
+
+            // Grab the cannon sitting in THIS zone
+            CastleUnitDraggable residentUnit = _placedInstance?.GetComponent<CastleUnitDraggable>();
+            if (residentUnit == null)
+            {
+                Debug.Log("[DropZone] Swap — resident has no CastleUnitDraggable, cannot swap.");
+                return;
+            }
+
+            // Detach resident from this zone (clears HasUnit, shows expansion slot)
+            DetachUnit();
+
+            // Place resident into source zone
+            sourceZone.AutoLinkExpansionSlot();
+            sourceZone.PlaceUnit(residentUnit);
+            sourceZone.SetInteractable(false);
+
+            // Place dragged unit here
+            AutoLinkExpansionSlot();
+            PlaceUnit(unit);
+            SetInteractable(false);
+
+            CastleUnitDraggable.NotifyDropSucceeded();
+            Debug.Log($"[DropZone] Swapped cannons between {sourceZone.name} and {name}.");
+            return;
+        }
+
+        // ── NORMAL DROP: zone is empty ────────────────────────────────────────
         AutoLinkExpansionSlot();
-
         PlaceUnit(unit);
+        SetInteractable(false);
         CastleUnitDraggable.NotifyDropSucceeded();
     }
 
@@ -1861,7 +1938,7 @@ public class CastleUnitDropZone : MonoBehaviour,
     /// this block cell and links it so DetachUnit/RemoveUnit can show it later.
     /// Only runs if LinkedExpansionSlot is not already set.
     /// </summary>
-    private void AutoLinkExpansionSlot()
+    public void AutoLinkExpansionSlot()
     {
         if (LinkedExpansionSlot != null) return;
 
@@ -1976,6 +2053,31 @@ public class CastleUnitDropZone : MonoBehaviour,
     {
         if (unit == null) return;
 
+        unit.transform.SetParent(transform, worldPositionStays: false);
+
+        // Re-apply the same sizing logic as PlaceUnit so the cannon always
+        // snaps back at the correct size regardless of what happened during drag.
+        RectTransform rt = unit.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            if (unit.stretchToFillSlot)
+            {
+                rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+                rt.anchoredPosition = Vector2.zero;
+            }
+            else
+            {
+                rt.anchorMin = new Vector2(0f, 0.5f);
+                rt.anchorMax = new Vector2(0f, 0.5f);
+                rt.pivot = new Vector2(0f, 0.5f);
+                rt.sizeDelta = unit.placedSize;
+                rt.anchoredPosition = Vector2.zero;
+            }
+            rt.localScale = Vector3.one;
+            rt.SetAsLastSibling();
+        }
+
         _placedInstance = unit.gameObject;
         HasUnit = true;
         PlacedVariantId = unit.variantId;
@@ -1986,7 +2088,7 @@ public class CastleUnitDropZone : MonoBehaviour,
         _emptyVisual?.SetActive(false);
         _highlight?.SetActive(false);
         _bg.color = normalColor;
-        _soldierImage?.SetActive(true);    // ← soldier shows when cannon snaps back
+        _soldierImage?.SetActive(true);
 
         if (LinkedExpansionSlot != null)
         {
@@ -2044,22 +2146,32 @@ public class CastleUnitDropZone : MonoBehaviour,
         // Instantiate the cannon prefab as a child of this zone.
         GameObject go = Instantiate(cannonPrefab, transform);
 
-        // Fit it perfectly over the slot using RectTransform (UI prefab).
+        // Fit the cannon using the same sizing logic as PlaceUnit (drag-drop path)
+        // so size is always consistent regardless of how the cannon was placed.
         RectTransform rt = go.GetComponent<RectTransform>();
+        CastleUnitDraggable draggable = go.GetComponent<CastleUnitDraggable>();
         if (rt != null)
         {
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-            rt.anchoredPosition = Vector2.zero;
+            bool stretch = draggable != null ? draggable.stretchToFillSlot : true;
+            if (stretch)
+            {
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+                rt.anchoredPosition = Vector2.zero;
+            }
+            else
+            {
+                Vector2 sz = draggable != null ? draggable.placedSize : centeredUnitSize;
+                rt.anchorMin = new Vector2(0f, 0.5f);
+                rt.anchorMax = new Vector2(0f, 0.5f);
+                rt.pivot = new Vector2(0f, 0.5f);
+                rt.sizeDelta = sz;
+                rt.anchoredPosition = Vector2.zero;
+            }
             rt.localScale = Vector3.one;
             rt.SetAsLastSibling();
-        }
-        else
-        {
-            go.transform.localPosition = Vector3.zero;
-            go.transform.localScale = Vector3.one;
         }
 
         // Set up the CannonController if the prefab has one.
@@ -2084,6 +2196,10 @@ public class CastleUnitDropZone : MonoBehaviour,
         // Hide the expansion slot so the player can't drop another cannon here.
         if (LinkedExpansionSlot != null)
             LinkedExpansionSlot.gameObject.SetActive(false);
+
+        // Disable interaction on this zone — it's full, nothing to tap anymore.
+        // Do NOT deactivate the whole GameObject; the placed cannon must stay visible.
+        SetInteractable(false);
 
         Debug.Log($"[DropZone] PlaceCannonFromPanel — placed '{cannonPrefab.name}' in {gameObject.name}");
     }
@@ -2180,19 +2296,25 @@ public class CastleUnitDropZone : MonoBehaviour,
         Debug.Log("[CannonZone] OnPointerClick fired! dragging=" + eventData.dragging + " currentlyDragging=" + (CastleUnitDraggable.CurrentlyDragging != null));
         if (eventData.dragging) return;
         if (CastleUnitDraggable.CurrentlyDragging != null) return;
+
+        // Only open the cannon panel for empty (not yet filled) zones.
+        if (HasUnit) return;
+
         Debug.Log("[CannonZone] Opening cannon panel for this drop zone.");
 
-        if (CannonPanelManager.Instance != null)
+        // Always route through GameManager so the game state and panel visibility
+        // are correctly updated — even if CannonPanelManager.Instance already exists
+        // (e.g. the panel was previously opened for another zone and then closed).
+        CannonPanelManager.PendingDropZone = this;
+        if (GameManager.Instance != null)
         {
-            // Panel already exists — open it directly with this zone as the target.
-            CannonPanelManager.Instance.OpenFromDropZone(this);
+            GameManager.Instance.OpenCannonPanel();
         }
-        else
+        else if (CannonPanelManager.Instance != null)
         {
-            // Panel not yet active. Register this zone as the pending target BEFORE
-            // GameManager activates the panel (which calls OnPanelOpened).
-            CannonPanelManager.PendingDropZone = this;
-            GameManager.Instance?.OpenCannonPanel();
+            // Fallback: no GameManager — open directly.
+            CannonPanelManager.PendingDropZone = null;
+            CannonPanelManager.Instance.OpenFromDropZone(this);
         }
     }
 
