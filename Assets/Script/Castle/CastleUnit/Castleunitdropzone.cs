@@ -2955,6 +2955,22 @@ public class CastleUnitDropZone : MonoBehaviour,
         }
     }
 
+    private void OnEnable()
+    {
+        GameManager.OnGameStateChanged += OnGameStateChanged;
+    }
+
+    private void OnDisable()
+    {
+        GameManager.OnGameStateChanged -= OnGameStateChanged;
+    }
+
+    private void OnGameStateChanged(GameManager.GameState state)
+    {
+        Debug.Log($"[DropZone] {gameObject.name} received OnGameStateChanged → {state}");
+        RefreshRemoveButton();
+    }
+
     private void Start()
     {
         // Force-hide soldier at runtime in case the prefab has it active by default.
@@ -3467,6 +3483,7 @@ public class CastleUnitDropZone : MonoBehaviour,
             _emptySlotZone?.SetActive(active);
             SetInteractable(active);
         }
+        RefreshRemoveButton();
     }
 
     public void SetVillageMode(bool isVillage)
@@ -3590,8 +3607,11 @@ public class CastleUnitDropZone : MonoBehaviour,
     /// <summary>Shows the RemoveButton only when a cannon is placed in this zone.</summary>
     private void RefreshRemoveButton()
     {
-        if (_removeButton != null)
-            _removeButton.gameObject.SetActive(HasUnit);
+        if (_removeButton == null) return;
+        bool inCannonScene = GameManager.Instance != null &&
+                             GameManager.Instance.CurrentState == GameManager.GameState.Cannon;
+        Debug.Log($"[RemoveButton] {gameObject.name} | HasUnit={HasUnit} | GameState={GameManager.Instance?.CurrentState} | inCannonScene={inCannonScene} | setting active={HasUnit && inCannonScene}");
+        _removeButton.gameObject.SetActive(HasUnit && inCannonScene);
     }
 
     /// <summary>
