@@ -512,8 +512,8 @@ public class ArrowProjectile : MonoBehaviour
     public float flightDuration = 0.6f;
 
     [Tooltip("Rotation offset to align the sprite tip with travel direction.\n" +
-             "-90 if sprite faces UP (default). 0 if sprite faces RIGHT.")]
-    public float spriteRotationOffset = -90f;
+             "0 if sprite faces RIGHT (default). -90 if sprite faces UP.")]
+    public float spriteRotationOffset = 0f;
 
     // ── Internal ──────────────────────────────────────────────────
 

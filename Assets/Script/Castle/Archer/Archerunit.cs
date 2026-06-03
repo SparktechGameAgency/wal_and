@@ -801,8 +801,8 @@ public class ArcherUnit : MonoBehaviour
     public RectTransform arrowSpawner;
     public GameObject arrowPrefab;
 
-    [Tooltip("Width x Height of the arrow in pixels. Sprite faces UP so height > width.")]
-    public Vector2 arrowSize = new Vector2(8f, 32f);
+    [Tooltip("Arrow size in pixels (Width x Height). Leave at (0,0) to use the prefab's own size.")]
+    public Vector2 arrowSize = new Vector2(0f, 0f);
 
     [Header("Combat")]
     public float detectionRadius = 250f;
@@ -959,8 +959,10 @@ public class ArcherUnit : MonoBehaviour
             rt.anchorMin = new Vector2(0.5f, 0.5f);
             rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = arrowSize;
             rt.localScale = Vector3.one;
+            // Only override size if arrowSize is set; otherwise use prefab's own size.
+            if (arrowSize.x > 0f && arrowSize.y > 0f)
+                rt.sizeDelta = arrowSize;
         }
 
         ArrowProjectile arrow = arrowGO.GetComponent<ArrowProjectile>();

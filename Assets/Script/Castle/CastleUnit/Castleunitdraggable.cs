@@ -1463,6 +1463,21 @@ public class CastleUnitDraggable : MonoBehaviour,
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
+    private void OnDisable()
+    {
+        // If this unit is destroyed or its GameObject is disabled mid-drag
+        // (e.g. during a panel switch), OnEndDrag will never fire.
+        // Clear the static reference here so the cannon zone click guard
+        // (CastleUnitDropZone.OnPointerClick checks CurrentlyDragging != null)
+        // does not remain permanently blocked.
+        if (CurrentlyDragging == this)
+        {
+            CurrentlyDragging = null;
+            OriginalZone = null;
+            _droppedSuccessfully = false;
+        }
+    }
+
     private void Awake()
     {
         _canvasGroup = GetComponent<CanvasGroup>();

@@ -151,7 +151,7 @@ MonoBehaviour:
   shootAnimator: {fileID: 2985108068079251864}
   arrowSpawner: {fileID: 2076670760778640382}
   arrowPrefab: {fileID: 3129242319754080387, guid: 168447bb5ffff1f449eecdd9a7f92b89, type: 3}
-  arrowSize: {x: 60, y: 8}
+  arrowSize: {x: 7, y: 40}
   detectionRadius: 100
   fireInterval: 1.8
   damage: 30
