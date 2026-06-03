@@ -79,6 +79,14 @@ public class SoldierDragDrop : MonoBehaviour,
     /// <summary>True while this soldier is seated on a horse.</summary>
     public bool IsOnHorse => _currentHorseSeat != null;
 
+    // ── Archer Zone State ─────────────────────────────────────────────────────
+
+    /// <summary>The ArcherZoneCastle this soldier is currently assigned to. Null = not an archer.</summary>
+    private ArcherZoneCastle _currentArcherZone;
+
+    /// <summary>True while this soldier is assigned to an archer zone.</summary>
+    public bool IsArcher => _currentArcherZone != null;
+
     // ══════════════════════════════════════════════════════════════════════════
     // LIFECYCLE
     // ══════════════════════════════════════════════════════════════════════════
@@ -755,6 +763,43 @@ public class SoldierDragDrop : MonoBehaviour,
         _mountHorseHomeParent = null;
 
         Debug.Log($"[SoldierDragDrop] '{name}' dismounted from horse — returned to ground.");
+    }
+    public void BecomeArcher(ArcherZoneCastle zone)
+    {
+        if (zone == null) return;
+
+        _currentArcherZone = zone;
+        _isLocked = true;
+
+        // Hide the soldier — the spawned ArcherUnit prefab is the visual now.
+        gameObject.SetActive(false);
+
+        Debug.Log($"[SoldierDragDrop] '{name}' became an archer at '{zone.name}'.");
+    }
+
+    /// <summary>
+    /// Called by ArcherZoneCastle.RemoveArcher().
+    /// Re-enables this soldier and snaps them back to their walk zone.
+    /// </summary>
+    public void ReturnFromArcher()
+    {
+        _currentArcherZone = null;
+        _isLocked = false;
+
+        // Re-show the soldier.
+        gameObject.SetActive(true);
+
+        // Snap back to the home position recorded before the last drag.
+        if (_homeParent != null)
+        {
+            transform.SetParent(_homeParent, worldPositionStays: false);
+            RectTransform rt = GetComponent<RectTransform>();
+            if (rt != null) rt.anchoredPosition = _homeAnchoredPosition;
+        }
+
+        _controller?.SetPatrolling(true);
+
+        Debug.Log($"[SoldierDragDrop] '{name}' returned from archer zone.");
     }
 
     public void ClearHorseSeatForTransfer()

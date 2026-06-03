@@ -89,10 +89,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteAnimator
   frames:
-  - {fileID: 3329085029492453842, guid: c15fd0c4d98406f4b8c2fe973ce4e7e7, type: 3}
-  - {fileID: 9188528472921429998, guid: 7d60ad20b8d094d4c8d1a55e36895a03, type: 3}
-  - {fileID: 1974979269668564892, guid: d4fa1015d137a2949981c02292667aa5, type: 3}
-  - {fileID: -4480140890674961277, guid: e3459e04d58419d41a2c838a50dc3341, type: 3}
+  - {fileID: 21300000, guid: c15fd0c4d98406f4b8c2fe973ce4e7e7, type: 3}
+  - {fileID: 21300000, guid: 7d60ad20b8d094d4c8d1a55e36895a03, type: 3}
+  - {fileID: 21300000, guid: d4fa1015d137a2949981c02292667aa5, type: 3}
+  - {fileID: 21300000, guid: e3459e04d58419d41a2c838a50dc3341, type: 3}
   fps: 12
   loop: 1
   spawnOnFrame: 3
@@ -151,7 +151,7 @@ MonoBehaviour:
   shootAnimator: {fileID: 2985108068079251864}
   arrowSpawner: {fileID: 2076670760778640382}
   arrowPrefab: {fileID: 3129242319754080387, guid: 168447bb5ffff1f449eecdd9a7f92b89, type: 3}
-  arrowSize: {x: 32, y: 8}
+  arrowSize: {x: 60, y: 8}
   detectionRadius: 100
   fireInterval: 1.8
   damage: 30
