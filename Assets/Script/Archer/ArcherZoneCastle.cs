@@ -910,6 +910,45 @@ public class ArcherZoneCastle : MonoBehaviour,
         _parentSlot?.NotifyOccupancyChanged();
     }
 
+    /// <summary>
+    /// Migrates the stationed archer (instance + soldier reference) from this zone
+    /// into <paramref name="destination"/>. Mirrors CastleUnitDropZone.MigrateUnitTo.
+    /// Call this before the source block/cell is destroyed (e.g. on expansion).
+    /// </summary>
+    public void MigrateArcherTo(ArcherZoneCastle destination)
+    {
+        if (destination == null || !IsOccupied || destination.IsOccupied) return;
+
+        // ── Move the archer instance to the destination spawnpoint ──
+        if (_archerInstance != null)
+        {
+            _archerInstance.transform.SetParent(destination._spawnpoint, worldPositionStays: false);
+            RectTransform rt = _archerInstance.GetComponent<RectTransform>();
+            if (rt != null) { rt.anchoredPosition = Vector2.zero; rt.localScale = Vector3.one; }
+            destination._archerInstance = _archerInstance;
+            _archerInstance = null;
+        }
+
+        // ── Transfer soldier reference ──
+        destination._stationedSoldier = _stationedSoldier;
+        if (_stationedSoldier != null)
+            _stationedSoldier.BecomeArcher(destination);   // update back-reference on soldier
+        _stationedSoldier = null;
+
+        // ── Update state ──
+        destination.IsOccupied = true;
+        IsOccupied = false;
+
+        destination.RefreshVisuals();
+        RefreshVisuals();
+
+        // Notify both parent slots so mutual-hide stays consistent.
+        _parentSlot?.NotifyOccupancyChanged();
+        destination._parentSlot?.NotifyOccupancyChanged();
+
+        Debug.Log($"[ArcherZoneCastle] MigrateArcherTo — archer moved from '{gameObject.name}' to '{destination.gameObject.name}'.");
+    }
+
     // ── Tab visibility ────────────────────────────────────────────
 
     public void SetArcherTabActive(bool active)

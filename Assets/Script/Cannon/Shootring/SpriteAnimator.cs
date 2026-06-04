@@ -268,4 +268,12 @@ public class SpriteAnimator : MonoBehaviour
             image.sprite = frames[0];
     }
 
+    private void OnDisable()
+    {
+        // When the GameObject is deactivated, Unity silently kills coroutines.
+        // Clear the routine reference so Play() starts fresh on re-enable,
+        // rather than thinking a coroutine is still running.
+        playRoutine = null;
+    }
+
 }

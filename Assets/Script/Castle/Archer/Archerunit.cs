@@ -866,6 +866,37 @@ public class ArcherUnit : MonoBehaviour
         EnterIdle();
     }
 
+    // ── Survive panel transitions ─────────────────────────────────
+    // When any ancestor GameObject is deactivated (e.g. going to village panel
+    // and CanvasGroup changes), Unity kills all running coroutines silently.
+    // OnDisable records what state we were in; OnEnable restores it so the
+    // animation and combat loop resume correctly.
+
+    private void OnDisable()
+    {
+        // Stop both animators cleanly so they don't fire stale callbacks.
+        if (idleAnimator != null) idleAnimator.ForceReset();
+        if (shootAnimator != null) shootAnimator.ForceReset();
+    }
+
+    private void OnEnable()
+    {
+        // Re-wire the canvas reference in case the grid was reparented.
+        _rootCanvas = GetComponentInParent<Canvas>();
+
+        if (_isShooting)
+        {
+            // Was mid-shoot when disabled — reset to idle so we don't
+            // get stuck with _isShooting = true forever.
+            _isShooting = false;
+            _cooldown = 0f;
+            _lockedTarget = null;
+        }
+
+        // Always restart idle so the animation is visually correct.
+        EnterIdle();
+    }
+
     // ── Update ────────────────────────────────────────────────────
 
     private void Update()

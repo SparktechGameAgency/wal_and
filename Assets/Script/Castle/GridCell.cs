@@ -165,6 +165,7 @@ public class GridCell : MonoBehaviour
     {
         if (target == null) return;
 
+        // ── Migrate cannons ───────────────────────────────────────
         foreach (var srcZone in GetComponentsInChildren<CastleUnitDropZone>(true))
         {
             if (!srcZone.HasUnit) continue;
@@ -173,6 +174,17 @@ public class GridCell : MonoBehaviour
             if (destZone == null || destZone.HasUnit) continue;
 
             srcZone.MigrateUnitTo(destZone);
+        }
+
+        // ── Migrate archers ───────────────────────────────────────
+        foreach (var srcArcher in GetComponentsInChildren<ArcherZoneCastle>(true))
+        {
+            if (!srcArcher.IsOccupied) continue;
+
+            ArcherZoneCastle destArcher = target.FindArcherZone();
+            if (destArcher == null || destArcher.IsOccupied) continue;
+
+            srcArcher.MigrateArcherTo(destArcher);
         }
     }
 
@@ -205,5 +217,15 @@ public class GridCell : MonoBehaviour
                 return zone;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Returns the ArcherZoneCastle on this cell's unit slot.
+    /// Used by TransferUnitSlotTo to migrate a stationed archer on expansion.
+    /// </summary>
+    public ArcherZoneCastle FindArcherZone()
+    {
+        if (_unitSlotInstance == null) return null;
+        return _unitSlotInstance.GetComponentInChildren<ArcherZoneCastle>(true);
     }
 }
