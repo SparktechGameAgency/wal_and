@@ -277,6 +277,13 @@ public class CastleGrid : MonoBehaviour
         {
             if (zone.HasUnit) { hasUnits = true; break; }
         }
+        if (!hasUnits)
+        {
+            foreach (var archer in belowCell.GetComponentsInChildren<ArcherZoneCastle>(true))
+            {
+                if (archer.IsOccupied) { hasUnits = true; break; }
+            }
+        }
         if (!hasUnits) return;
 
         GridCell newCell = _grid[row, col];
