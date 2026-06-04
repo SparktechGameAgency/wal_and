@@ -45,6 +45,40 @@ public class CastleBlockUnitSlot : MonoBehaviour
     public void RemoveArcher() => _archerZone?.RemoveArcher();
     public void RemoveAll() { RemoveCannon(); RemoveArcher(); }
 
+    /// <summary>
+    /// Called by CannonZone or ArcherZone whenever their occupancy changes.
+    /// If one zone is occupied, the other zone is hidden; if both are empty,
+    /// each zone follows normal tab-visibility rules.
+    /// </summary>
+    public void NotifyOccupancyChanged()
+    {
+        if (HasCannon)
+        {
+            // Cannon is placed — hide the archer zone entirely
+            if (_archerZone != null)
+                _archerZone.gameObject.SetActive(false);
+        }
+        else if (HasArcher)
+        {
+            // Archer is placed — hide the cannon zone entirely
+            if (_cannonZone != null)
+                _cannonZone.gameObject.SetActive(false);
+        }
+        else
+        {
+            // Both zones are empty — restore visibility based on current tab.
+            // Each zone's SetXxxTabActive call already handles show/hide,
+            // so we re-apply whichever tab is currently active by asking the
+            // zones to refresh without changing any tab state. The simplest
+            // safe approach is to re-activate each zone's GameObject so the
+            // tab controller can manage it normally on the next tab switch.
+            if (_cannonZone != null)
+                _cannonZone.gameObject.SetActive(true);
+            if (_archerZone != null)
+                _archerZone.gameObject.SetActive(true);
+        }
+    }
+
     /// <summary>Legacy compatibility — hides both zones in village mode.</summary>
     public void SetVillageMode(bool isVillage)
     {

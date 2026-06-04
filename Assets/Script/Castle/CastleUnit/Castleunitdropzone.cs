@@ -334,6 +334,9 @@ public class CastleUnitDropZone : MonoBehaviour,
         _removeButton?.transform.SetAsLastSibling();
 
         Debug.Log($"[DropZone] PlaceUnit — soldier shown. LinkedSlot={(LinkedExpansionSlot != null ? LinkedExpansionSlot.gameObject.name : "none")}");
+
+        // Hide the other zone now that this one is occupied.
+        _parentSlot?.NotifyOccupancyChanged();
     }
 
     /// <summary>
@@ -368,6 +371,9 @@ public class CastleUnitDropZone : MonoBehaviour,
             if (LinkedExpansionSlot != null)
                 LinkedExpansionSlot.gameObject.SetActive(true);
         }
+
+        // Zone is now empty while cannon is in the air — reveal the other zone.
+        _parentSlot?.NotifyOccupancyChanged();
     }
 
     /// <summary>
@@ -423,6 +429,9 @@ public class CastleUnitDropZone : MonoBehaviour,
             LinkedExpansionSlot.gameObject.SetActive(false);
             Debug.Log("[DropZone] ReattachUnit — soldier shown, expansion slot hidden.");
         }
+
+        // Hide the other zone now that this one is re-occupied.
+        _parentSlot?.NotifyOccupancyChanged();
     }
 
     /// <summary>
@@ -461,6 +470,9 @@ public class CastleUnitDropZone : MonoBehaviour,
                              "Expansion slot cannot be shown automatically.");
         }
         RefreshRemoveButton();
+
+        // Reveal the other zone now that this one is vacant.
+        _parentSlot?.NotifyOccupancyChanged();
     }
 
     /// <summary>
@@ -548,6 +560,9 @@ public class CastleUnitDropZone : MonoBehaviour,
         _removeButton?.transform.SetAsLastSibling();
 
         Debug.Log($"[DropZone] PlaceCannonFromPanel — placed '{cannonPrefab.name}' in {gameObject.name}");
+
+        // Hide the other zone now that this one is occupied.
+        _parentSlot?.NotifyOccupancyChanged();
     }
 
     /// <summary>
@@ -610,6 +625,10 @@ public class CastleUnitDropZone : MonoBehaviour,
 
         Debug.Log($"[DropZone] MigrateUnitTo — cannon moved from '{transform.parent?.name}' " +
                   $"to '{destination.transform.parent?.name}'.");
+
+        // Update mutual-hide for both slots.
+        _parentSlot?.NotifyOccupancyChanged();
+        destination._parentSlot?.NotifyOccupancyChanged();
     }
 
     /// <summary>
@@ -628,6 +647,16 @@ public class CastleUnitDropZone : MonoBehaviour,
     /// </summary>
     public void SetCannonTabActive(bool active)
     {
+        // If trying to activate but the sibling archer zone is occupied,
+        // keep this zone hidden — an archer already owns this block.
+        if (active && _parentSlot != null && _parentSlot.HasArcher)
+        {
+            _emptySlotZone?.SetActive(false);
+            SetInteractable(false);
+            RefreshRemoveButton();
+            return;
+        }
+
         if (HasUnit)
         {
             _emptySlotZone?.SetActive(false);
@@ -758,6 +787,9 @@ public class CastleUnitDropZone : MonoBehaviour,
         RefreshRemoveButton();
 
         Debug.Log($"[DropZone] RemoveCannonFromZone — zone '{gameObject.name}' is now empty.");
+
+        // Reveal the other zone now that cannon was removed.
+        _parentSlot?.NotifyOccupancyChanged();
     }
 
     /// <summary>Shows the RemoveButton only when a cannon is placed in this zone.</summary>

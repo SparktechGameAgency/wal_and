@@ -888,6 +888,9 @@ public class ArcherZoneCastle : MonoBehaviour,
 
         RefreshVisuals();
         Debug.Log($"[ArcherZoneCastle] Archer placed at {gameObject.name}.");
+
+        // Hide the cannon zone now that this block is occupied by an archer.
+        _parentSlot?.NotifyOccupancyChanged();
     }
 
     public void RemoveArcher()
@@ -902,14 +905,53 @@ public class ArcherZoneCastle : MonoBehaviour,
         IsOccupied = false;
         RefreshVisuals();
         Debug.Log($"[ArcherZoneCastle] Archer removed from {gameObject.name}.");
+
+        // Reveal the cannon zone now that this block is vacant.
+        _parentSlot?.NotifyOccupancyChanged();
     }
 
     // ── Tab visibility ────────────────────────────────────────────
 
     public void SetArcherTabActive(bool active)
     {
-        gameObject.SetActive(active);
-        if (active) RefreshVisuals();
+        // If trying to show this zone but the sibling cannon slot is occupied,
+        // keep it hidden — a cannon already owns this block.
+        if (active && _parentSlot != null && _parentSlot.HasCannon)
+        {
+            gameObject.SetActive(false);
+            return;
+        }
+
+        if (IsOccupied)
+        {
+            // Archer is placed — keep the GameObject active so the spawned
+            // archer unit stays visible (including in village mode). Only hide
+            // the interactive overlays (EmptySlotZone, highlight) that belong
+            // to the empty state.
+            gameObject.SetActive(true);
+            _emptySlotZone?.SetActive(false);
+            _highlight?.SetActive(false);
+            // Show RemoveButton only when the archer tab is open.
+            _removeButton?.gameObject.SetActive(active);
+            // Enable/disable interaction based on whether tab is open.
+            if (_button != null) _button.interactable = active;
+            if (_bg != null) _bg.raycastTarget = active;
+            CanvasGroup cg = GetComponent<CanvasGroup>();
+            if (cg != null) { cg.interactable = active; cg.blocksRaycasts = active; }
+        }
+        else
+        {
+            // Zone is empty — safe to fully deactivate when tab is off.
+            gameObject.SetActive(active);
+            if (active)
+            {
+                if (_button != null) _button.interactable = true;
+                if (_bg != null) _bg.raycastTarget = true;
+                CanvasGroup cg = GetComponent<CanvasGroup>();
+                if (cg != null) { cg.interactable = true; cg.blocksRaycasts = true; }
+                RefreshVisuals();
+            }
+        }
     }
 
     public static void SetArcherZonesVisible(bool visible)
