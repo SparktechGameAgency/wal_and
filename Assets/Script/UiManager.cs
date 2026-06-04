@@ -1694,7 +1694,20 @@ public class UIManager : MonoBehaviour
         });
 
         // ── Close / Back ─────────────────────────────────────────────────────
-        AddListener(closeArmyButton, () => GameManager.Instance.CloseCurrentPanel());
+        AddListener(closeArmyButton, () =>
+        {
+            if (ArcherZoneCastle.PendingArcherBuy)
+            {
+                // Came from clicking an ArcherZone — go back to Castle + Archer tab,
+                // not the Village panel.
+                ArcherZoneCastle.ClearPendingArcherBuy();
+                GameManager.Instance.OpenCastlePanelWithArcherTab();
+            }
+            else
+            {
+                GameManager.Instance.CloseCurrentPanel();
+            }
+        });
         AddListener(closeCannonButton, () => GameManager.Instance.CloseCurrentPanel());
         AddListener(closeSettingsButton, () => GameManager.Instance.CloseCurrentPanel());
         AddListener(closeHorseButton, () => GameManager.Instance.CloseCurrentPanel());

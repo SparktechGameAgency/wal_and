@@ -805,7 +805,7 @@ public class ArcherUnit : MonoBehaviour
     public Vector2 arrowSize = new Vector2(0f, 0f);
 
     [Header("Combat")]
-    public float detectionRadius = 250f;
+    public float detectionRadius;
     public float fireInterval = 1.8f;
     public float damage = 40f;
 

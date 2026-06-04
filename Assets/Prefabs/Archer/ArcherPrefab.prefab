@@ -33,11 +33,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 8124285727449785354}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 0.5, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_SizeDelta: {x: 50, y: 65}
+  m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &8216307653648610706
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -133,7 +133,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_SizeDelta: {x: 60, y: 85}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1262529699891385200
 MonoBehaviour:
@@ -151,8 +151,8 @@ MonoBehaviour:
   shootAnimator: {fileID: 2985108068079251864}
   arrowSpawner: {fileID: 2076670760778640382}
   arrowPrefab: {fileID: 3129242319754080387, guid: 168447bb5ffff1f449eecdd9a7f92b89, type: 3}
-  arrowSize: {x: 7, y: 40}
-  detectionRadius: 100
+  arrowSize: {x: 5, y: 25}
+  detectionRadius: 20
   fireInterval: 1.8
   damage: 30
   arcHeight: 2
@@ -191,11 +191,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 8124285727449785354}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 0.5, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_SizeDelta: {x: 50, y: 65}
+  m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &4729556913867485660
 CanvasRenderer:
   m_ObjectHideFlags: 0

@@ -65,6 +65,9 @@ public class EnemyUnit : MonoBehaviour
         // Normalise in case the designer set a non-unit vector
         if (moveDirection == Vector3.zero)
             moveDirection = Vector3.left;
+
+        // Rotate 180° on Y so the sprite faces left while moving left.
+        transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
     }
 
     private void OnEnable()

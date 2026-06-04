@@ -501,6 +501,15 @@ public class CastleTabController : MonoBehaviour
         Debug.Log($"[CastleTabController] Active tab → {tab}");
     }
 
+    /// <summary>
+    /// Resets the active tab back to None so the next OnEnable
+    /// always opens on the Expand tab. Call this before showing the Castle panel.
+    /// </summary>
+    public void ResetTab()
+    {
+        ActiveTab = CastleTab.None;
+    }
+
     // ── Internal ──────────────────────────────────────────────────
 
     private void ApplyTabVisuals(CastleTab tab)
