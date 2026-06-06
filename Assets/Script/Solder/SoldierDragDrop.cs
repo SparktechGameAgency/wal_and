@@ -1012,7 +1012,7 @@ public class SoldierDragDrop : MonoBehaviour,
         // Restore own visuals before reparenting (in case coming from dragon or horse).
         if (wasMounted || wasOnHorse)
         {
-            gameObject.SetActive(true);   // re-enable if disabled by horse mount
+            gameObject.SetActive(true);   // re-enable if disabled by dragon or horse mount
             ShowOwnVisuals();
         }
 
@@ -1132,10 +1132,10 @@ public class SoldierDragDrop : MonoBehaviour,
             return;
         }
 
-        // Not a horse/cannon drop — safe to restore alpha now.
-        _canvasGroup.alpha = 1f;
-
         // ── Dragon drop ───────────────────────────────────────────────────────
+        // Alpha is NOT restored before mount — DragonController.PerformMount
+        // calls HideOwnVisuals() AFTER ShowForSoldier() so the soldier is
+        // guaranteed to be hidden after all animator calls complete.
         bool seatFree = targetSeat == null || !targetSeat.IsOccupied;
 
         if (targetDC != null && targetSeat != null && seatFree)
@@ -1143,6 +1143,7 @@ public class SoldierDragDrop : MonoBehaviour,
             _mountHomeParent = _homeParent;
             _mountHomePos = _homeAnchoredPosition;
             targetDC.PerformMount(this, targetSeat);
+            return;
         }
         else if (targetSeat != null && targetSeat.IsOccupied)
         {
@@ -1151,6 +1152,7 @@ public class SoldierDragDrop : MonoBehaviour,
             if (currentRider != null && currentRider._isLocked)
             {
                 Debug.Log("[SoldierDragDrop] Swap blocked — current rider is Attached.");
+                _canvasGroup.alpha = 1f;
                 SnapBack();
             }
             else if (currentRider != null)
@@ -1160,14 +1162,18 @@ public class SoldierDragDrop : MonoBehaviour,
                 _mountHomePos = _homeAnchoredPosition;
                 currentRider.DismountFromDragon();
                 targetDC.PerformMount(this, targetSeat);
+                return;
             }
             else
             {
+                _canvasGroup.alpha = 1f;
                 SnapBack();
             }
         }
         else
         {
+            // No valid drop target — restore alpha and snap back.
+            _canvasGroup.alpha = 1f;
             SnapBack();
         }
     }
@@ -1336,7 +1342,11 @@ public class SoldierDragDrop : MonoBehaviour,
 
         RecordHome();
 
-        HideOwnVisuals();
+        // DO NOT call HideOwnVisuals() here.
+        // DragonController.PerformMount() calls it explicitly AFTER ShowForSoldier()
+        // so the hide runs last and is never overridden by the animator.
+        // (Calling it here caused alpha to be reset to 1 by SetState on the
+        // next frame, leaving the soldier visible on top of the dragon.)
         _animator?.SetState(AnimationState.RiderIdle);
 
         Debug.Log($"[SoldierDragDrop] '{name}' mounted inside '{dragonRoot.name}' " +
@@ -1364,6 +1374,7 @@ public class SoldierDragDrop : MonoBehaviour,
         {
             Debug.LogWarning("[SoldierDragDrop] DismountFromDragon: no mount home " +
                              "recorded — snapping to current home.");
+            gameObject.SetActive(true);
             ShowOwnVisuals();
             SnapBack();
             riderDragonDC?.PerformDismount();
@@ -1373,6 +1384,7 @@ public class SoldierDragDrop : MonoBehaviour,
         transform.SetParent(_mountHomeParent, worldPositionStays: false);
         _rect.anchoredPosition = _mountHomePos;
 
+        gameObject.SetActive(true);
         _controller?.ExitRidingState();
         _animator?.SetState(AnimationState.Idle);
         ShowOwnVisuals();
@@ -1422,7 +1434,7 @@ public class SoldierDragDrop : MonoBehaviour,
     // VISUAL SHOW / HIDE
     // ══════════════════════════════════════════════════════════════════════════
 
-    private void HideOwnVisuals()
+    public void HideOwnVisuals()
     {
         _canvasGroup.alpha = 0f;
         _canvasGroup.blocksRaycasts = true;

@@ -202,7 +202,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DragonRiderSeat
   seatOffset: {x: 0, y: 40}
-  riderVisualObject: {fileID: 5022927716492419678}
+  riderVisualObject: {fileID: 0}
 --- !u!222 &562926663528483463
 CanvasRenderer:
   m_ObjectHideFlags: 0
