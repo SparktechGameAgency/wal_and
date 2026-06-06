@@ -513,17 +513,8 @@ public class DragonController : MonoBehaviour,
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        // ── Rider lock check ──────────────────────────────────────────────────
-        // If a rider is mounted but NOT yet locked (Attached), block the drag.
-        if (_riderSeat != null && _riderSeat.IsOccupied)
-        {
-            var rider = _riderSeat.MountedSoldier;
-            if (rider == null || !rider.IsLocked)
-            {
-                Debug.Log("[DragonController] Drag blocked — rider not Attached yet.");
-                return;
-            }
-        }
+        // No lock check needed — the Detach button is the only way to dismount.
+        // The dragon can always be dragged freely (rider travels with it).
 
         _savedParent = _rt.parent;
         _savedSiblingIndex = _rt.GetSiblingIndex();
