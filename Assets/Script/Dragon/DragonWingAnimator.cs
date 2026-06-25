@@ -73,8 +73,10 @@ public class DragonWingAnimator : MonoBehaviour
     /// <summary>
     /// The two states the wing can be in.
     /// Matches DragonController.DragonState (Idle → WingState.Idle,
-    /// Flying → WingState.Fly). Dragging keeps whatever state the dragon
-    /// was in before, so the wing animation doesn't glitch mid-drag.
+    /// Flying → WingState.Fly). The dragon keeps flapping the Fly cycle while
+    /// breathing fire (the FireBreathFX particle does the visual work).
+    /// Dragging keeps whatever state the dragon was in before, so the wing
+    /// animation doesn't glitch mid-drag.
     /// </summary>
     public enum WingState { Idle, Fly }
 

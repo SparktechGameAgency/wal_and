@@ -1479,10 +1479,21 @@ public class InventoryPanel : MonoBehaviour
                     else list[i].Deselect();
                 }
             }
+            else if (slot == EquipmentSlot.Armor || slot == EquipmentSlot.Weapon)
+            {
+                // Auto-select the first item so the default soldier always
+                // spawns with armor and weapon equipped.
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (i == 0) list[i].Select();
+                    else list[i].Deselect();
+                }
+            }
             else
             {
-                // Armor, Helmet, Weapon — nothing selected by default.
-                // The preview player had these slots unequipped by ResetPanelForNextPurchase().
+                // Helmet — nothing selected by default.
+                // EnsureHelmetEquipped() in SoldierDragDrop auto-equips the
+                // correct helmet when the soldier mounts a horse.
                 foreach (var btn in list) btn.Deselect();
             }
         }

@@ -48,13 +48,12 @@ public class HorseRiderVisual : MonoBehaviour
 
     private void Awake()
     {
-        // Auto-find child Images by name so the Inspector wiring is optional
         if (faceImage == null) faceImage = FindChildImage("Face");
         if (armorImage == null) armorImage = FindChildImage("Armor");
         if (helmetImage == null) helmetImage = FindChildImage("Helmet");
         if (weaponImage == null) weaponImage = FindChildImage("Weapon");
 
-        HideRider();   // start hidden until a soldier mounts
+        HideRider();
     }
 
     private void Update()
@@ -64,6 +63,17 @@ public class HorseRiderVisual : MonoBehaviour
         float fps = FpsForState(_state);
         float dt = Time.deltaTime;
         BodyType bodyType = _equipment.CurrentBodyType;
+
+        // ── DIAGNOSTIC: log every ~60 frames so we can see runtime state ──────
+        bool doLog = (Time.frameCount % 60 == 0);
+        if (doLog)
+        {
+            LogLayerDiag("Face", faceImage, _equipment.GetEquipped(EquipmentSlot.Face), bodyType);
+            LogLayerDiag("Armor", armorImage, _equipment.GetEquipped(EquipmentSlot.Armor), bodyType);
+            LogLayerDiag("Helmet", helmetImage, _equipment.GetEquipped(EquipmentSlot.Helmet), bodyType);
+            LogLayerDiag("Weapon", weaponImage, _equipment.GetEquipped(EquipmentSlot.Weapon), bodyType);
+        }
+        // ── END DIAGNOSTIC ────────────────────────────────────────────────────
 
         TickLayer(ref _faceFrame, ref _faceTimer, faceImage,
                   _equipment.GetEquipped(EquipmentSlot.Face), bodyType, fps, dt);
@@ -80,16 +90,11 @@ public class HorseRiderVisual : MonoBehaviour
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Shows all four rider Images using the mounted soldier's equipped items.
-    /// Call this from HorseController.PerformMount() right after seat.MountSoldier().
-    /// </summary>
     public void ShowRider(CharacterEquipment equipment)
     {
         if (equipment == null)
         {
-            Debug.LogWarning("[HorseRiderVisual] ShowRider called with null equipment. " +
-                             "Ensure the soldier has a CharacterEquipment component.", this);
+            Debug.LogWarning("[HorseRiderVisual] ShowRider called with null equipment.", this);
             return;
         }
 
@@ -101,14 +106,9 @@ public class HorseRiderVisual : MonoBehaviour
         EnableLayer(helmetImage, true);
         EnableLayer(weaponImage, true);
 
-        // Start in HorseIdle and display frame 0 immediately
         SetRiderStateInternal(AnimationState.HorseIdle, force: true);
     }
 
-    /// <summary>
-    /// Hides all four rider Images.
-    /// Call this from HorseController.PerformDismount() before releasing the seat.
-    /// </summary>
     public void HideRider()
     {
         _active = false;
@@ -120,10 +120,6 @@ public class HorseRiderVisual : MonoBehaviour
         EnableLayer(weaponImage, false);
     }
 
-    /// <summary>
-    /// Switches the rider animation state and resets all layer frame counters.
-    /// Called by HorseController.SetState() whenever the horse changes state.
-    /// </summary>
     public void SetRiderState(AnimationState newState)
     {
         if (!_active || _equipment == null) return;
@@ -136,25 +132,21 @@ public class HorseRiderVisual : MonoBehaviour
     {
         if (!force && _state == newState) return;
 
+        Debug.Log($"[HorseRiderVisual] '{name}' SetRiderStateInternal: {_state} → {newState} (force={force})");
+
         _state = newState;
 
-        // Reset all counters
         _faceTimer = _armorTimer = _helmetTimer = _weaponTimer = 0f;
         _faceFrame = _armorFrame = _helmetFrame = _weaponFrame = 0;
 
         BodyType bodyType = _equipment.CurrentBodyType;
 
-        // Show frame 0 of the new state on every layer immediately
         ShowFirstFrame(faceImage, _equipment.GetEquipped(EquipmentSlot.Face), bodyType);
         ShowFirstFrame(armorImage, _equipment.GetEquipped(EquipmentSlot.Armor), bodyType);
         ShowFirstFrame(helmetImage, _equipment.GetEquipped(EquipmentSlot.Helmet), bodyType);
         ShowFirstFrame(weaponImage, _equipment.GetEquipped(EquipmentSlot.Weapon), bodyType);
     }
 
-    /// <summary>
-    /// Advances one body-part layer's timer and pushes the next sprite.
-    /// Dead state plays once and freezes on the last frame.
-    /// </summary>
     private void TickLayer(ref int frame, ref float timer, Image img,
                            EquipmentItem item, BodyType bodyType,
                            float fps, float dt)
@@ -162,19 +154,26 @@ public class HorseRiderVisual : MonoBehaviour
         if (img == null || item == null) return;
 
         Sprite[] sprites = item.GetSprites(_state, bodyType);
-        if (sprites == null || sprites.Length <= 1) return;  // static or missing
+        if (sprites == null || sprites.Length == 0) return;
+
+        if (!img.enabled) img.enabled = true;
+
+        // Single-frame — just ensure correct sprite is set, no timer needed
+        if (sprites.Length == 1)
+        {
+            img.sprite = sprites[0];
+            return;
+        }
 
         timer += dt;
         float frameDuration = 1f / fps;
         if (timer < frameDuration) return;
 
-        timer -= frameDuration;   // carry-over keeps speed accurate
+        timer -= frameDuration;
 
         if (_state == AnimationState.HorseDead)
         {
-            // One-shot: advance until the last frame, then freeze
-            if (frame < sprites.Length - 1)
-                frame++;
+            if (frame < sprites.Length - 1) frame++;
         }
         else
         {
@@ -184,23 +183,53 @@ public class HorseRiderVisual : MonoBehaviour
         img.sprite = sprites[frame];
     }
 
-    /// <summary>Sets an Image to frame 0 of the current state immediately.</summary>
     private void ShowFirstFrame(Image img, EquipmentItem item, BodyType bodyType)
     {
         if (img == null || item == null) return;
 
         Sprite[] sprites = item.GetSprites(_state, bodyType);
-
         if (sprites != null && sprites.Length > 0)
         {
             img.sprite = sprites[0];
             img.enabled = true;
         }
-        else
-        {
-            img.enabled = false;   // no sprite for this slot in this state
-        }
     }
+
+    // ── Diagnostic helper ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Logs one line per layer per ~second so you can see exactly what
+    /// GetSprites() is returning at runtime.
+    ///
+    /// READ THE LOG LIKE THIS:
+    ///   frames=1  → GetSprites returned 1 sprite  (idle fallback being served)
+    ///   frames=8  → GetSprites returned 8 sprites (run array being served — correct)
+    ///   frames=-1 → GetSprites returned null/empty (item not equipped or array missing)
+    ///   enabled=False → the Image component is disabled (invisible even if animated)
+    ///   item=None → slot is not equipped at all
+    /// </summary>
+    private void LogLayerDiag(string slotName, Image img, EquipmentItem item, BodyType bodyType)
+    {
+        if (item == null)
+        {
+            Debug.Log($"[RiderDiag] {slotName}: item=None  state={_state}  active={_active}");
+            return;
+        }
+
+        Sprite[] sprites = item.GetSprites(_state, bodyType);
+        int frameCount = sprites?.Length ?? -1;
+
+        // Also check what horseRunSprites looks like directly on the item
+        // so we can see if the array is populated regardless of fallback logic
+        int directRunCount = item.horseRunSprites?.Length ?? -1;
+
+        Debug.Log($"[RiderDiag] {slotName}: item='{item.itemName}'  state={_state}  " +
+                  $"bodyType={bodyType}  frames={frameCount}  " +
+                  $"directRunSprites={directRunCount}  " +
+                  $"imgEnabled={img?.enabled}  imgNull={img == null}");
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static void EnableLayer(Image img, bool enabled)
     {
@@ -212,15 +241,12 @@ public class HorseRiderVisual : MonoBehaviour
         Transform child = transform.Find(childName);
         if (child == null)
         {
-            Debug.LogWarning($"[HorseRiderVisual] '{name}': child '{childName}' not found. " +
-                             "Create a child GameObject with that name and an Image component.", this);
+            Debug.LogWarning($"[HorseRiderVisual] '{name}': child '{childName}' not found.", this);
             return null;
         }
-
         Image img = child.GetComponent<Image>();
         if (img == null)
-            Debug.LogWarning($"[HorseRiderVisual] '{name}': child '{childName}' " +
-                             "has no Image component.", this);
+            Debug.LogWarning($"[HorseRiderVisual] '{name}': child '{childName}' has no Image.", this);
         return img;
     }
 
@@ -229,6 +255,6 @@ public class HorseRiderVisual : MonoBehaviour
         AnimationState.HorseRun => horseRunFps,
         AnimationState.HorseFight => horseFightFps,
         AnimationState.HorseDead => horseDeadFps,
-        _ => horseIdleFps,   // HorseIdle + anything else
+        _ => horseIdleFps,
     };
 }

@@ -83,7 +83,19 @@ public class HorseController : MonoBehaviour, IDropHandler
         if (saddleImage != null && saddleAnimSO != null)
             ApplyFrame(ref _saddleFrame, saddleImage, saddleAnimSO);
 
-        riderVisual?.HideRider();
+        // FIX C — RACE CONDITION:
+        // HorseWalkZone.OnDrop does Instantiate(...) → PerformMount(transferSoldier)
+        // synchronously in the same call. Awake() runs immediately on Instantiate,
+        // but Start() is deferred by Unity until just before the next Update pass —
+        // still the SAME frame, but AFTER PerformMount() already ran and called
+        // riderVisual.ShowRider() to enable the 4 seat Images.
+        // Without this guard, Start() unconditionally called riderVisual.HideRider()
+        // right after, silently disabling the Face/Helmet/Armor/Weapon Images that
+        // PerformMount had just turned on — this is the "rider images get unchecked
+        // when dragging the mounted horse into the walk zone" bug.
+        // Only hide the rider here if nothing mounted between Instantiate and Start.
+        if (seat == null || !seat.IsOccupied)
+            riderVisual?.HideRider();
     }
 
     private void Update()

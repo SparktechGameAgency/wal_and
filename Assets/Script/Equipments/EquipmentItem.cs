@@ -353,6 +353,21 @@ public class EquipmentItem : ScriptableObject
         }
 
         // ── Horse states ──────────────────────────────────────────────────────
+        //
+        // FALLBACK RULE: top-level horse arrays (e.g. horseRunSprites) always
+        // take priority over a variant's idle arrays.  The old order put
+        // variant?.horseIdleSprites before horseRunSprites, so an armor variant
+        // with a 1-frame horseIdleSprites silently blocked the 8-frame
+        // horseRunSprites from ever being used.
+        //
+        // Correct priority for every horse state:
+        //   1. variant horse-state sprites   (most specific)
+        //   2. top-level horse-state sprites (filled for this state)
+        //   3. variant horseIdleSprites      (variant idle fallback)
+        //   4. top-level horseIdleSprites    (top-level idle fallback)
+        //   5. variant idleSprites           (on-foot idle — last resort)
+        //   6. top-level idleSprites         (absolute last resort)
+
         if (state == AnimationState.HorseIdle)
             return FirstNonEmpty(
                 variant?.horseIdleSprites,
@@ -362,26 +377,26 @@ public class EquipmentItem : ScriptableObject
 
         if (state == AnimationState.HorseRun)
             return FirstNonEmpty(
-                variant?.horseRunSprites,
-                horseRunSprites,
-                variant?.horseIdleSprites,
-                horseIdleSprites,
+                variant?.horseRunSprites,   // variant run (most specific)
+                horseRunSprites,            // top-level run  ← was being skipped before
+                variant?.horseIdleSprites,  // variant idle fallback
+                horseIdleSprites,           // top-level idle fallback
                 variant?.idleSprites,
                 idleSprites);
 
         if (state == AnimationState.HorseFight)
             return FirstNonEmpty(
-                variant?.horseFightSprites,
-                horseFightSprites,
-                variant?.horseIdleSprites,
-                horseIdleSprites,
+                variant?.horseFightSprites, // variant fight (most specific)
+                horseFightSprites,          // top-level fight
+                variant?.horseIdleSprites,  // variant idle fallback
+                horseIdleSprites,           // top-level idle fallback
                 variant?.idleSprites,
                 idleSprites);
 
         if (state == AnimationState.HorseDead)
             return FirstNonEmpty(
-                variant?.horseDeadSprites,
-                horseDeadSprites,
+                variant?.horseDeadSprites,  // variant dead (most specific)
+                horseDeadSprites,           // top-level dead
                 variant?.idleSprites,
                 idleSprites);
 
@@ -407,17 +422,17 @@ public class EquipmentItem : ScriptableObject
         {
             return state switch
             {
-                AnimationState.Walk  => FirstNonEmpty(variant.walkSprites,  walkSprites),
+                AnimationState.Walk => FirstNonEmpty(variant.walkSprites, walkSprites),
                 AnimationState.Death => FirstNonEmpty(variant.deathSprites, deathSprites),
-                _                    => FirstNonEmpty(variant.idleSprites,  idleSprites)
+                _ => FirstNonEmpty(variant.idleSprites, idleSprites)
             };
         }
 
         return state switch
         {
-            AnimationState.Walk  => walkSprites,
+            AnimationState.Walk => walkSprites,
             AnimationState.Death => deathSprites,
-            _                    => idleSprites
+            _ => idleSprites
         };
     }
 

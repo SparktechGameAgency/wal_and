@@ -1,5 +1,40 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &377710874837414589
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7245393432453650509}
+  m_Layer: 0
+  m_Name: FirePoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &7245393432453650509
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 377710874837414589}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3778513770520249348}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 9.1, y: -61.9}
+  m_SizeDelta: {x: 30, y: 30}
+  m_Pivot: {x: 0, y: 1}
 --- !u!1 &883845994202237425
 GameObject:
   m_ObjectHideFlags: 0
@@ -256,6 +291,7 @@ GameObject:
   - component: {fileID: 147051859977637429}
   - component: {fileID: 938728460706534895}
   - component: {fileID: 6620568405412943515}
+  - component: {fileID: 8143178699912349805}
   m_Layer: 0
   m_Name: DragonRide
   m_TagString: Untagged
@@ -278,6 +314,7 @@ RectTransform:
   - {fileID: 4425901914717966699}
   - {fileID: 3116748028220189700}
   - {fileID: 6320856626312691430}
+  - {fileID: 7245393432453650509}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
@@ -320,6 +357,7 @@ MonoBehaviour:
   dragonData: {fileID: 11400000, guid: fe97ab483b582e24b8a047ba34ffaf25, type: 2}
   rootCanvas: {fileID: 0}
   spriteDefaultFacesLeft: 1
+  fireBreath: {fileID: 8143178699912349805}
   homeSlot: {fileID: 0}
 --- !u!114 &147051859977637429
 MonoBehaviour:
@@ -392,6 +430,33 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 9c8010c677dccba46a6f324783b57a7c, type: 3}
   - {fileID: 21300000, guid: 23047b1da20798d488c359e8c0f97b04, type: 3}
   flyFps: 10
+--- !u!114 &8143178699912349805
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5747055853561432504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e564464a4598b64caeabdeb09b5eb64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DragonFireBreath
+  rootCanvas: {fileID: 0}
+  firePoint: {fileID: 7245393432453650509}
+  fireSprite: {fileID: 0}
+  emissionRate: 90
+  lifetimeMin: 0.7
+  lifetimeMax: 0.9
+  speedMin: 800
+  speedMax: 600
+  coneHalfAngle: 10
+  sizeStart: 60
+  sizeEnd: 30
+  colorTip: {r: 1, g: 0.92, b: 0.2, a: 1}
+  colorMid: {r: 1, g: 0.35, b: 0.05, a: 1}
+  colorBase: {r: 0.6, g: 0.05, b: 0, a: 1}
+  poolSize: 80
 --- !u!1 &5861220122828285455
 GameObject:
   m_ObjectHideFlags: 0

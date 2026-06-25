@@ -89,8 +89,10 @@ public class DragonBodyAnimator : MonoBehaviour
     /// <summary>
     /// The two states the body can be in.
     /// Matches DragonController.DragonState (Idle → BodyState.Idle,
-    /// Flying → BodyState.Fly). Dragging keeps whatever state the dragon
-    /// was in before, so the body animation doesn't glitch mid-drag.
+    /// Flying → BodyState.Fly). The dragon keeps playing Fly while breathing
+    /// fire (the FireBreathFX particle does the visual work). Dragging keeps
+    /// whatever state the dragon was in before, so the body animation doesn't
+    /// glitch mid-drag.
     /// </summary>
     public enum BodyState { Idle, Fly }
 
