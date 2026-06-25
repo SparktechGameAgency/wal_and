@@ -520,6 +520,9 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
 
         if (_currentHorse != null)
         {
+            // Eject any mounted soldier before destroying so it is not
+            // destroyed along with the horse GameObject.
+            _currentHorse.EjectRiderBeforeDestroy();
             Destroy(_currentHorse.gameObject);
             _currentHorse = null;
             _currentHorseRT = null;
@@ -609,6 +612,9 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
         HorseData data = _currentHorse.Data;
         int idx = _currentInventoryIndex;
 
+        // Eject any mounted soldier before destroying so it is not
+        // destroyed along with the horse GameObject.
+        _currentHorse.EjectRiderBeforeDestroy();
         Destroy(_currentHorse.gameObject);
         _currentHorse = null;
         _currentHorseRT = null;

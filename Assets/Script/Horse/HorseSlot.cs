@@ -1953,6 +1953,17 @@ public class HorseSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
 
         _isUpgrading = false;
         HorseData unequipped = _horse.Data;
+
+        // ── Eject any mounted soldier BEFORE destroying the horse ─────────────
+        // A soldier parented inside SoldierSeat is a child of _horse.gameObject.
+        // Calling Destroy(_horse.gameObject) without ejecting first would also
+        // destroy the soldier, removing it from the game permanently.
+        // EjectRiderBeforeDestroy() reparents the soldier back to its pre-mount
+        // home (WalkZone parent) and re-enables it so it survives the destroy.
+        // This mirrors the same fix already present in HorseDragHandler.OnEndDrag.
+        _horse.EjectRiderBeforeDestroy();
+        // ─────────────────────────────────────────────────────────────────────
+
         Destroy(_horse.gameObject);
         _horse = null;
         _inventoryIndex = -1;
