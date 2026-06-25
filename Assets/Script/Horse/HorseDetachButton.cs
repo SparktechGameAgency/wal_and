@@ -18,17 +18,17 @@ using UnityEngine.UI;
 [RequireComponent(typeof(CanvasGroup))]
 public class HorseDetachButton : MonoBehaviour
 {
-    private Button _button;
+    private Button      _button;
     private CanvasGroup _canvasGroup;
-    private HorseArea _horseArea;
+    private HorseArea   _horseArea;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void Awake()
     {
-        _button = GetComponent<Button>();
+        _button      = GetComponent<Button>();
         _canvasGroup = GetComponent<CanvasGroup>();
-        _horseArea = GetComponentInParent<HorseArea>();
+        _horseArea   = GetComponentInParent<HorseArea>();
 
         if (_horseArea == null)
             Debug.LogError("[HorseDetachButton] HorseArea not found in parents. " +
@@ -83,8 +83,8 @@ public class HorseDetachButton : MonoBehaviour
 
     private void SetVisible(bool visible)
     {
-        _canvasGroup.alpha = visible ? 1f : 0f;
-        _canvasGroup.interactable = visible;
+        _canvasGroup.alpha          = visible ? 1f : 0f;
+        _canvasGroup.interactable   = visible;
         _canvasGroup.blocksRaycasts = visible;
     }
 }

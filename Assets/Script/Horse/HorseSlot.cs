@@ -1827,12 +1827,24 @@ public class HorseSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
             HorseData displaced = CurrentData;
             int displacedIdx = _inventoryIndex;
 
+            // Extract any soldier from the dragged horse BEFORE Equip() destroys
+            // the old prefab instance. The soldier is re-mounted onto the new
+            // slot horse instance that Equip() creates below.
+            HorseController dragHC = eventData.pointerDrag.GetComponent<HorseController>();
+            SoldierDragDrop transferSoldier = dragHC != null
+                ? dragHC.ExtractRiderForTransfer()
+                : null;
+
             // Notify zone its horse is leaving (clears _currentHorse reference)
             zoneOwner.Zone.NotifyHorseLeft();
 
-            // Accept the walk-zone horse into this slot
+            // Accept the walk-zone horse into this slot (creates new prefab instance)
             drag.RegisterSuccessfulDrop();
             Equip(drag.horseData, drag.inventoryIndex >= 0 ? drag.inventoryIndex : _inventoryIndex);
+
+            // Re-mount the soldier onto the freshly spawned slot horse
+            if (transferSoldier != null && _horse != null)
+                _horse.PerformMount(transferSoldier);
 
             // Send the displaced slot horse to the walk zone
             zoneOwner.Zone.SpawnWalkingHorse(displaced, displacedIdx);
@@ -1844,10 +1856,22 @@ public class HorseSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
         // ── WALK-ZONE HORSE → EMPTY SLOT: simple move ─────────────────────────
         if (comesFromZone && !IsOccupied)
         {
+            // Extract any soldier from the dragged horse BEFORE Equip() destroys
+            // the old prefab instance.
+            HorseController dragHC = eventData.pointerDrag.GetComponent<HorseController>();
+            SoldierDragDrop transferSoldier = dragHC != null
+                ? dragHC.ExtractRiderForTransfer()
+                : null;
+
             zoneOwner.Zone.NotifyHorseLeft();
             drag.RegisterSuccessfulDrop();
             int idx = drag.inventoryIndex >= 0 ? drag.inventoryIndex : _inventoryIndex;
             Equip(drag.horseData, idx);
+
+            // Re-mount the soldier onto the freshly spawned slot horse
+            if (transferSoldier != null && _horse != null)
+                _horse.PerformMount(transferSoldier);
+
             SetHighlight(false);
             return;
         }

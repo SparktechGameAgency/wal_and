@@ -814,9 +814,14 @@ public class SoldierDragDrop : MonoBehaviour,
     /// </summary>
     public void ReturnHomeFromDestroyedHorse()
     {
-        if (_currentHorseSeat == null) return;   // not on this horse — nothing to do
+        // Guard: only proceed if this soldier was actually on a horse.
+        // _currentHorseSeat may already be null if ClearHorseSeatForTransfer()
+        // was called before this (e.g. during a slot→walkzone transfer).
+        // Use _mountHorseHomeParent as the secondary signal that a mount happened.
+        bool wasMounted = _currentHorseSeat != null || _mountHorseHomeParent != null;
+        if (!wasMounted) return;
 
-        // Clear the reference without calling back into the dying seat.
+        // Clear the seat reference without calling back into the dying seat.
         _currentHorseSeat = null;
 
         if (_mountHorseHomeParent == null)
