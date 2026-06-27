@@ -89,6 +89,7 @@ GameObject:
   - component: {fileID: 3685522165631226223}
   - component: {fileID: -2884375400678039210}
   - component: {fileID: 2871333129892882450}
+  - component: {fileID: -6048340177546720015}
   m_Layer: 0
   m_Name: WhiteHorsePrefab
   m_TagString: Untagged
@@ -172,6 +173,7 @@ MonoBehaviour:
   saddleImage: {fileID: 0}
   seat: {fileID: 0}
   riderVisual: {fileID: 0}
+  externallyControlled: 0
 --- !u!114 &-2884375400678039210
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -200,6 +202,25 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &-6048340177546720015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2288478195812368321}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e8b9fcd13b3500469fd51336370e1f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HorseCombat
+  detectionInterval: 0.25
+  detectionRadius: 400
+  attackRange: 60
+  damagePerHit: 20
+  attackInterval: 0.8
+  chargeSpeed: 120
+  useWorldSpace: 0
 --- !u!1 &2535342329782613743
 GameObject:
   m_ObjectHideFlags: 0
