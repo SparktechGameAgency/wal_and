@@ -26,14 +26,14 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 0901638959a31994598524c975747810, type: 3}
   idleFPS: 6
   runSprites:
-  - {fileID: 21300000, guid: 526f1987d1987de4fbab6c4c7cc646e7, type: 3}
-  - {fileID: 21300000, guid: d8d019f089a159740921b8c705697e0b, type: 3}
-  - {fileID: 21300000, guid: 589fa14708f9a454094e6535d06cf4bb, type: 3}
-  - {fileID: 21300000, guid: c10f6cb4f00ee1c45964e8107c1477ce, type: 3}
-  - {fileID: 21300000, guid: e948cfd4e0eefdf468eebcc43ead1156, type: 3}
-  - {fileID: 21300000, guid: 0775e2a6b209aac4aa8253be57805c25, type: 3}
-  - {fileID: 21300000, guid: f682f5b1dfc8d1146b686b6899dad543, type: 3}
-  - {fileID: 21300000, guid: b60be7db3c565504ca86eabc086922bf, type: 3}
+  - {fileID: -5067994137907472822, guid: 526f1987d1987de4fbab6c4c7cc646e7, type: 3}
+  - {fileID: 5021313383259057884, guid: d8d019f089a159740921b8c705697e0b, type: 3}
+  - {fileID: 3330183709000475363, guid: 589fa14708f9a454094e6535d06cf4bb, type: 3}
+  - {fileID: 8179833802291133144, guid: c10f6cb4f00ee1c45964e8107c1477ce, type: 3}
+  - {fileID: -3073735890678987902, guid: e948cfd4e0eefdf468eebcc43ead1156, type: 3}
+  - {fileID: -7127711079904208775, guid: 0775e2a6b209aac4aa8253be57805c25, type: 3}
+  - {fileID: 8233065023467826110, guid: f682f5b1dfc8d1146b686b6899dad543, type: 3}
+  - {fileID: -2783837999975902886, guid: b60be7db3c565504ca86eabc086922bf, type: 3}
   runFPS: 10
   runCyclesBeforeIdle: 0
   attackSprites:
