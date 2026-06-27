@@ -457,4 +457,36 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
             ? new Color(0.4f, 1f, 0.4f, 0.35f)
             : new Color(1f, 1f, 1f, 0f);
     }
+
+    public void ReRegisterHorse(HorseController hc, int inventoryIndex = -1)
+    {
+        if (hc == null) return;
+
+        // Guard: don't double-add
+        foreach (var existing in _horses)
+            if (existing.controller == hc) return;
+
+        RectTransform rt = hc.GetComponent<RectTransform>();
+
+        WalkZoneOwner owner = hc.GetComponent<WalkZoneOwner>();
+        if (owner == null)
+            owner = hc.gameObject.AddComponent<WalkZoneOwner>();
+        owner.Zone = this;
+
+        var entry = new WalkingHorse
+        {
+            controller = hc,
+            rectTransform = rt,
+            inventoryIndex = inventoryIndex,
+            moveDir = 1f,
+            owner = owner
+        };
+
+        _horses.Add(entry);
+        hc.ExternallyControlled = true;
+        entry.cycleCoroutine = StartCoroutine(WalkCycleRoutine(entry));
+
+        Debug.Log($"[HorseWalkZone] '{hc.name}' re-registered after combat. " +
+                  $"Zone now holds {_horses.Count} horse(s).");
+    }
 }

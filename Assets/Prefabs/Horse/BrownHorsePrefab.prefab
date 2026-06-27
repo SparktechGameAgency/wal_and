@@ -313,6 +313,7 @@ GameObject:
   - component: {fileID: 3840214469231622611}
   - component: {fileID: 2787059261075091613}
   - component: {fileID: 2653511656055626205}
+  - component: {fileID: 553443991138501788}
   m_Layer: 0
   m_Name: BrownHorsePrefab
   m_TagString: Untagged
@@ -396,6 +397,7 @@ MonoBehaviour:
   saddleImage: {fileID: 0}
   seat: {fileID: 6573962539681689369}
   riderVisual: {fileID: 5523902552591046757}
+  externallyControlled: 0
 --- !u!114 &2787059261075091613
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -424,6 +426,27 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &553443991138501788
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7692853186648341707}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e8b9fcd13b3500469fd51336370e1f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HorseCombat
+  detectionInterval: 0.25
+  detectionRadius: 400
+  attackRange: 60
+  damagePerHit: 20
+  attackInterval: 0.8
+  chargeSpeed: 120
+  ownerZone: {fileID: 0}
+  useWorldSpace: 0
+  rootCanvas: {fileID: 0}
 --- !u!1 &8263163475656784464
 GameObject:
   m_ObjectHideFlags: 0
