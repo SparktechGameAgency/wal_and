@@ -1,385 +1,5 @@
-//using UnityEngine;
-//using UnityEngine.EventSystems;
-//using UnityEngine.UI;
-
-///// <summary>
-///// HorseWalkZone
-/////
-///// Attach to HorseWall. Requires an Image with Raycast Target = ON.
-/////
-///// ── Drop behaviour ────────────────────────────────────────────────────────
-/////   Slot horse → zone              : horse walks left↔right, then idles.
-/////   Walk-zone horse → zone (re-drop): ignored.
-/////   Walk-zone horse → occupied slot : HorseSlot.OnDrop calls SpawnWalkingHorse
-/////                                     to place the displaced slot horse here.
-/////
-///// ── Equip button recall ───────────────────────────────────────────────────
-/////   HorsePanelManager calls RecallToSlot when the player presses Equip while
-/////   the horse is already in the walk zone, so no duplicate is spawned.
-/////
-///// ── Movement + Flip ───────────────────────────────────────────────────────
-/////   While in the Run phase the horse moves horizontally across the zone at
-/////   walkSpeed (UI units/sec). When it hits a zone edge it flips (localScale.x
-/////   negated) and reverses direction. The horse stands still during Idle.
-///// </summary>
-//public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPointerExitHandler
-//{
-//    [Header("Spawn")]
-//    [Tooltip("Child RectTransform where the horse is placed. Leave empty to use this transform.")]
-//    [SerializeField] private RectTransform spawnPoint;
-
-//    [Header("Highlight (optional)")]
-//    [Tooltip("Assign this zone's Image. Tinted green while a slot horse is dragged over it.")]
-//    [SerializeField] private Image zoneHighlight;
-
-//    [Header("Walk Cycle Timing")]
-//    [Tooltip("Seconds the horse stands idle before breaking into a run.")]
-//    [SerializeField] private float idleDuration = 3f;
-
-//    [Tooltip("Seconds the horse runs before returning to idle.")]
-//    [SerializeField] private float runDuration = 4f;
-
-//    [Header("Movement")]
-//    [Tooltip("How fast the horse moves across the zone while running (UI units / second).")]
-//    [SerializeField] private float walkSpeed = 80f;
-
-//    [Tooltip("FALLBACK: If the zone RectTransform width cannot be read at runtime (common with\n" +
-//             "Layout Groups), set this to the zone's pixel width manually.\n" +
-//             "Leave 0 to auto-detect from RectTransform.")]
-//    [SerializeField] private float zoneWidthOverride = 0f;
-
-//    // ── State ─────────────────────────────────────────────────────────────────
-
-//    private HorseController _currentHorse;
-//    private RectTransform _currentHorseRT;
-//    private int _currentInventoryIndex = -1;
-//    private Coroutine _walkCycleCoroutine;
-
-//    /// <summary>+1 = moving right, -1 = moving left.</summary>
-//    private float _moveDir = 1f;
-
-//    public bool HasHorse => _currentHorse != null;
-//    public int CurrentInventoryIndex => _currentInventoryIndex;
-//    public HorseData CurrentHorseData => _currentHorse?.Data;
-
-//    // ── IDropHandler ──────────────────────────────────────────────────────────
-
-//    public void OnDrop(PointerEventData eventData)
-//    {
-//        HorseDragHandler drag = eventData.pointerDrag?.GetComponent<HorseDragHandler>();
-//        if (drag == null || drag.horseData == null) return;
-
-//        // Walk-zone horse re-dropped onto the zone — ignore
-//        if (eventData.pointerDrag.GetComponent<WalkZoneOwner>() != null) return;
-
-//        // ── SLOT HORSE → OCCUPIED WALK ZONE: swap ─────────────────────────────
-//        if (HasHorse && drag.ownerSlot != null)
-//        {
-//            HorseSlot sourceSlot = drag.ownerSlot;
-//            HorseData zoneData = CurrentHorseData;
-//            int zoneIdx = _currentInventoryIndex;
-
-//            sourceSlot.ClearHorseRef();
-//            drag.RegisterSuccessfulDrop();
-//            SpawnWalkingHorse(drag.horseData, drag.inventoryIndex);
-//            sourceSlot.Equip(zoneData, zoneIdx);
-
-//            SetHighlight(false);
-//            return;
-//        }
-
-//        // ── SLOT HORSE → EMPTY WALK ZONE: simple move ─────────────────────────
-//        drag.RegisterSuccessfulDrop();
-//        drag.ownerSlot?.ClearHorseRef();
-//        SpawnWalkingHorse(drag.horseData, drag.inventoryIndex);
-//        SetHighlight(false);
-//    }
-
-//    // ── Hover highlight ───────────────────────────────────────────────────────
-
-//    public void OnPointerEnter(PointerEventData eventData)
-//    {
-//        if (eventData.pointerDrag == null) return;
-//        if (eventData.pointerDrag.GetComponent<WalkZoneOwner>() != null) return;
-//        if (eventData.pointerDrag.GetComponent<HorseDragHandler>() == null) return;
-//        SetHighlight(true);
-//    }
-
-//    public void OnPointerExit(PointerEventData eventData) => SetHighlight(false);
-
-//    // ── Public API ────────────────────────────────────────────────────────────
-
-//    /// <summary>
-//    /// Spawns (or replaces) a horse in this zone and starts the walk-cycle coroutine.
-//    /// </summary>
-//    public void SpawnWalkingHorse(HorseData data, int inventoryIndex = -1)
-//    {
-//        if (data.prefab == null)
-//        {
-//            Debug.LogError($"[HorseWalkZone] '{data.horseName}' has no prefab assigned!");
-//            return;
-//        }
-
-//        // Stop any running cycle before replacing the horse
-//        if (_walkCycleCoroutine != null)
-//        {
-//            StopCoroutine(_walkCycleCoroutine);
-//            _walkCycleCoroutine = null;
-//        }
-
-//        if (_currentHorse != null)
-//        {
-//            Destroy(_currentHorse.gameObject);
-//            _currentHorse = null;
-//            _currentHorseRT = null;
-//        }
-
-//        _currentInventoryIndex = inventoryIndex;
-//        _moveDir = 1f;
-
-//        Transform parent = spawnPoint != null ? spawnPoint : transform;
-//        GameObject go = Instantiate(data.prefab, parent);
-
-//        // ── Set up the RectTransform FIRST, then force Canvas layout ──────────
-//        // ForceUpdateCanvases must come AFTER sizeDelta is set, not before.
-//        // If called before, the Canvas computes bounds with the wrong (or default)
-//        // size and zoneRT.rect.width can remain 0 when MoveHorse() reads it.
-//        RectTransform rt = go.GetComponent<RectTransform>();
-//        if (rt != null)
-//        {
-//            rt.anchoredPosition = Vector2.zero;
-//            rt.localScale = Vector3.one;
-//            RectTransform prefabRt = data.prefab.GetComponent<RectTransform>();
-//            if (prefabRt != null) rt.sizeDelta = prefabRt.sizeDelta;
-//        }
-
-//        // Force the Canvas to recompute ALL layout NOW so rect.width is valid
-//        // when WalkCycleRoutine runs on the very next frame.
-//        Canvas.ForceUpdateCanvases();
-
-//        // Also force the zone RT specifically — needed when the zone uses a
-//        // LayoutGroup (HorizontalLayoutGroup, VerticalLayoutGroup, etc.) because
-//        // those are rebuilt separately from the general canvas pass.
-//        RectTransform zoneRT = spawnPoint != null ? spawnPoint : GetComponent<RectTransform>();
-//        LayoutRebuilder.ForceRebuildLayoutImmediate(zoneRT);
-//        // ──────────────────────────────────────────────────────────────────────
-
-//        _currentHorse = go.GetComponent<HorseController>();
-//        _currentHorseRT = rt;
-
-//        if (_currentHorse != null)
-//        {
-//            _currentHorse.Setup(data);
-//            _walkCycleCoroutine = StartCoroutine(WalkCycleRoutine());
-//        }
-//        else
-//        {
-//            Debug.LogWarning($"[HorseWalkZone] Prefab '{data.horseName}' has no HorseController!");
-//        }
-
-//        // Make this horse draggable back to a slot
-//        HorseDragHandler drag = go.GetComponent<HorseDragHandler>();
-//        if (drag != null)
-//        {
-//            drag.horseData = data;
-//            drag.destroyOnSuccessfulDrop = true;
-//            drag.ownerSlot = null;
-//            drag.inventoryIndex = inventoryIndex;
-//            drag.onRemovedFromSlot = null;
-//        }
-//        else
-//        {
-//            Debug.LogWarning($"[HorseWalkZone] Prefab '{data.horseName}' has no HorseDragHandler — " +
-//                             "add it to the prefab so the horse can be dragged back to a slot.");
-//        }
-
-//        WalkZoneOwner owner = go.GetComponent<WalkZoneOwner>() ?? go.AddComponent<WalkZoneOwner>();
-//        owner.Zone = this;
-
-//        Debug.Log($"[HorseWalkZone] Spawned '{data.horseName}' (idx={inventoryIndex}).");
-//    }
-
-//    /// <summary>
-//    /// Moves the horse from the walk zone directly into a slot.
-//    /// Returns true if a horse was recalled, false if the zone was empty.
-//    /// </summary>
-//    public bool RecallToSlot(HorseSlot targetSlot)
-//    {
-//        if (!HasHorse || targetSlot == null) return false;
-
-//        if (_walkCycleCoroutine != null)
-//        {
-//            StopCoroutine(_walkCycleCoroutine);
-//            _walkCycleCoroutine = null;
-//        }
-
-//        HorseData data = _currentHorse.Data;
-//        int idx = _currentInventoryIndex;
-
-//        Destroy(_currentHorse.gameObject);
-//        _currentHorse = null;
-//        _currentHorseRT = null;
-//        _currentInventoryIndex = -1;
-
-//        targetSlot.Equip(data, idx);
-
-//        Debug.Log($"[HorseWalkZone] Recalled '{data.horseName}' (idx={idx}) → {targetSlot.name}.");
-//        return true;
-//    }
-
-//    /// <summary>
-//    /// Called by HorseSlot.OnDrop when the walk-zone horse is accepted by a slot.
-//    /// Clears the reference so the zone is ready for the next horse.
-//    /// </summary>
-//    public void NotifyHorseLeft()
-//    {
-//        if (_walkCycleCoroutine != null)
-//        {
-//            StopCoroutine(_walkCycleCoroutine);
-//            _walkCycleCoroutine = null;
-//        }
-//        _currentHorse = null;
-//        _currentHorseRT = null;
-//        _currentInventoryIndex = -1;
-//    }
-
-//    // ── Walk Cycle Coroutine ──────────────────────────────────────────────────
-
-//    /// <summary>
-//    /// Loops indefinitely:
-//    ///   1. Idle for idleDuration seconds  — horse stands still.
-//    ///   2. Run  for runDuration  seconds  — horse moves left↔right.
-//    ///   3. Repeat.
-//    /// </summary>
-//    private System.Collections.IEnumerator WalkCycleRoutine()
-//    {
-//        RectTransform zoneRT = spawnPoint != null ? spawnPoint : GetComponent<RectTransform>();
-
-//        // Wait until the zone rect has a real width.
-//        // Canvas.ForceUpdateCanvases + LayoutRebuilder in SpawnWalkingHorse handles
-//        // most cases, but we wait up to 30 frames as a hard safety net.
-//        int waited = 0;
-//        while (GetZoneHalfWidth(zoneRT) <= 0f && waited < 30)
-//        {
-//            waited++;
-//            yield return null;
-//        }
-
-//        if (_currentHorse == null) yield break;
-
-//        float zoneW = GetZoneHalfWidth(zoneRT) * 2f;
-//        float horseW = _currentHorseRT != null ? _currentHorseRT.rect.width : 0f;
-
-//        if (zoneW <= 0f)
-//        {
-//            // Zone width is still 0 — this means the RectTransform is not set up
-//            // correctly in the scene. Set 'Zone Width Override' in the Inspector
-//            // to the pixel width of your walk zone as a manual fallback.
-//            Debug.LogError($"[HorseWalkZone] '{name}': zone width is 0 after {waited} frames. " +
-//                           "Movement is disabled.\n" +
-//                           "FIX: Set 'Zone Width Override' in the Inspector to the pixel width " +
-//                           "of this walk zone (e.g. 400).", this);
-//            // Still run idle/run animation switching even without movement
-//        }
-
-//        Debug.Log($"[HorseWalkZone] WalkCycleRoutine started — " +
-//                  $"zoneW={zoneW:F1}  horseW={horseW:F1}  " +
-//                  $"speed={walkSpeed}  idle={idleDuration}s  run={runDuration}s  " +
-//                  $"waited={waited} frames");
-
-//        while (_currentHorse != null)
-//        {
-//            // ── Idle phase — stand still ──────────────────────────────────────
-//            _currentHorse.SetIdle();
-//            float t = idleDuration;
-//            while (t > 0f && _currentHorse != null)
-//            {
-//                t -= Time.deltaTime;
-//                yield return null;
-//            }
-//            if (_currentHorse == null) yield break;
-
-//            // ── Run phase — animate + move across zone ────────────────────────
-//            _currentHorse.SetRun();
-//            t = runDuration;
-//            while (t > 0f && _currentHorse != null)
-//            {
-//                MoveHorse(zoneRT);
-//                t -= Time.deltaTime;
-//                yield return null;
-//            }
-//        }
-//    }
-
-//    // ── Movement helpers ──────────────────────────────────────────────────────
-
-//    /// <summary>
-//    /// Returns the half-width to use for zone bounds.
-//    /// Uses zoneWidthOverride if set, otherwise reads from the RectTransform.
-//    /// </summary>
-//    private float GetZoneHalfWidth(RectTransform zoneRT)
-//    {
-//        if (zoneWidthOverride > 0f)
-//            return zoneWidthOverride * 0.5f;
-
-//        return zoneRT.rect.width * 0.5f;
-//    }
-
-//    /// <summary>
-//    /// Moves the horse horizontally each frame and flips it when it reaches
-//    /// either edge of the zone.
-//    /// </summary>
-//    private void MoveHorse(RectTransform zoneRT)
-//    {
-//        if (_currentHorse == null || _currentHorseRT == null) return;
-
-//        float halfZone = GetZoneHalfWidth(zoneRT);
-//        float halfHorse = _currentHorseRT.rect.width * 0.5f;
-
-//        float leftBound = -halfZone + halfHorse;
-//        float rightBound = halfZone - halfHorse;
-
-//        // Zone is too narrow, or width is still 0 — skip movement.
-//        if (leftBound >= rightBound) return;
-
-//        float newX = _currentHorseRT.anchoredPosition.x + _moveDir * walkSpeed * Time.deltaTime;
-
-//        if (newX >= rightBound)
-//        {
-//            newX = rightBound;
-//            _moveDir = -1f;
-//            FlipHorse();
-//        }
-//        else if (newX <= leftBound)
-//        {
-//            newX = leftBound;
-//            _moveDir = 1f;
-//            FlipHorse();
-//        }
-
-//        _currentHorseRT.anchoredPosition = new Vector2(newX, _currentHorseRT.anchoredPosition.y);
-//    }
-
-//    /// <summary>Negates localScale.x to mirror the sprite.</summary>
-//    private void FlipHorse()
-//    {
-//        if (_currentHorseRT == null) return;
-//        Vector3 s = _currentHorseRT.localScale;
-//        s.x = -s.x;
-//        _currentHorseRT.localScale = s;
-//    }
-
-//    // ── Private helpers ───────────────────────────────────────────────────────
-
-//    private void SetHighlight(bool on)
-//    {
-//        if (zoneHighlight == null) return;
-//        zoneHighlight.color = on
-//            ? new Color(0.4f, 1f, 0.4f, 0.35f)
-//            : new Color(1f, 1f, 1f, 0f);
-//    }
-//}
-
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -389,40 +9,49 @@ using UnityEngine.UI;
 ///
 /// Attach to HorseWall. Requires an Image with Raycast Target = ON.
 ///
+/// ── MULTI-HORSE VERSION ──────────────────────────────────────────────────
+///   The zone now holds an unlimited number of horses (with or without a
+///   mounted soldier) at the same time, each animating and walking
+///   independently via its own coroutine. There is no more "the" horse —
+///   every horse dropped here is ADDED to the list, never replaces another.
+///
 /// ── Drop behaviour ────────────────────────────────────────────────────────
-///   Slot horse → zone              : horse walks left↔right, then idles.
-///   Walk-zone horse → zone (re-drop): ignored.
+///   Slot horse → zone               : horse is ADDED to the zone and starts
+///                                      its own idle/walk cycle.
+///   Walk-zone horse → zone (re-drop): ignored (snaps back to where it was).
 ///   Walk-zone horse → occupied slot : HorseSlot.OnDrop calls SpawnWalkingHorse
-///                                     to place the displaced slot horse here.
+///                                     to add the displaced slot horse here.
 ///
 /// ── Equip button recall ───────────────────────────────────────────────────
-///   HorsePanelManager calls RecallToSlot when the player presses Equip while
-///   the horse is already in the walk zone, so no duplicate is spawned.
+///   HorsePanelManager calls RecallToSlot(slot, inventoryIndex) to pull a
+///   SPECIFIC horse (identified by inventory index) out of the zone without
+///   touching any other horse currently walking there.
 ///
 /// ── Movement + Flip ───────────────────────────────────────────────────────
-///   While in the Run phase the horse moves horizontally across the zone at
-///   walkSpeed (UI units/sec). When it hits a zone edge it flips (localScale.x
-///   negated) and reverses direction. The horse stands still during Idle.
+///   While in the Run phase each horse moves horizontally across the zone at
+///   walkSpeed (UI units/sec), independently of the others. When it hits a
+///   zone edge it flips (localScale.x negated) and reverses direction. Each
+///   horse stands still during its own Idle phase.
 /// </summary>
 public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("Spawn")]
-    [Tooltip("Child RectTransform where the horse is placed. Leave empty to use this transform.")]
+    [Tooltip("Child RectTransform where horses are placed. Leave empty to use this transform.")]
     [SerializeField] private RectTransform spawnPoint;
 
     [Header("Highlight (optional)")]
-    [Tooltip("Assign this zone's Image. Tinted green while a slot horse is dragged over it.")]
+    [Tooltip("Assign this zone's Image. Tinted green while a horse is dragged over it.")]
     [SerializeField] private Image zoneHighlight;
 
     [Header("Walk Cycle Timing")]
-    [Tooltip("Seconds the horse stands idle before breaking into a run.")]
+    [Tooltip("Seconds a horse stands idle before breaking into a run.")]
     [SerializeField] private float idleDuration = 3f;
 
-    [Tooltip("Seconds the horse runs before returning to idle.")]
+    [Tooltip("Seconds a horse runs before returning to idle.")]
     [SerializeField] private float runDuration = 4f;
 
     [Header("Movement")]
-    [Tooltip("How fast the horse moves across the zone while running (UI units / second).")]
+    [Tooltip("How fast horses move across the zone while running (UI units / second).")]
     [SerializeField] private float walkSpeed = 80f;
 
     [Tooltip("FALLBACK: If the zone RectTransform width cannot be read at runtime (common with\n" +
@@ -430,19 +59,63 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
              "Leave 0 to auto-detect from RectTransform.")]
     [SerializeField] private float zoneWidthOverride = 0f;
 
-    // ── State ─────────────────────────────────────────────────────────────────
+    // ── Per-horse state ───────────────────────────────────────────────────────
 
-    private HorseController _currentHorse;
-    private RectTransform _currentHorseRT;
-    private int _currentInventoryIndex = -1;
-    private Coroutine _walkCycleCoroutine;
+    /// <summary>Tracks one horse currently walking in this zone.</summary>
+    private class WalkingHorse
+    {
+        public HorseController controller;
+        public RectTransform rectTransform;
+        public int inventoryIndex;
+        public Coroutine cycleCoroutine;
+        public float moveDir = 1f;
+        public WalkZoneOwner owner;
+    }
 
-    /// <summary>+1 = moving right, -1 = moving left.</summary>
-    private float _moveDir = 1f;
+    private readonly List<WalkingHorse> _horses = new List<WalkingHorse>();
 
-    public bool HasHorse => _currentHorse != null;
-    public int CurrentInventoryIndex => _currentInventoryIndex;
-    public HorseData CurrentHorseData => _currentHorse?.Data;
+    public bool HasHorse => _horses.Count > 0;
+    public int HorseCount => _horses.Count;
+
+    // ── Resume patrol after panel reactivation ────────────────────────────────
+    //
+    // GameManager.SetPanelVisible() calls panel.SetActive(false)/(true) when
+    // switching screens (e.g. Army → buy soldier → back to Village). Unity
+    // KILLS every running coroutine on a GameObject when it's deactivated, and
+    // does NOT auto-restart them on reactivation — only Update() resumes on
+    // its own. That's why HorseController kept animating (Update-driven) but
+    // never moved or changed state again (coroutine-driven): WalkCycleRoutine
+    // was dead and nothing restarted it.
+    //
+    // Fix: whenever this zone re-enables, restart the patrol coroutine for
+    // every horse still tracked in _horses. Harmless on the very first enable
+    // too, since _horses is empty at that point.
+    private void OnEnable()
+    {
+        foreach (var entry in _horses)
+            entry.cycleCoroutine = StartCoroutine(WalkCycleRoutine(entry));
+    }
+
+    /// <summary>Legacy single-horse accessor — returns the FIRST horse in the zone (or -1 / null if empty).</summary>
+    public int CurrentInventoryIndex => _horses.Count > 0 ? _horses[0].inventoryIndex : -1;
+    public HorseData CurrentHorseData => _horses.Count > 0 ? _horses[0].controller?.Data : null;
+
+    /// <summary>True if a horse with this inventory index is currently walking in the zone.</summary>
+    public bool ContainsInventoryIndex(int inventoryIndex) => FindByIndex(inventoryIndex) != null;
+
+    private WalkingHorse FindByIndex(int inventoryIndex)
+    {
+        for (int i = 0; i < _horses.Count; i++)
+            if (_horses[i].inventoryIndex == inventoryIndex) return _horses[i];
+        return null;
+    }
+
+    private WalkingHorse FindByOwner(WalkZoneOwner owner)
+    {
+        for (int i = 0; i < _horses.Count; i++)
+            if (_horses[i].owner == owner) return _horses[i];
+        return null;
+    }
 
     // ── IDropHandler ──────────────────────────────────────────────────────────
 
@@ -451,6 +124,7 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
         HorseDragHandler drag = eventData.pointerDrag?.GetComponent<HorseDragHandler>();
         if (drag == null || drag.horseData == null) return;
 
+        // Walk-zone horse re-dropped onto its own zone — ignore, it never left.
         if (eventData.pointerDrag.GetComponent<WalkZoneOwner>() != null) return;
 
         HorseController dragHC = drag.GetComponent<HorseController>();
@@ -458,25 +132,7 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
             ? dragHC.ExtractRiderForTransfer()
             : null;
 
-        // ── SLOT HORSE → OCCUPIED WALK ZONE: swap ────────────────────────────
-        if (HasHorse && drag.ownerSlot != null)
-        {
-            HorseSlot sourceSlot = drag.ownerSlot;
-            HorseData zoneData = CurrentHorseData;
-            int zoneIdx = _currentInventoryIndex;
-
-            sourceSlot.ClearHorseRef();
-            drag.RegisterSuccessfulDrop();
-            HorseController newHC = SpawnWalkingHorse(drag.horseData, drag.inventoryIndex);
-            if (transferSoldier != null && newHC != null)
-                newHC.PerformMount(transferSoldier);
-
-            sourceSlot.Equip(zoneData, zoneIdx);
-            SetHighlight(false);
-            return;
-        }
-
-        // ── SLOT HORSE → EMPTY WALK ZONE: simple move ────────────────────────
+        // ── SLOT HORSE → WALK ZONE: always ADDS a new walking horse ──────────
         drag.RegisterSuccessfulDrop();
         drag.ownerSlot?.ClearHorseRef();
         HorseController spawnedHC = SpawnWalkingHorse(drag.horseData, drag.inventoryIndex);
@@ -501,7 +157,8 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
     // ── Public API ────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Spawns (or replaces) a horse in this zone and starts the walk-cycle coroutine.
+    /// Spawns a NEW horse in this zone and starts its own walk-cycle coroutine.
+    /// Existing horses already in the zone are left completely untouched.
     /// </summary>
     public HorseController SpawnWalkingHorse(HorseData data, int inventoryIndex = -1)
     {
@@ -511,33 +168,9 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
             return null;
         }
 
-        // Stop any running cycle before replacing the horse
-        if (_walkCycleCoroutine != null)
-        {
-            StopCoroutine(_walkCycleCoroutine);
-            _walkCycleCoroutine = null;
-        }
-
-        if (_currentHorse != null)
-        {
-            // Eject any mounted soldier before destroying so it is not
-            // destroyed along with the horse GameObject.
-            _currentHorse.EjectRiderBeforeDestroy();
-            Destroy(_currentHorse.gameObject);
-            _currentHorse = null;
-            _currentHorseRT = null;
-        }
-
-        _currentInventoryIndex = inventoryIndex;
-        _moveDir = 1f;
-
         Transform parent = spawnPoint != null ? spawnPoint : transform;
         GameObject go = Instantiate(data.prefab, parent);
 
-        // ── Set up the RectTransform FIRST, then force Canvas layout ──────────
-        // ForceUpdateCanvases must come AFTER sizeDelta is set, not before.
-        // If called before, the Canvas computes bounds with the wrong (or default)
-        // size and zoneRT.rect.width can remain 0 when MoveHorse() reads it.
         RectTransform rt = go.GetComponent<RectTransform>();
         if (rt != null)
         {
@@ -547,31 +180,41 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
             if (prefabRt != null) rt.sizeDelta = prefabRt.sizeDelta;
         }
 
-        // Force the Canvas to recompute ALL layout NOW so rect.width is valid
-        // when WalkCycleRoutine runs on the very next frame.
+        // Force canvas layout so rect dimensions are valid before the coroutine reads them.
         Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(GetComponent<RectTransform>());
 
-        // Also force the zone RT specifically — needed when the zone uses a
-        // LayoutGroup (HorizontalLayoutGroup, VerticalLayoutGroup, etc.) because
-        // those are rebuilt separately from the general canvas pass.
-        RectTransform zoneRT = GetComponent<RectTransform>();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(zoneRT);
-        // ──────────────────────────────────────────────────────────────────────
+        HorseController hc = go.GetComponent<HorseController>();
 
-        _currentHorse = go.GetComponent<HorseController>();
-        _currentHorseRT = rt;
-
-        if (_currentHorse != null)
+        var entry = new WalkingHorse
         {
-            _currentHorse.Setup(data);
-            _walkCycleCoroutine = StartCoroutine(WalkCycleRoutine());
+            controller = hc,
+            rectTransform = rt,
+            inventoryIndex = inventoryIndex,
+            moveDir = 1f
+        };
+
+        // IMPORTANT: add to the list BEFORE starting the coroutine.
+        // StartCoroutine runs synchronously up to its first yield, and if the
+        // zone width is already measurable (likely here, since we just forced
+        // a layout rebuild above), WalkCycleRoutine's main while-loop condition
+        // (`_horses.Contains(entry)`) gets checked before this Add() would have
+        // run — causing the patrol loop to exit immediately without ever
+        // calling SetRun(). Adding first guarantees the entry is already in
+        // the list by the time the coroutine checks for it.
+        _horses.Add(entry);
+
+        if (hc != null)
+        {
+            hc.Setup(data);
+            hc.ExternallyControlled = true; // zone owns Idle/Run timing — stop Path B auto-revert
+            entry.cycleCoroutine = StartCoroutine(WalkCycleRoutine(entry));
         }
         else
         {
             Debug.LogWarning($"[HorseWalkZone] Prefab '{data.horseName}' has no HorseController!");
         }
 
-        // Make this horse draggable back to a slot
         HorseDragHandler drag = go.GetComponent<HorseDragHandler>();
         if (drag != null)
         {
@@ -589,121 +232,139 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
 
         WalkZoneOwner owner = go.GetComponent<WalkZoneOwner>() ?? go.AddComponent<WalkZoneOwner>();
         owner.Zone = this;
+        entry.owner = owner;
 
-        Debug.Log($"[HorseWalkZone] Spawned '{data.horseName}' (idx={inventoryIndex}).");
+        Debug.Log($"[HorseWalkZone] Spawned '{data.horseName}' (idx={inventoryIndex}). " +
+                  $"Zone now holds {_horses.Count} horse(s).");
 
-        return _currentHorse;
+        return hc;
     }
 
     /// <summary>
-    /// Moves the horse from the walk zone directly into a slot.
-    /// Returns true if a horse was recalled, false if the zone was empty.
+    /// Moves the SPECIFIC horse identified by inventoryIndex from the walk zone
+    /// directly into a slot. Other horses in the zone are unaffected.
+    /// </summary>
+    public bool RecallToSlot(HorseSlot targetSlot, int inventoryIndex)
+    {
+        if (targetSlot == null) return false;
+        WalkingHorse entry = FindByIndex(inventoryIndex);
+        return entry != null && RecallEntry(entry, targetSlot);
+    }
+
+    /// <summary>
+    /// Legacy overload — recalls the FIRST horse currently in the zone.
     /// </summary>
     public bool RecallToSlot(HorseSlot targetSlot)
     {
-        if (!HasHorse || targetSlot == null) return false;
+        if (targetSlot == null || _horses.Count == 0) return false;
+        return RecallEntry(_horses[0], targetSlot);
+    }
 
-        if (_walkCycleCoroutine != null)
+    private bool RecallEntry(WalkingHorse entry, HorseSlot targetSlot)
+    {
+        if (entry.cycleCoroutine != null)
         {
-            StopCoroutine(_walkCycleCoroutine);
-            _walkCycleCoroutine = null;
+            StopCoroutine(entry.cycleCoroutine);
+            entry.cycleCoroutine = null;
         }
 
-        HorseData data = _currentHorse.Data;
-        int idx = _currentInventoryIndex;
+        HorseData data = entry.controller != null ? entry.controller.Data : null;
+        int idx = entry.inventoryIndex;
 
-        // Eject any mounted soldier before destroying so it is not
-        // destroyed along with the horse GameObject.
-        _currentHorse.EjectRiderBeforeDestroy();
-        Destroy(_currentHorse.gameObject);
-        _currentHorse = null;
-        _currentHorseRT = null;
-        _currentInventoryIndex = -1;
+        entry.controller?.EjectRiderBeforeDestroy();
+        if (entry.controller != null)
+            Destroy(entry.controller.gameObject);
 
-        targetSlot.Equip(data, idx);
+        _horses.Remove(entry);
 
-        Debug.Log($"[HorseWalkZone] Recalled '{data.horseName}' (idx={idx}) → {targetSlot.name}.");
+        if (data != null)
+            targetSlot.Equip(data, idx);
+
+        Debug.Log($"[HorseWalkZone] Recalled '{data?.horseName}' (idx={idx}) → {targetSlot.name}. " +
+                  $"Zone now holds {_horses.Count} horse(s).");
         return true;
     }
 
     /// <summary>
-    /// Called by HorseSlot.OnDrop when the walk-zone horse is accepted by a slot.
-    /// Clears the reference so the zone is ready for the next horse.
+    /// Called by HorseSlot.OnDrop when ONE SPECIFIC walk-zone horse is accepted
+    /// by a slot. Only that horse's entry is removed.
     /// </summary>
-    public void NotifyHorseLeft()
+    public void NotifyHorseLeft(WalkZoneOwner owner)
     {
-        if (_walkCycleCoroutine != null)
+        WalkingHorse entry = FindByOwner(owner);
+        if (entry == null) return;
+
+        if (entry.cycleCoroutine != null)
         {
-            StopCoroutine(_walkCycleCoroutine);
-            _walkCycleCoroutine = null;
+            StopCoroutine(entry.cycleCoroutine);
+            entry.cycleCoroutine = null;
         }
-        _currentHorse = null;
-        _currentHorseRT = null;
-        _currentInventoryIndex = -1;
+
+        _horses.Remove(entry);
     }
 
-    // ── Walk Cycle Coroutine ──────────────────────────────────────────────────
+    // ── Walk Cycle Coroutine (one instance per horse) ────────────────────────
 
-    /// <summary>
-    /// Loops indefinitely:
-    ///   1. Idle for idleDuration seconds  — horse stands still.
-    ///   2. Run  for runDuration  seconds  — horse moves left↔right.
-    ///   3. Repeat.
-    /// </summary>
-    private System.Collections.IEnumerator WalkCycleRoutine()
+    private IEnumerator WalkCycleRoutine(WalkingHorse entry)
     {
         RectTransform zoneRT = GetComponent<RectTransform>();
 
-        // Wait until the zone rect has a real width.
-        // Canvas.ForceUpdateCanvases + LayoutRebuilder in SpawnWalkingHorse handles
-        // most cases, but we wait up to 30 frames as a hard safety net.
+        // ── FIX: use GetLocalCorners to measure zone width reliably ──────────
+        // rect.width returns 0 inside LayoutGroups until the layout pass runs.
+        // GetLocalCorners reads the ACTUAL rendered corners post-layout and is
+        // always correct, even on the very first frame after Instantiate.
+        // We still wait up to 30 frames as a safety net, but in practice
+        // GetLocalCorners will return a valid non-zero width immediately.
+        float zoneW = 0f;
         int waited = 0;
-        while (GetZoneHalfWidth(zoneRT) <= 0f && waited < 30)
+        while (zoneW <= 0f && waited < 30)
         {
-            waited++;
-            yield return null;
+            zoneW = GetZoneWidth(zoneRT);
+            if (zoneW <= 0f)
+            {
+                waited++;
+                yield return null;
+            }
         }
+        // ─────────────────────────────────────────────────────────────────────
 
-        if (_currentHorse == null) yield break;
+        if (entry.controller == null) yield break;
 
-        float zoneW = GetZoneHalfWidth(zoneRT) * 2f;
-        float horseW = _currentHorseRT != null ? _currentHorseRT.rect.width : 0f;
+        float horseW = entry.rectTransform != null
+            ? GetRectWidth(entry.rectTransform)
+            : 0f;
 
         if (zoneW <= 0f)
         {
-            // Zone width is still 0 — this means the RectTransform is not set up
-            // correctly in the scene. Set 'Zone Width Override' in the Inspector
-            // to the pixel width of your walk zone as a manual fallback.
-            Debug.LogError($"[HorseWalkZone] '{name}': zone width is 0 after {waited} frames. " +
+            Debug.LogError($"[HorseWalkZone] '{name}': zone width is still 0 after {waited} frames. " +
                            "Movement is disabled.\n" +
                            "FIX: Set 'Zone Width Override' in the Inspector to the pixel width " +
                            "of this walk zone (e.g. 400).", this);
-            // Still run idle/run animation switching even without movement
         }
 
-        Debug.Log($"[HorseWalkZone] WalkCycleRoutine started — " +
+        Debug.Log($"[HorseWalkZone] WalkCycleRoutine started for idx={entry.inventoryIndex} — " +
                   $"zoneW={zoneW:F1}  horseW={horseW:F1}  " +
                   $"speed={walkSpeed}  idle={idleDuration}s  run={runDuration}s  " +
                   $"waited={waited} frames");
 
-        while (_currentHorse != null)
+        while (entry.controller != null && _horses.Contains(entry))
         {
-            // ── Idle phase — stand still ──────────────────────────────────────
-            _currentHorse.SetIdle();
+            // ── Idle phase ────────────────────────────────────────────────────
+            entry.controller.SetIdle();
             float t = idleDuration;
-            while (t > 0f && _currentHorse != null)
+            while (t > 0f && entry.controller != null && _horses.Contains(entry))
             {
                 t -= Time.deltaTime;
                 yield return null;
             }
-            if (_currentHorse == null) yield break;
+            if (entry.controller == null || !_horses.Contains(entry)) yield break;
 
-            // ── Run phase — animate + move across zone ────────────────────────
-            _currentHorse.SetRun();
+            // ── Run phase ─────────────────────────────────────────────────────
+            entry.controller.SetRun();
             t = runDuration;
-            while (t > 0f && _currentHorse != null)
+            while (t > 0f && entry.controller != null && _horses.Contains(entry))
             {
-                MoveHorse(zoneRT);
+                MoveHorse(zoneW, entry);
                 t -= Time.deltaTime;
                 yield return null;
             }
@@ -713,59 +374,78 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
     // ── Movement helpers ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// Returns the half-width to use for zone bounds.
-    /// Uses zoneWidthOverride if set, otherwise reads from the RectTransform.
+    /// Returns the zone's pixel width using GetLocalCorners — reliable even
+    /// inside LayoutGroups where rect.width may still be 0.
+    /// Falls back to zoneWidthOverride if set in the Inspector.
     /// </summary>
-    private float GetZoneHalfWidth(RectTransform zoneRT)
+    private float GetZoneWidth(RectTransform zoneRT)
     {
         if (zoneWidthOverride > 0f)
-            return zoneWidthOverride * 0.5f;
+            return zoneWidthOverride;
 
-        return zoneRT.rect.width * 0.5f;
+        // GetLocalCorners fills corners[0..3] in local space:
+        //   [0] = bottom-left, [1] = top-left, [2] = top-right, [3] = bottom-right
+        Vector3[] corners = new Vector3[4];
+        zoneRT.GetLocalCorners(corners);
+        float w = corners[2].x - corners[0].x; // top-right.x − bottom-left.x
+        return w;
     }
 
     /// <summary>
-    /// Moves the horse horizontally each frame and flips it when it reaches
-    /// either edge of the zone.
+    /// Returns the horse's pixel width using GetLocalCorners for the same reason.
     /// </summary>
-    private void MoveHorse(RectTransform zoneRT)
+    private float GetRectWidth(RectTransform rt)
     {
-        if (_currentHorse == null || _currentHorseRT == null) return;
+        Vector3[] corners = new Vector3[4];
+        rt.GetLocalCorners(corners);
+        return corners[2].x - corners[0].x;
+    }
 
-        float halfZone = GetZoneHalfWidth(zoneRT);
-        float halfHorse = _currentHorseRT.rect.width * 0.5f;
+    /// <summary>
+    /// Moves ONE horse horizontally each frame and flips it when it reaches
+    /// either edge of the zone. Receives the pre-computed zoneW so we don't
+    /// re-read it every frame (corners are stable once layout has settled).
+    /// </summary>
+    private void MoveHorse(float zoneW, WalkingHorse entry)
+    {
+        if (entry.controller == null || entry.rectTransform == null) return;
+
+        float halfZone = zoneW * 0.5f;
+        float halfHorse = GetRectWidth(entry.rectTransform) * 0.5f;
 
         float leftBound = -halfZone + halfHorse;
         float rightBound = halfZone - halfHorse;
 
-        // Zone is too narrow, or width is still 0 — skip movement.
+        // Zone too narrow for this horse — skip movement but keep animating.
         if (leftBound >= rightBound) return;
 
-        float newX = _currentHorseRT.anchoredPosition.x + _moveDir * walkSpeed * Time.deltaTime;
+        float newX = entry.rectTransform.anchoredPosition.x
+                     + entry.moveDir * walkSpeed * Time.deltaTime;
 
         if (newX >= rightBound)
         {
             newX = rightBound;
-            _moveDir = -1f;
-            FlipHorse();
+            entry.moveDir = -1f;
+            FlipHorse(entry.rectTransform);
         }
         else if (newX <= leftBound)
         {
             newX = leftBound;
-            _moveDir = 1f;
-            FlipHorse();
+            entry.moveDir = 1f;
+            FlipHorse(entry.rectTransform);
         }
 
-        _currentHorseRT.anchoredPosition = new Vector2(newX, _currentHorseRT.anchoredPosition.y);
+        entry.rectTransform.anchoredPosition =
+            new Vector2(newX, entry.rectTransform.anchoredPosition.y);
     }
 
     /// <summary>Negates localScale.x to mirror the sprite.</summary>
-    private void FlipHorse()
+    private void FlipHorse(RectTransform rt)
     {
-        if (_currentHorseRT == null) return;
-        Vector3 s = _currentHorseRT.localScale;
+        if (rt == null) return;
+        Vector3 s = rt.localScale;
         s.x = -s.x;
-        _currentHorseRT.localScale = s;
+        rt.localScale = s;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

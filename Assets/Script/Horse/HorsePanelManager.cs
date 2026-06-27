@@ -1619,9 +1619,7 @@ public class HorsePanelManager : MonoBehaviour
         // If this horse is already in the walk zone, recall it to a free slot
         // instead of spawning a second copy from the inventory.
         HorseWalkZone walkZone = Object.FindObjectOfType<HorseWalkZone>();
-        if (walkZone != null &&
-            walkZone.HasHorse &&
-            walkZone.CurrentInventoryIndex == _selectedInventoryId)
+        if (walkZone != null && walkZone.ContainsInventoryIndex(_selectedInventoryId))
         {
             HorseSlot freeSlot = HorseArea.Instance?.GetFirstFreeSlot();
             if (freeSlot == null)
@@ -1630,7 +1628,7 @@ public class HorsePanelManager : MonoBehaviour
                 return;
             }
 
-            walkZone.RecallToSlot(freeSlot);
+            walkZone.RecallToSlot(freeSlot, _selectedInventoryId);
 
             // Let HorseArea know this horse is now equipped in a slot
             HorseArea.Instance?.OnHorseEquippedToSlot(_selectedInventoryId, freeSlot);

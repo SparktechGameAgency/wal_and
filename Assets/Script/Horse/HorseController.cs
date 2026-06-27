@@ -32,6 +32,22 @@ public class HorseController : MonoBehaviour, IDropHandler
              "Drives the Face / Helmet / Weapon / Armor Images from the soldier's equipment.")]
     [SerializeField] private HorseRiderVisual riderVisual;
 
+    // ── Patrol / External Control ────────────────────────────────────────────
+
+    [Header("Patrol / External Control")]
+    [Tooltip("Set to TRUE by HorseWalkZone (or any external patrol controller).\n" +
+             "When true, the HorseData (Path B) 'cycles before idle' auto-revert is " +
+             "skipped, so an external system's own Idle/Run timer is the only thing " +
+             "that changes state. Prevents the horse flipping back to Idle mid-run.")]
+    [SerializeField] private bool externallyControlled = false;
+
+    /// <summary>True when an external controller (e.g. HorseWalkZone) owns the Idle/Run timing.</summary>
+    public bool ExternallyControlled
+    {
+        get => externallyControlled;
+        set => externallyControlled = value;
+    }
+
     // ── Private state ─────────────────────────────────────────────────────────
 
     private HorseState _state = HorseState.Idle;
@@ -43,9 +59,13 @@ public class HorseController : MonoBehaviour, IDropHandler
     private int _dataCyclesCompleted;
 
     private SoldierDragDrop _mountedSoldier;
-    private SpriteLayerAnimator _riderAnimator;   // null while soldier is SetActive(false)
+    private SpriteLayerAnimator _riderAnimator;
     private CanvasGroup _soldierCanvasGroup;
     private HorseData _data;
+
+    // ── Diagnostics ───────────────────────────────────────────────────────────
+    // Set to true once to dump a one-time log of the animation path being used.
+    private bool _animDiagDone = false;
 
     // ── Public queries ────────────────────────────────────────────────────────
 
@@ -83,23 +103,45 @@ public class HorseController : MonoBehaviour, IDropHandler
         if (saddleImage != null && saddleAnimSO != null)
             ApplyFrame(ref _saddleFrame, saddleImage, saddleAnimSO);
 
-        // FIX C — RACE CONDITION:
-        // HorseWalkZone.OnDrop does Instantiate(...) → PerformMount(transferSoldier)
-        // synchronously in the same call. Awake() runs immediately on Instantiate,
-        // but Start() is deferred by Unity until just before the next Update pass —
-        // still the SAME frame, but AFTER PerformMount() already ran and called
-        // riderVisual.ShowRider() to enable the 4 seat Images.
-        // Without this guard, Start() unconditionally called riderVisual.HideRider()
-        // right after, silently disabling the Face/Helmet/Armor/Weapon Images that
-        // PerformMount had just turned on — this is the "rider images get unchecked
-        // when dragging the mounted horse into the walk zone" bug.
-        // Only hide the rider here if nothing mounted between Instantiate and Start.
         if (seat == null || !seat.IsOccupied)
             riderVisual?.HideRider();
     }
 
     private void Update()
     {
+        // ── ONE-TIME DIAGNOSTIC on first Run state ────────────────────────────
+        if (!_animDiagDone && _state == HorseState.Run)
+        {
+            _animDiagDone = true;
+            bool usingSOPath = horseAnimSO != null;
+            bool usingDataPath = !usingSOPath && _data != null;
+
+            if (usingSOPath)
+            {
+                HorseClip clip = horseAnimSO.GetClip(HorseState.Run);
+                Debug.Log($"[HorseDiag] '{name}' PATH=SO  " +
+                          $"clip={(clip == null ? "NULL" : "found")}  " +
+                          $"frames={(clip?.frames?.Length ?? 0)}  " +
+                          $"loop={clip?.loop}  fps={clip?.fps}  " +
+                          $"horseImage={(horseImage == null ? "NULL" : horseImage.name)}  " +
+                          $"imgEnabled={horseImage?.enabled}", this);
+            }
+            else if (usingDataPath)
+            {
+                Sprite[] sprites = _data.GetSprites(HorseState.Run);
+                Debug.Log($"[HorseDiag] '{name}' PATH=Data  " +
+                          $"runSprites={(sprites?.Length ?? 0)}  " +
+                          $"horseImage={(horseImage == null ? "NULL" : horseImage.name)}  " +
+                          $"imgEnabled={horseImage?.enabled}", this);
+            }
+            else
+            {
+                Debug.LogError($"[HorseDiag] '{name}' PATH=NONE — horseAnimSO is null AND _data is null! " +
+                               "Animation cannot play. Call Setup(data) or assign horseAnimSO in Inspector.", this);
+            }
+        }
+        // ── END DIAGNOSTIC ────────────────────────────────────────────────────
+
         TickLayer(horseAnimSO, horseImage, ref _horseFrame, ref _horseTimer, isMainLayer: true);
 
         if (saddleImage != null && saddleAnimSO != null)
@@ -114,11 +156,21 @@ public class HorseController : MonoBehaviour, IDropHandler
     {
         if (img == null) return;
 
+        // Ensure image is visible (guard against it being disabled elsewhere)
+        if (!img.enabled) img.enabled = true;
+
         // PATH A: SO-driven
         if (so != null)
         {
             HorseClip clip = so.GetClip(_state);
             if (clip == null || clip.frames == null || clip.frames.Length == 0) return;
+
+            // Single-frame — just pin the sprite, no timer needed
+            if (clip.frames.Length == 1)
+            {
+                img.sprite = clip.frames[0];
+                return;
+            }
 
             timer += Time.deltaTime;
             if (timer < 1f / clip.fps) return;
@@ -139,6 +191,13 @@ public class HorseController : MonoBehaviour, IDropHandler
         Sprite[] sprites = _data.GetSprites(_state);
         if (sprites == null || sprites.Length == 0) return;
 
+        // Single-frame
+        if (sprites.Length == 1)
+        {
+            img.sprite = sprites[0];
+            return;
+        }
+
         float fps = _data.GetFPS(_state);
         timer += Time.deltaTime;
         if (timer < 1f / fps) return;
@@ -156,12 +215,20 @@ public class HorseController : MonoBehaviour, IDropHandler
                 if (frame >= sprites.Length)
                 {
                     frame = 0;
-                    int maxCycles = _data.GetCyclesBeforeIdle(_state);
-                    if (maxCycles > 0)
+
+                    // Skip the auto-revert-to-Idle entirely when an external
+                    // controller (e.g. HorseWalkZone) owns the Idle/Run timing.
+                    // Otherwise this would fight the zone's own timer and cause
+                    // the horse to flip back to Idle mid-run.
+                    if (!externallyControlled)
                     {
-                        _dataCyclesCompleted++;
-                        if (_dataCyclesCompleted >= maxCycles)
-                            SetState(HorseState.Idle);
+                        int maxCycles = _data.GetCyclesBeforeIdle(_state);
+                        if (maxCycles > 0)
+                        {
+                            _dataCyclesCompleted++;
+                            if (_dataCyclesCompleted >= maxCycles)
+                                SetState(HorseState.Idle);
+                        }
                     }
                 }
                 break;
@@ -171,8 +238,7 @@ public class HorseController : MonoBehaviour, IDropHandler
                 break;
         }
 
-        if (frame < sprites.Length)
-            img.sprite = sprites[Mathf.Clamp(frame, 0, sprites.Length - 1)];
+        img.sprite = sprites[Mathf.Clamp(frame, 0, sprites.Length - 1)];
     }
 
     private void ApplyFrame(ref int frame, Image img, HorseAnimationSO so,
@@ -205,20 +271,15 @@ public class HorseController : MonoBehaviour, IDropHandler
         _horseTimer = _saddleTimer = 0f;
         _dataCyclesCompleted = 0;
 
+        // Reset diag flag so it fires again on the next Run entry
+        if (newState == HorseState.Run) _animDiagDone = false;
+
         ApplyFrame(ref _horseFrame, horseImage, horseAnimSO, isMainLayer: true);
         if (saddleImage != null && saddleAnimSO != null)
             ApplyFrame(ref _saddleFrame, saddleImage, saddleAnimSO, isMainLayer: false);
 
-        // Notify HorseRiderVisual — this is what drives the 4 equipment Images.
-        // FIX A (in HorseRiderVisual): SetRiderState now always forces the state,
-        // so this call correctly resets frame counters every time WalkCycleRoutine
-        // switches between Idle and Run.
         AnimationState riderState = MapToRiderState(newState);
         riderVisual?.SetRiderState(riderState);
-
-        // FIX B: _riderAnimator is null while the soldier is SetActive(false),
-        // so this is a harmless no-op during that time. It only fires when the
-        // soldier is active (e.g. after dismount, or if using the "own visuals" path).
         NotifySoldierAnimator(riderState);
 
         Debug.Log($"[HorseController] '{name}' → {newState}");
@@ -238,12 +299,12 @@ public class HorseController : MonoBehaviour, IDropHandler
         _horseFrame = _saddleFrame = 0;
         _horseTimer = _saddleTimer = 0f;
         _dataCyclesCompleted = 0;
+        _animDiagDone = false;
 
         ApplyFrame(ref _horseFrame, horseImage, horseAnimSO, isMainLayer: true);
         if (saddleImage != null && saddleAnimSO != null)
             ApplyFrame(ref _saddleFrame, saddleImage, saddleAnimSO, isMainLayer: false);
 
-        // No rider yet — SetRiderState is safe to call (HorseRiderVisual is hidden).
         riderVisual?.SetRiderState(MapToRiderState(HorseState.Idle));
 
         Debug.Log($"[HorseController] Setup → '{data?.horseName}'");
@@ -256,6 +317,7 @@ public class HorseController : MonoBehaviour, IDropHandler
         _horseFrame = _saddleFrame = 0;
         _horseTimer = _saddleTimer = 0f;
         _dataCyclesCompleted = 0;
+        _animDiagDone = false;
 
         ApplyFrame(ref _horseFrame, horseImage, horseAnimSO, isMainLayer: true);
         if (saddleImage != null && saddleAnimSO != null)
@@ -263,44 +325,30 @@ public class HorseController : MonoBehaviour, IDropHandler
 
         AnimationState riderState = MapToRiderState(HorseState.Run);
 
-        // If a soldier is already mounted (e.g. SetupWalk called AFTER PerformMount
-        // during a walk-zone re-setup), keep the soldier deactivated and refresh the
-        // rider visual so the seat Images stay enabled and animate correctly.
-        // This covers the case where HorseWalkZone calls PerformMount → SetupWalk.
         if (_mountedSoldier != null)
         {
-            _mountedSoldier.gameObject.SetActive(false);   // ensure soldier stays hidden
-            _riderAnimator = null;                         // FIX B — keep null while inactive
+            _mountedSoldier.gameObject.SetActive(false);
+            _riderAnimator = null;
             var equipment = _mountedSoldier.GetComponent<CharacterEquipment>();
-            riderVisual?.ShowRider(equipment);             // re-populate seat Images
+            riderVisual?.ShowRider(equipment);
         }
 
-        // Drive the rider visual to Run (works whether ShowRider just ran above
-        // or was called earlier inside PerformMount — force:true bypasses the guard).
         riderVisual?.SetRiderState(riderState);
-        NotifySoldierAnimator(riderState);   // null-safe; no-op while soldier is inactive
+        NotifySoldierAnimator(riderState);
 
         Debug.Log($"[HorseController] SetupWalk → '{data?.horseName}'");
     }
 
     // ── Public API — Eject before destroy ────────────────────────────────────
 
-    /// <summary>
-    /// Called by HorseDragHandler.OnEndDrag immediately before Destroy(gameObject).
-    /// Safely returns the mounted soldier to its pre-mount home so it is not
-    /// destroyed along with the horse.
-    /// </summary>
     public void EjectRiderBeforeDestroy()
     {
         if (seat == null || !seat.IsOccupied) return;
 
         SoldierDragDrop soldier = seat.MountedSoldier;
 
-        // Hide rider Images before the horse is destroyed.
         riderVisual?.HideRider();
 
-        // Re-enable the soldier so it is visible and interactive when it
-        // arrives back at its spawn area.
         if (soldier != null)
             soldier.gameObject.SetActive(true);
 
@@ -314,49 +362,15 @@ public class HorseController : MonoBehaviour, IDropHandler
         Debug.Log($"[HorseController] '{name}': rider ejected before horse destroy.");
     }
 
-    /// <summary>
-    /// Extracts the mounted soldier so it can be re-mounted on a new horse instance
-    /// (used by HorseWalkZone when the horse prefab is swapped).
-    /// Returns the soldier, or null if the seat was empty.
-    ///
-    /// ── TRANSFER RULE ────────────────────────────────────────────────────────
-    /// The soldier is kept SetActive(false) for the entire transfer window.
-    /// Do NOT call SetActive(true) here — that is what causes the "detached
-    /// soldier" bug where the soldier prefab pops into view as a scene-root
-    /// sibling while the new horse is being set up.
-    ///
-    /// ClearHorseSeatForTransfer() clears the soldier's internal seat reference
-    /// so it does not point at the now-released seat, but it must NOT re-parent
-    /// or re-enable the soldier. PerformMount on the new horse handles both:
-    ///   • forcibly re-parents the soldier under the new SoldierSeat
-    ///   • keeps it SetActive(false)
-    ///   • calls ShowRider to make the seat Images visible instead
-    /// </summary>
     public SoldierDragDrop ExtractRiderForTransfer()
     {
         if (seat == null || !seat.IsOccupied) return null;
 
         SoldierDragDrop soldier = seat.MountedSoldier;
 
-        // Hide the 4 seat Images on this horse — the new horse's ShowRider will
-        // re-populate them after PerformMount.
         riderVisual?.HideRider();
 
-        // Keep soldier INACTIVE during the transfer.
-        // The old code called SetActive(true) here so PerformMount could "see" it,
-        // but PerformMount works fine on an inactive GameObject (it just calls
-        // methods and reparents the transform — neither requires the object to be
-        // active). Leaving it inactive prevents the soldier from flashing on screen
-        // as a detached scene-root prefab between the two PerformMount calls.
-        // soldier.gameObject.SetActive(true);  ← intentionally removed
-
         seat.ReleaseSoldier();
-
-        // ClearHorseSeatForTransfer clears the soldier's internal _currentHorseSeat
-        // reference so it no longer points at the seat we just released.
-        // IMPORTANT: the implementation of ClearHorseSeatForTransfer must NOT
-        // reparent the soldier back to its spawn-area parent or call SetActive.
-        // Only the seat reference should be cleared here.
         soldier?.ClearHorseSeatForTransfer();
 
         _mountedSoldier = null;
@@ -378,33 +392,6 @@ public class HorseController : MonoBehaviour, IDropHandler
 
     // ── Public API — Mount / Dismount ─────────────────────────────────────────
 
-    /// <summary>
-    /// Accepts a soldier into the seat.
-    ///
-    /// Works identically whether the horse is in a HorseSlot or a HorseWalkZone:
-    ///
-    ///  Step 1  seat.MountSoldier(soldier)
-    ///          → SetParent(SoldierSeat, worldPositionStays:false)
-    ///          → anchoredPosition = seatOffset
-    ///          → soldier.MountOnHorse(seat)
-    ///
-    ///  Step 2  soldier.SetActive(false)
-    ///          Hides the soldier's own GameObject completely.
-    ///          This prevents the soldier from appearing at an unexpected world
-    ///          position (SoldierSeat's offset) and prevents it from being
-    ///          independently dragged while mounted.
-    ///
-    ///  Step 3  riderVisual.ShowRider(equipment)
-    ///          Populates the Face/Armor/Helmet/Weapon Images on SoldierSeat
-    ///          from the soldier's CharacterEquipment and sets them to HorseIdle
-    ///          frame 0. Because these Images are children of the horse prefab
-    ///          they render at the horse's own position — correct in both the
-    ///          slot and the walk zone.
-    ///          WalkCycleRoutine drives all subsequent state changes via SetIdle/SetRun.
-    ///
-    ///  _riderAnimator is nulled out because calling SetState on a component
-    ///  attached to a disabled GameObject silently does nothing (Bug B fix).
-    /// </summary>
     public void PerformMount(SoldierDragDrop soldier)
     {
         if (seat == null)
@@ -421,29 +408,14 @@ public class HorseController : MonoBehaviour, IDropHandler
 
         if (soldier == null) return;
 
-        // Cache before reparenting
         _mountedSoldier = soldier;
         var equipment = soldier.GetComponent<CharacterEquipment>();
 
-        // ── Step 1: Temporarily activate so seat + components can initialise ──
-        // seat.MountSoldier calls soldier.MountOnHorse which may require the
-        // soldier to be active (some Unity API calls are no-ops on inactive objects).
-        // We immediately deactivate again in Step 3 — this window is sub-frame.
         bool wasActive = soldier.gameObject.activeSelf;
         if (!wasActive) soldier.gameObject.SetActive(true);
 
-        // ── Step 2: Register soldier with seat ───────────────────────────────
-        // Sets seat.IsOccupied, seat.MountedSoldier, and calls soldier.MountOnHorse.
         seat.MountSoldier(soldier);
 
-        // ── Step 3: Force correct parent — HorsePrefab → SoldierSeat → Soldier
-        // Regardless of where the soldier was in the hierarchy (scene root after a
-        // walk-zone transfer, original spawn area after ClearHorseSeatForTransfer,
-        // etc.), this reparents it explicitly under seat.transform so the final
-        // hierarchy is always:
-        //   HorsePrefab
-        //     └── SoldierSeat   (seat.transform)
-        //           └── SoldierPrefab   ← soldier always lands here
         var soldierRT = soldier.GetComponent<RectTransform>();
         if (soldierRT != null)
         {
@@ -458,45 +430,21 @@ public class HorseController : MonoBehaviour, IDropHandler
             soldier.transform.localScale = Vector3.one;
         }
 
-        // ── Step 4: Deactivate soldier prefab, show rider Images ─────────────
-        // SetActive(false) completely hides the soldier GameObject so only the
-        // HorseRiderVisual seat Images (Face/Armor/Helmet/Weapon) are visible.
-        // Must run AFTER seat.MountSoldier() (which reparents + positions the
-        // soldier) so the soldier is in the correct hierarchy before being hidden.
-        //
-        // FIX B: _riderAnimator is nulled because the soldier's SpriteLayerAnimator
-        // is on a now-inactive GameObject. Calling SetState on it would silently
-        // do nothing and fight HorseRiderVisual. HorseRiderVisual drives all four
-        // Images autonomously while the soldier is inactive.
         _mountedSoldier.gameObject.SetActive(false);
-
-        _riderAnimator = null;   // FIX B — soldier is inactive; null to avoid no-op calls
+        _riderAnimator = null;
 
         riderVisual?.ShowRider(equipment);
-
-        // Sync rider animation to the horse's current state.
-        // ShowRider always initialises seat Images to HorseIdle frame 0.
-        // In a HorseWalkZone drop, SetupWalk has already set _state = Run before
-        // PerformMount is called, so this corrects the rider to HorseRun immediately,
-        // keeping it in sync with the horse body animation from the first frame.
-        // In a normal HorseSlot drop, _state is still Idle — harmless no-op.
         riderVisual?.SetRiderState(MapToRiderState(_state));
 
         Debug.Log($"[HorseController] '{name}': '{soldier.name}' mounted. Rider state → {_state}.");
     }
 
-    /// <summary>
-    /// Returns the soldier to the ground and resets the horse to Idle.
-    /// </summary>
     public void PerformDismount()
     {
         if (seat == null || !seat.IsOccupied) return;
 
-        // Hide the 4 seat Images — soldier's own visuals take over from here.
         riderVisual?.HideRider();
 
-        // Re-enable soldier before DismountFromHorse() reparents it so it
-        // returns home as a visible, interactive GameObject.
         if (_mountedSoldier != null)
         {
             _riderAnimator = _mountedSoldier.GetComponent<SpriteLayerAnimator>();
@@ -539,9 +487,6 @@ public class HorseController : MonoBehaviour, IDropHandler
 
     // ── Internal helpers ──────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Null-safe; silently does nothing while soldier is SetActive(false) (FIX B).
-    /// </summary>
     private void NotifySoldierAnimator(AnimationState riderState)
     {
         _riderAnimator?.SetState(riderState);

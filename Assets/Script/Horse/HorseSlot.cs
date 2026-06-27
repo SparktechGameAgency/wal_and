@@ -1835,8 +1835,9 @@ public class HorseSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
                 ? dragHC.ExtractRiderForTransfer()
                 : null;
 
-            // Notify zone its horse is leaving (clears _currentHorse reference)
-            zoneOwner.Zone.NotifyHorseLeft();
+            // Notify zone that THIS SPECIFIC horse is leaving — other horses
+            // still walking in the zone are left untouched.
+            zoneOwner.Zone.NotifyHorseLeft(zoneOwner);
 
             // Accept the walk-zone horse into this slot (creates new prefab instance)
             drag.RegisterSuccessfulDrop();
@@ -1863,7 +1864,7 @@ public class HorseSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
                 ? dragHC.ExtractRiderForTransfer()
                 : null;
 
-            zoneOwner.Zone.NotifyHorseLeft();
+            zoneOwner.Zone.NotifyHorseLeft(zoneOwner);
             drag.RegisterSuccessfulDrop();
             int idx = drag.inventoryIndex >= 0 ? drag.inventoryIndex : _inventoryIndex;
             Equip(drag.horseData, idx);
