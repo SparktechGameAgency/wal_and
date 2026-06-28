@@ -103,6 +103,32 @@ public class HorseWalkZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
     /// <summary>True if a horse with this inventory index is currently walking in the zone.</summary>
     public bool ContainsInventoryIndex(int inventoryIndex) => FindByIndex(inventoryIndex) != null;
 
+    // ── Detach button support ─────────────────────────────────────────────────
+
+    /// <summary>True if ANY horse currently in this zone has a soldier mounted.</summary>
+    public bool HasMountedHorse
+    {
+        get
+        {
+            foreach (var entry in _horses)
+                if (entry.controller != null && entry.controller.IsOccupied)
+                    return true;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Returns the first HorseController in this zone that has a soldier mounted,
+    /// or null if none are occupied. Used by HorseDetachButton.
+    /// </summary>
+    public HorseController GetFirstMountedHorse()
+    {
+        foreach (var entry in _horses)
+            if (entry.controller != null && entry.controller.IsOccupied)
+                return entry.controller;
+        return null;
+    }
+
     private WalkingHorse FindByIndex(int inventoryIndex)
     {
         for (int i = 0; i < _horses.Count; i++)

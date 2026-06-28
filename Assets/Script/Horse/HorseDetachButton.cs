@@ -2,43 +2,43 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// DETACH BUTTON — can live anywhere in the scene.
+/// HORSE DETACH BUTTON
 ///
-/// Wiring (pick ONE):
-///   A) Assign walkZone in the Inspector — most reliable, works regardless of hierarchy.
-///   B) Leave walkZone empty and place this button as a child of the HorseWalkZone
-///      GameObject — it will find the zone automatically via GetComponentInParent.
+/// Place this anywhere inside the HorseArea GameObject (or assign horseArea
+/// in the Inspector). The button:
 ///
-/// Behaviour:
-///   • Visible when ANY HorseController under the zone has a soldier mounted.
-///   • Hidden when no soldier is mounted.
-///   • Click → dismounts the first occupied horse → soldier returns to drag origin.
+///   • Is VISIBLE  when at least one equipped HorseSlot has a soldier mounted.
+///   • Is HIDDEN   when no equipped horse has a rider.
+///   • On click    → detaches ONE soldier (the first occupied slot found).
+///                   If two horses have soldiers, click once per horse.
+///
+/// Wiring:
+///   A) Assign 'horseArea' in the Inspector  — works anywhere in the scene.
+///   B) Leave it empty and place this button as a child of the HorseArea
+///      GameObject — it finds the area automatically via GetComponentInParent.
 /// </summary>
 [RequireComponent(typeof(Button))]
 [RequireComponent(typeof(CanvasGroup))]
 public class HorseDetachButton : MonoBehaviour
 {
-    [Tooltip("Assign the HorseWalkZone that owns the horse(s) this button controls. " +
-             "If left empty, the button will search its own parent chain at runtime.")]
-    [SerializeField] private HorseWalkZone walkZone;
+    [Tooltip("The HorseArea that owns the slots to check. " +
+             "Leave empty to find automatically via GetComponentInParent.")]
+    [SerializeField] private HorseArea horseArea;
 
     private Button _button;
     private CanvasGroup _canvasGroup;
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void Awake()
     {
         _button = GetComponent<Button>();
         _canvasGroup = GetComponent<CanvasGroup>();
 
-        // Auto-find if not wired in Inspector
-        if (walkZone == null)
-            walkZone = GetComponentInParent<HorseWalkZone>();
+        if (horseArea == null)
+            horseArea = GetComponentInParent<HorseArea>();
 
-        if (walkZone == null)
-            Debug.LogError("[HorseDetachButton] No HorseWalkZone found. " +
-                           "Assign it in the Inspector or place this button inside the HorseWalkZone GameObject.", this);
+        if (horseArea == null)
+            Debug.LogError("[HorseDetachButton] No HorseArea found. " +
+                           "Assign it in the Inspector or place this button inside the HorseArea GameObject.", this);
 
         _button.onClick.AddListener(OnDetachClicked);
         SetVisible(false);
@@ -46,40 +46,34 @@ public class HorseDetachButton : MonoBehaviour
 
     private void Update()
     {
-        SetVisible(FindMountedHorse() != null);
+        SetVisible(FindFirstMountedSlotHorse() != null);
     }
-
-    // ── Click ─────────────────────────────────────────────────────────────────
 
     private void OnDetachClicked()
     {
-        HorseController horse = FindMountedHorse();
+        HorseController horse = FindFirstMountedSlotHorse();
 
         if (horse == null)
         {
-            Debug.LogWarning("[HorseDetachButton] No mounted soldier found.", this);
+            Debug.LogWarning("[HorseDetachButton] No horse with a mounted soldier found in slots.", this);
             return;
         }
 
         horse.PerformDismount();
-        Debug.Log("[HorseDetachButton] Soldier detached — returned to drag origin.");
+        Debug.Log($"[HorseDetachButton] Soldier detached from '{horse.name}'.");
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
-
-    private HorseController FindMountedHorse()
+    private HorseController FindFirstMountedSlotHorse()
     {
-        if (walkZone == null) return null;
+        if (horseArea == null) return null;
 
-        HorseController[] horses =
-            walkZone.GetComponentsInChildren<HorseController>(includeInactive: true);
-
-        foreach (HorseController horse in horses)
+        foreach (HorseSlot slot in horseArea.Slots)
         {
-            if (horse.IsOccupied)
+            if (slot == null) continue;
+            HorseController horse = slot.Horse;
+            if (horse != null && horse.IsOccupied)
                 return horse;
         }
-
         return null;
     }
 

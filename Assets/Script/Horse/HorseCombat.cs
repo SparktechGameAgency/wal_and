@@ -268,9 +268,13 @@ public class HorseCombat : MonoBehaviour
 
         Vector2 targetPos = GetTargetLocalPosition();
         Vector2 currentPos = _rt.anchoredPosition;
-        Vector2 dir = (targetPos - currentPos).normalized;
 
-        _rt.anchoredPosition = currentPos + dir * chargeSpeed * Time.deltaTime;
+        // Only chase on the X axis — horses are ground units and must not
+        // float up/down toward an enemy's Y position.
+        float dx = targetPos.x - currentPos.x;
+        float moveX = Mathf.MoveTowards(0f, dx, chargeSpeed * Time.deltaTime);
+
+        _rt.anchoredPosition = new Vector2(currentPos.x + moveX, currentPos.y);
     }
 
     private void FaceTarget()
@@ -316,8 +320,11 @@ public class HorseCombat : MonoBehaviour
 
     private float GetDistanceToTarget()
     {
-        if (_target == null) return float.MaxValue;
-        return Mathf.Sqrt(GetSquaredDistanceTo(_target));
+        if (_target == null || _rt == null) return float.MaxValue;
+
+        // Distance is X-only to match our X-only movement toward the enemy.
+        Vector2 targetPos = GetTargetLocalPosition();
+        return Mathf.Abs(targetPos.x - _rt.anchoredPosition.x);
     }
 
     private float GetSquaredDistanceTo(EnemyUnit enemy)

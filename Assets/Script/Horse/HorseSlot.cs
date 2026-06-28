@@ -1734,6 +1734,9 @@ public class HorseSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
     public bool IsOccupied => _horse != null;
     public HorseData CurrentData => _horse?.Data;
 
+    /// <summary>The HorseController in this slot, or null. Used by HorseDetachButton.</summary>
+    public HorseController Horse => _horse;
+
     // ─── Per-copy identity ────────────────────────────────────────────────────
 
     private int _inventoryIndex = -1;

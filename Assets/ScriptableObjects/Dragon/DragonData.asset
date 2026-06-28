@@ -22,6 +22,6 @@ MonoBehaviour:
   detectionRadius: 50
   attackRange: 2
   chaseSpeed: 120
-  fireDamage: 10
+  fireDamage: 2
   damageTickInterval: 0.5
   dragonAttackTrigger: Attack

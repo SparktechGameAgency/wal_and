@@ -35,24 +35,24 @@ MonoBehaviour:
   runFPS: 10
   runCyclesBeforeIdle: 0
   attackSprites:
-  - {fileID: 21300000, guid: b68d7176f3625844cb1e543a7a623c57, type: 3}
-  - {fileID: 21300000, guid: ea851aad730031a4e93cca2ff3e94fbb, type: 3}
-  - {fileID: 21300000, guid: 95c14993c119c0940a25ec08371b64de, type: 3}
-  - {fileID: 21300000, guid: 87764b9f09702ad4a927ef04472a4280, type: 3}
-  - {fileID: 21300000, guid: efbeea8bbfc9b824196e1005e8b85da9, type: 3}
-  - {fileID: 21300000, guid: ff14b568c7d1309489ae862fd0fc232f, type: 3}
-  - {fileID: 21300000, guid: 23fc8074fff6cd04698a5f71ea8f0cb6, type: 3}
-  - {fileID: 21300000, guid: 838db16f591f20349bea942fbd14125d, type: 3}
-  - {fileID: 21300000, guid: 71e394b05b626a04b9f5eb9044a6423c, type: 3}
+  - {fileID: 4963803671993627589, guid: b68d7176f3625844cb1e543a7a623c57, type: 3}
+  - {fileID: 3102132095938608767, guid: ea851aad730031a4e93cca2ff3e94fbb, type: 3}
+  - {fileID: -5183578257564168505, guid: 95c14993c119c0940a25ec08371b64de, type: 3}
+  - {fileID: 4788352203882907273, guid: 87764b9f09702ad4a927ef04472a4280, type: 3}
+  - {fileID: 923326214440860529, guid: efbeea8bbfc9b824196e1005e8b85da9, type: 3}
+  - {fileID: -3412570638305834873, guid: ff14b568c7d1309489ae862fd0fc232f, type: 3}
+  - {fileID: 511925342514158984, guid: 23fc8074fff6cd04698a5f71ea8f0cb6, type: 3}
+  - {fileID: -2291434991597241136, guid: 838db16f591f20349bea942fbd14125d, type: 3}
+  - {fileID: 7125077431159786419, guid: 71e394b05b626a04b9f5eb9044a6423c, type: 3}
   attackFPS: 12
   attackCyclesBeforeIdle: 1
   deadSprites:
-  - {fileID: 21300000, guid: 9d1c58f9c9ae2bb43a2a3dad32307dc5, type: 3}
-  - {fileID: 21300000, guid: 2f254d1e064690e4594b1ca729acebb3, type: 3}
-  - {fileID: 21300000, guid: c317a24daf93cf741ad5324d07568f2a, type: 3}
-  - {fileID: 21300000, guid: 67d622822234f7d4f93ade2da31ea3cb, type: 3}
-  - {fileID: 21300000, guid: 657c62f7471275b45b7ff205a10b99ee, type: 3}
-  - {fileID: 21300000, guid: be54b1a3dbc1f614ead687f898ae0f28, type: 3}
+  - {fileID: -5183578257564168505, guid: 9d1c58f9c9ae2bb43a2a3dad32307dc5, type: 3}
+  - {fileID: 4788352203882907273, guid: 2f254d1e064690e4594b1ca729acebb3, type: 3}
+  - {fileID: 923326214440860529, guid: c317a24daf93cf741ad5324d07568f2a, type: 3}
+  - {fileID: -3412570638305834873, guid: 67d622822234f7d4f93ade2da31ea3cb, type: 3}
+  - {fileID: 511925342514158984, guid: 657c62f7471275b45b7ff205a10b99ee, type: 3}
+  - {fileID: -2291434991597241136, guid: be54b1a3dbc1f614ead687f898ae0f28, type: 3}
   deadFPS: 8
   health: 50
   ability: 50

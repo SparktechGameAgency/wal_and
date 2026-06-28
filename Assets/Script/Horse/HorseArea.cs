@@ -30,6 +30,9 @@ public class HorseArea : MonoBehaviour
     [Header("Active slots (equipped horses)")]
     [SerializeField] private HorseSlot[] slots;
 
+    /// <summary>Read-only view of all equipped slots. Used by HorseDetachButton.</summary>
+    public HorseSlot[] Slots => slots;
+
     [Header("Area buttons")]
     [SerializeField] private Button buyButton;
     [Tooltip("Opens the Inventory panel where horses can be equipped, upgraded, and sold")]

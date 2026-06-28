@@ -358,6 +358,9 @@ MonoBehaviour:
   rootCanvas: {fileID: 0}
   spriteDefaultFacesLeft: 1
   fireBreath: {fileID: 8143178699912349805}
+  approachOffset: {x: -250, y: -45}
+  fireDuration: 1
+  fireCooldown: 3
   homeSlot: {fileID: 0}
 --- !u!114 &147051859977637429
 MonoBehaviour:
