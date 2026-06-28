@@ -372,6 +372,9 @@ public class ArcherSlot : MonoBehaviour,
         _stationedSoldier = soldier;
         IsOccupied = true;
 
+        // Lock and hide the soldier — the ArcherUnit prefab is the visual now.
+        soldier.StationOnArcherSlot(this);
+
         _emptyVisual?.SetActive(false);
         _bg.color = occupiedColor;
 
@@ -391,6 +394,9 @@ public class ArcherSlot : MonoBehaviour,
 
         if (_archerInstance != null)
             Destroy(_archerInstance);
+
+        // Restore the soldier so it can be dragged again.
+        _stationedSoldier?.RecallFromArcherSlot();
 
         _archerInstance = null;
         _stationedSoldier = null;

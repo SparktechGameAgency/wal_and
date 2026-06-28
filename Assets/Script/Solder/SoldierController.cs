@@ -248,6 +248,36 @@ public class SoldierController : MonoBehaviour
         else StopWalking();
     }
 
+    /// <summary>
+    /// Fully restarts patrol AND the rest-cycle coroutine.
+    ///
+    /// WHY THIS EXISTS: any code path that does gameObject.SetActive(false)
+    /// on this soldier (e.g. SoldierDragDrop.StationOnArcherSlot) silently
+    /// kills every running coroutine on this component — including the
+    /// RestCycle() coroutine started back in Start()/InitPatrol(). Calling
+    /// SetPatrolling(true) alone only flips the _isPatrolling flag; it does
+    /// NOT relaunch RestCycle(), so the soldier is left with a permanently
+    /// dead rest-cycle after being recalled from an archer slot (and would
+    /// have the same problem after a horse/cannon slot, if those paths ever
+    /// disable the GameObject too).
+    ///
+    /// This mirrors the exact fix already applied to HorseController/
+    /// HorseWalkZone for the "patrolling horses freeze after SetActive(false)"
+    /// bug — restart every coroutine explicitly on re-enable rather than
+    /// assuming it survived.
+    /// </summary>
+    public void RestartPatrol()
+    {
+        if (_isDead) return;
+
+        StopAllCoroutines();   // clear out any stale/duplicate coroutine state
+        _isResting = false;
+        StartWalking();
+        StartCoroutine(RestCycle());
+
+        Debug.Log($"[SoldierController] '{name}' patrol fully restarted (coroutines relaunched).");
+    }
+
     public void EnterRidingState()
     {
         if (_isDead) return;
