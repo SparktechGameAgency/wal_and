@@ -66,16 +66,19 @@ public class CastleBlockUnitSlot : MonoBehaviour
         }
         else
         {
-            // Both zones are empty — restore visibility based on current tab.
-            // Each zone's SetXxxTabActive call already handles show/hide,
-            // so we re-apply whichever tab is currently active by asking the
-            // zones to refresh without changing any tab state. The simplest
-            // safe approach is to re-activate each zone's GameObject so the
-            // tab controller can manage it normally on the next tab switch.
-            if (_cannonZone != null)
-                _cannonZone.gameObject.SetActive(true);
-            if (_archerZone != null)
-                _archerZone.gameObject.SetActive(true);
+            // Both zones are empty — restore each zone's visibility based on
+            // which tab is currently active. Do NOT blindly SetActive(true) on
+            // both, or the archer zone will become droppable while in the Cannon
+            // tab (and vice-versa).
+            var tab = CastleTabController.Instance != null
+                ? CastleTabController.Instance.ActiveTab
+                : CastleTabController.CastleTab.None;
+
+            bool cannonTabOpen = tab == CastleTabController.CastleTab.Cannon;
+            bool archerTabOpen = tab == CastleTabController.CastleTab.Archer;
+
+            if (_cannonZone != null) _cannonZone.SetCannonTabActive(cannonTabOpen);
+            if (_archerZone != null) _archerZone.SetArcherTabActive(archerTabOpen);
         }
     }
 
