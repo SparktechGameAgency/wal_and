@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 100e8df550fbfb34bbf54a1ccfd96947, type: 3}
   m_Name: DragonData
   m_EditorClassIdentifier: Assembly-CSharp::DragonData
-  dragonName: Fire Dragon
+  dragonName: Dragon
   hatchDuration: 5
   eggCrackTrigger: Crack
   crackAnimationDuration: 1.5

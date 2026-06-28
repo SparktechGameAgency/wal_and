@@ -106,9 +106,14 @@ public class DragonEggSlot : MonoBehaviour
     public enum SlotState { Empty, Hatching, Cracking, Hatched }
     public SlotState CurrentState { get; private set; } = SlotState.Empty;
 
-    private float _hatchEndTime;
-    private Coroutine _hatchCoroutine;
-    private GameObject _spawnedDragon;   // reference to the live dragon instance
+    // All timing is driven by Update() using real wall-clock Time.time so that
+    // villagePanel.SetActive(false/true) panel switches cannot kill a coroutine
+    // and freeze the timer or skip the hatch.
+    private float _hatchEndTime;       // Time.time when hatching finishes
+    private float _crackEndTime;       // Time.time when crack animation finishes
+    private bool _crackTriggered;     // true once the crack Animator trigger has fired
+
+    private GameObject _spawnedDragon;
 
     // ══════════════════════════════════════════════════════════════════════════
     // UNITY LIFECYCLE
@@ -123,6 +128,41 @@ public class DragonEggSlot : MonoBehaviour
     private void Start()
     {
         EnterEmpty();
+    }
+
+    private void Update()
+    {
+        switch (CurrentState)
+        {
+            case SlotState.Hatching:
+                float remaining = _hatchEndTime - Time.time;
+                if (remaining <= 0f)
+                {
+                    UpdateTimerLabel(0f);
+                    EnterCracking();
+                }
+                else
+                {
+                    UpdateTimerLabel(remaining);
+                }
+                break;
+
+            case SlotState.Cracking:
+                // Fire the crack trigger exactly once on the first Update after
+                // entering this state (guarantees the Animator has been active
+                // for at least one frame before we poke it).
+                if (!_crackTriggered)
+                {
+                    if (eggAnimator != null && dragonData != null &&
+                        !string.IsNullOrEmpty(dragonData.eggCrackTrigger))
+                        eggAnimator.SetTrigger(dragonData.eggCrackTrigger);
+                    _crackTriggered = true;
+                }
+
+                if (Time.time >= _crackEndTime)
+                    EnterHatched();
+                break;
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -224,7 +264,13 @@ public class DragonEggSlot : MonoBehaviour
         Show(nestRoot2, true);
         Show(eggRoot, false);
         Show(fenceRoot, false);
-        Show(timerDisplay, false);
+
+        // Show the dragon name label in empty state
+        if (timerText != null)
+            timerText.text = dragonData != null && !string.IsNullOrEmpty(dragonData.dragonName)
+                ? dragonData.dragonName
+                : "Dragon";
+        Show(timerDisplay, true);
 
         // Hide any existing dragon
         if (_spawnedDragon != null) Destroy(_spawnedDragon);
@@ -242,15 +288,12 @@ public class DragonEggSlot : MonoBehaviour
         CurrentState = SlotState.Hatching;
         _hatchEndTime = Time.time + dragonData.hatchDuration;
 
-        Show(emptySlotRoot, false);  // hide the empty slot
-        Show(nestRoot1, true);   // keep both nests visible under the egg
+        Show(emptySlotRoot, false);
+        Show(nestRoot1, true);
         Show(nestRoot2, true);
-        Show(eggRoot, true);   // show the egg in the slot
-        Show(fenceRoot, true);   // show fence around the egg
-        Show(timerDisplay, true);   // show timer at top of area
-
-        if (_hatchCoroutine != null) StopCoroutine(_hatchCoroutine);
-        _hatchCoroutine = StartCoroutine(HatchCountdown());
+        Show(eggRoot, true);
+        Show(fenceRoot, true);
+        Show(timerDisplay, true);
 
         Debug.Log($"[DragonEggSlot] → Hatching  ({dragonData.hatchDuration}s)");
     }
@@ -262,19 +305,17 @@ public class DragonEggSlot : MonoBehaviour
     private void EnterCracking()
     {
         CurrentState = SlotState.Cracking;
+        _crackTriggered = false;  // Update() will fire the trigger next frame
+        _crackEndTime = Time.time + (dragonData != null ? dragonData.crackAnimationDuration : 1f);
 
-        // Hide the timer — it's served its purpose
-        Show(timerDisplay, false);
-        if (timerText != null) timerText.text = "00:00";
+        // Switch back to the dragon name — never show "00:00" to the player
+        if (timerText != null)
+            timerText.text = dragonData != null && !string.IsNullOrEmpty(dragonData.dragonName)
+                ? dragonData.dragonName
+                : "Dragon";
+        Show(timerDisplay, true);
 
-        // Fire the crack animation on the egg
-        if (eggAnimator != null && !string.IsNullOrEmpty(dragonData.eggCrackTrigger))
-            eggAnimator.SetTrigger(dragonData.eggCrackTrigger);
-
-        Debug.Log($"[DragonEggSlot] → Cracking  ({dragonData.crackAnimationDuration}s)");
-
-        // Wait for the crack clip to finish, then hatch
-        StartCoroutine(WaitForCrackThenHatch());
+        Debug.Log($"[DragonEggSlot] → Cracking  ({dragonData?.crackAnimationDuration}s)");
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -285,33 +326,35 @@ public class DragonEggSlot : MonoBehaviour
     {
         CurrentState = SlotState.Hatched;
 
-        // Hide egg, fence, nests and timer when dragon appears
+        // Hide egg, fence, nests when dragon appears
         Show(eggRoot, false);
         Show(fenceRoot, false);
         Show(nestRoot1, false);
         Show(nestRoot2, false);
-        Show(timerDisplay, false);
+
+        // Switch the label to the dragon name and keep the display visible
+        if (timerText != null)
+            timerText.text = dragonData != null && !string.IsNullOrEmpty(dragonData.dragonName)
+                ? dragonData.dragonName
+                : "Dragon";
+        Show(timerDisplay, true);
 
         // Spawn or activate the dragon
         if (dragonObjectOverride != null)
         {
-            // Pre-placed GO path
             dragonObjectOverride.SetActive(true);
             TriggerDragonIdle(dragonObjectOverride.GetComponent<Animator>());
             _spawnedDragon = dragonObjectOverride;
 
-            // Tell the dragon which slot it belongs to (enables drag-back home)
             var dc = _spawnedDragon.GetComponent<DragonController>();
             if (dc != null) dc.homeSlot = this;
         }
         else if (dragonPrefab != null)
         {
-            // Prefab instantiation path
             Transform spawnAt = dragonSpawnPoint != null ? dragonSpawnPoint : transform;
             _spawnedDragon = Instantiate(dragonPrefab, spawnAt.position, spawnAt.rotation, transform);
             TriggerDragonIdle(_spawnedDragon.GetComponent<Animator>());
 
-            // Tell the dragon which slot it belongs to (enables drag-back home)
             var dc = _spawnedDragon.GetComponent<DragonController>();
             if (dc != null) dc.homeSlot = this;
         }
@@ -321,39 +364,6 @@ public class DragonEggSlot : MonoBehaviour
         }
 
         Debug.Log($"[DragonEggSlot] → Hatched  — {dragonData?.dragonName} appeared!");
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // COROUTINES
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /// Counts down and updates the timer label every frame.
-    /// When time is up it moves to Cracking state.
-    private IEnumerator HatchCountdown()
-    {
-        while (true)
-        {
-            float remaining = _hatchEndTime - Time.time;
-
-            if (remaining <= 0f)
-            {
-                UpdateTimerLabel(0f);
-                break;
-            }
-
-            UpdateTimerLabel(remaining);
-            yield return null;
-        }
-
-        _hatchCoroutine = null;
-        EnterCracking();
-    }
-
-    /// Waits for the crack animation clip to finish, then hatches.
-    private IEnumerator WaitForCrackThenHatch()
-    {
-        yield return new WaitForSeconds(dragonData.crackAnimationDuration);
-        EnterHatched();
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -372,7 +382,6 @@ public class DragonEggSlot : MonoBehaviour
         if (anim == null) return;
         if (!string.IsNullOrEmpty(dragonData?.dragonIdleTrigger))
             anim.SetTrigger(dragonData.dragonIdleTrigger);
-        // If dragonIdleTrigger is blank the idle state plays automatically on entry
     }
 
     private static void Show(GameObject go, bool visible)
@@ -387,8 +396,6 @@ public class DragonEggSlot : MonoBehaviour
     /// Resets the slot to Empty (e.g. after the dragon is sent to battle).
     public void ResetSlot()
     {
-        if (_hatchCoroutine != null) { StopCoroutine(_hatchCoroutine); _hatchCoroutine = null; }
-        StopAllCoroutines();
         EnterEmpty();
     }
 

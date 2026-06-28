@@ -13409,7 +13409,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Time
+  m_text: Horse
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -41572,7 +41572,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Time
+  m_text: Wizard
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -46000,7 +46000,7 @@ GameObject:
   - component: {fileID: 1850293678}
   - component: {fileID: 1850293677}
   m_Layer: 0
-  m_Name: HorseTime
+  m_Name: HorseTitle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -52204,7 +52204,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DragonEggSlot
   dragonData: {fileID: 11400000, guid: fe97ab483b582e24b8a047ba34ffaf25, type: 2}
-  timerDisplay: {fileID: 0}
+  timerDisplay: {fileID: 1348846439}
   timerText: {fileID: 1011603684}
   emptySlotRoot: {fileID: 1884920266}
   addEggButton: {fileID: 1884920270}
