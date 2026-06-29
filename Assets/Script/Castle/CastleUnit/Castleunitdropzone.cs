@@ -796,9 +796,12 @@ public class CastleUnitDropZone : MonoBehaviour,
     private void RefreshRemoveButton()
     {
         if (_removeButton == null) return;
-        bool inCannonScene = GameManager.Instance != null &&
-                             GameManager.Instance.CurrentState == GameManager.GameState.Cannon;
-        Debug.Log($"[RemoveButton] {gameObject.name} | HasUnit={HasUnit} | GameState={GameManager.Instance?.CurrentState} | inCannonScene={inCannonScene} | setting active={HasUnit && inCannonScene}");
+        var state = GameManager.Instance?.CurrentState;
+        bool inCannonScene = state == GameManager.GameState.Cannon ||
+                             (state == GameManager.GameState.Castle &&
+                              CastleTabController.Instance != null &&
+                              CastleTabController.Instance.ActiveTab == CastleTabController.CastleTab.Cannon);
+        Debug.Log($"[RemoveButton] {gameObject.name} | HasUnit={HasUnit} | GameState={state} | inCannonScene={inCannonScene} | setting active={HasUnit && inCannonScene}");
         _removeButton.gameObject.SetActive(HasUnit && inCannonScene);
     }
 

@@ -40,6 +40,31 @@ MonoBehaviour:
   - {fileID: 21300000, guid: ce7deb79a14c7d844be9516ff9bfa1af, type: 3}
   - {fileID: 21300000, guid: 9c853b4bed24e634fb09568fe6cf1d87, type: 3}
   - {fileID: 21300000, guid: dc4e91eba06bc044ab30f4e0ea833aa8, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: 0af0f4bf343404e46825ff31dc25d15e, type: 3}
+  - {fileID: 21300000, guid: e3b498f236c277441931b72761a3d3a0, type: 3}
+  - {fileID: 21300000, guid: 4563262c418e5d449995c9423e33e698, type: 3}
+  - {fileID: 21300000, guid: d1674d35857c94e43b4282d9d6dc968c, type: 3}
+  - {fileID: 21300000, guid: 0a582538292f75845abe8b159872c780, type: 3}
+  - {fileID: 21300000, guid: 34d64300480d1b94fab4e8e80b2d89da, type: 3}
+  - {fileID: 21300000, guid: 742cfae44ed0a7949bba66d062f59082, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: 1e923ac2e2ea6f944a50c4e8557a5004, type: 3}
+  - {fileID: 21300000, guid: b625866a73cd2ab488cbdbd385ea79a5, type: 3}
+  - {fileID: 21300000, guid: c384a1da194a99949beacfd2ee5816e4, type: 3}
+  - {fileID: 21300000, guid: 31294f62284c8744c8abe20144c83a47, type: 3}
+  - {fileID: 21300000, guid: a750565ba17e12a4fbb23c4016517f28, type: 3}
+  - {fileID: 21300000, guid: c494aaf076513e94e8b2a69c52029f62, type: 3}
+  - {fileID: 21300000, guid: a23366472e3a45c4fb96608178fb7174, type: 3}
+  - {fileID: 21300000, guid: 4b34f480de29c244787b0a11e4cd6b99, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: 9e04da43e2ad2a84fa5bf81e5860d6f2, type: 3}
+  - {fileID: 21300000, guid: b1812bdaeecd09d438646a5bc48891cd, type: 3}
+  - {fileID: 21300000, guid: 72a2561706884534590cd778033f7320, type: 3}
+  - {fileID: 21300000, guid: d915bf11923f4a64bb26db1bd13f6aac, type: 3}
+  - {fileID: 21300000, guid: 324a917fec71cbd41ae752cd56f5ecd5, type: 3}
+  - {fileID: 21300000, guid: 59f65c09ccbae394f852c8deca3805b5, type: 3}
+  - {fileID: 21300000, guid: c6195679f49f3ad49b7260397743a8eb, type: 3}
   riderIdleSprites:
   - {fileID: 21300000, guid: e74ef753cc525164ca84ac9c70fe9652, type: 3}
   - {fileID: 21300000, guid: cd6a72b24e45b7e4486ed3b350a20d61, type: 3}

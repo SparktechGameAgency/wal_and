@@ -264,8 +264,17 @@ public class SpriteLayerAnimator : MonoBehaviour
     [Tooltip("FPS while Idle.")]
     [Min(1f)][SerializeField] private float idleFps = 6f;
 
-    [Tooltip("FPS while Walking / on-foot running.")]
+    [Tooltip("FPS while Walking / patrolling on foot.")]
     [Min(1f)][SerializeField] private float walkFps = 10f;
+
+    [Tooltip("FPS while Running to chase an enemy on foot. Try 12–14 for urgency.")]
+    [Min(1f)][SerializeField] private float runFps = 12f;
+
+    [Tooltip("FPS while Fighting an enemy on foot. Try 10–12.")]
+    [Min(1f)][SerializeField] private float fightFps = 10f;
+
+    [Tooltip("FPS for the on-foot Jump/leap animation. Try 10–14.")]
+    [Min(1f)][SerializeField] private float jumpFps = 12f;
 
     [Tooltip("FPS while Dragon-Riding (RiderIdle or RiderFly).")]
     [Min(1f)][SerializeField] private float ridingFps = 8f;
@@ -394,12 +403,15 @@ public class SpriteLayerAnimator : MonoBehaviour
     private float FpsForState(AnimationState state) => state switch
     {
         AnimationState.Walk => walkFps,
+        AnimationState.Run => runFps,
+        AnimationState.Fight => fightFps,
+        AnimationState.Jump => jumpFps,
         AnimationState.RiderIdle => ridingFps,
         AnimationState.RiderFly => ridingFps,
-        AnimationState.HorseIdle => idleFps,    // gentle seated sway
-        AnimationState.HorseRun => horseFps,   // fast gallop
-        AnimationState.HorseFight => horseFps,   // active combat
-        AnimationState.HorseDead => deathFps,   // slow death
+        AnimationState.HorseIdle => idleFps,
+        AnimationState.HorseRun => horseFps,
+        AnimationState.HorseFight => horseFps,
+        AnimationState.HorseDead => deathFps,
         AnimationState.Death => deathFps,
         _ => idleFps,
     };

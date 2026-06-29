@@ -40,6 +40,31 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 589dc39b2612d7c41a5a4d4a6d8fe63f, type: 3}
   - {fileID: 21300000, guid: ba00ea54966560447b8c63ae7428e52b, type: 3}
   - {fileID: 21300000, guid: 3e6ff21074e7cb0408662c255e962e8e, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: 554c0d103389baa478c2c2ce71c12259, type: 3}
+  - {fileID: 21300000, guid: 6836da21b0fb00b42aced646a7f07d02, type: 3}
+  - {fileID: 21300000, guid: a4c6f80666c422a44a2fd24cc75a13ae, type: 3}
+  - {fileID: 21300000, guid: d0d07c225dd03c24fbc425ef648e6058, type: 3}
+  - {fileID: 21300000, guid: 830c622605bb720419f174429e4bacf2, type: 3}
+  - {fileID: 21300000, guid: 5f4b9cd3980b6da4d8ebe1b7137976e8, type: 3}
+  - {fileID: 21300000, guid: 96cd4a2b61f0dec4ebd015f704cb5285, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: 1e9743fe46153014c9ddb8b45cafb91a, type: 3}
+  - {fileID: 21300000, guid: dab74fb1b5fb7f041b0848fe77c9cd68, type: 3}
+  - {fileID: 21300000, guid: c372e9d18c8feb747a39314bbc627ac3, type: 3}
+  - {fileID: 21300000, guid: 63965822e28984a4b9d1ca5fc4593001, type: 3}
+  - {fileID: 21300000, guid: 82a4840ff26c40e419227c90e7d1d26e, type: 3}
+  - {fileID: 21300000, guid: 16e3dfe87f36f0446b40683af37167a0, type: 3}
+  - {fileID: 21300000, guid: a73453f84406a07428b420211c37e4e6, type: 3}
+  - {fileID: 21300000, guid: 7125202860be26f4e833baaf5e1b4006, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: 6d7ae178c3d090a4b9f16d52c3aaf855, type: 3}
+  - {fileID: 21300000, guid: 23cdb24536f8584478313ec39ae0ea26, type: 3}
+  - {fileID: 21300000, guid: 3e579332b427ea14c8cae2d23786fc5d, type: 3}
+  - {fileID: 21300000, guid: 50b68283409093c499cc113eb9e0de35, type: 3}
+  - {fileID: 21300000, guid: 2841768dbb6416c4f8b385d3539218be, type: 3}
+  - {fileID: 21300000, guid: a6dcede80ca5db647adb946f7d073653, type: 3}
+  - {fileID: 21300000, guid: 4cf509b933870204d8915cf575ccb600, type: 3}
   riderIdleSprites:
   - {fileID: 21300000, guid: 8a700814910913349be7ee750a7b6e15, type: 3}
   - {fileID: 21300000, guid: 0a4374db3fce5b14fa154537829646fb, type: 3}

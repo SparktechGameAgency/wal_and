@@ -40,6 +40,31 @@ MonoBehaviour:
   - {fileID: 21300000, guid: df9821b649b1b8b43a3cb0a14eecb839, type: 3}
   - {fileID: 21300000, guid: a5dab299a55c5904480a7d19023b6be3, type: 3}
   - {fileID: 21300000, guid: 2d6eb925398d0f64e8fc0d79c6b12779, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: fc0f19b0cd7f26d47b61bbd603bb7b9f, type: 3}
+  - {fileID: 21300000, guid: 96e9ceb5c46ff2b408b580af70605876, type: 3}
+  - {fileID: 21300000, guid: 936cdb7930735a14393a1ac0164fb178, type: 3}
+  - {fileID: 21300000, guid: 8a5a79e5a5070db49a052127e98b6c74, type: 3}
+  - {fileID: 21300000, guid: 8969a34dfe2bbf140ac8594f0d1a3405, type: 3}
+  - {fileID: 21300000, guid: cb736acf7d6aa654f9af9ec3c6899571, type: 3}
+  - {fileID: 21300000, guid: 97c0b426a4d253646be3c1cb37dca0f6, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: 344d3fcc2cfd4f34db86b4075f3d5cde, type: 3}
+  - {fileID: 21300000, guid: 85123cefaa38474428c086ef632f20cf, type: 3}
+  - {fileID: 21300000, guid: e77592b8708e80c4ea5823e5d07932b1, type: 3}
+  - {fileID: 21300000, guid: 0702d1280c98d0a42a51fcae2e701385, type: 3}
+  - {fileID: 21300000, guid: ef72050304fad374cb0973ba62362869, type: 3}
+  - {fileID: 21300000, guid: 0a19c90c5e980514b83a3613bfb6c68d, type: 3}
+  - {fileID: 21300000, guid: 0377774219083b244ba6750b594cd36a, type: 3}
+  - {fileID: 21300000, guid: 5c91bad3120246a4aacb5cbfbf6ff9de, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: 629a3ec5399cb3b40b77790d61e66605, type: 3}
+  - {fileID: 21300000, guid: 3ce6c6d09f1b1534d91a897132cf2dfa, type: 3}
+  - {fileID: 21300000, guid: 34920f2d83383ec4293354b13e9941d4, type: 3}
+  - {fileID: 21300000, guid: 8fd67272185b2764f9cfd2c36b4d37f8, type: 3}
+  - {fileID: 21300000, guid: 9f2bdbcacb3dcda4ab8fc2dc636119eb, type: 3}
+  - {fileID: 21300000, guid: 9771ca5dd76ced14f85f3e614c5a851e, type: 3}
+  - {fileID: 21300000, guid: 79ac2534ed00ac14398b5211fddb88de, type: 3}
   riderIdleSprites:
   - {fileID: 21300000, guid: 17944df56f65dae43bd91389242f6e3b, type: 3}
   - {fileID: 21300000, guid: 82bc29c6253094e489352287b76a7cbd, type: 3}

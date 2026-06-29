@@ -40,6 +40,31 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 09118c94cdbd3fd439a063f8e9292a62, type: 3}
   - {fileID: 21300000, guid: 91baec7f2b30f434cb453cefd9e14a74, type: 3}
   - {fileID: 21300000, guid: 070d6ed4c2ae1a34c989bba63bf19ba3, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: d8f924b69cf32364bbaf105eee81b682, type: 3}
+  - {fileID: 21300000, guid: 3b9fb414132969b4bb1bc7c2339c0f55, type: 3}
+  - {fileID: 21300000, guid: 79472d3ab49fe1548af2d9c9c4254caa, type: 3}
+  - {fileID: 21300000, guid: de636fdcc560e404eb2f154e52c8a7ce, type: 3}
+  - {fileID: 21300000, guid: 164662a3aedf4514693adddd46805b6e, type: 3}
+  - {fileID: 21300000, guid: 57e214ff5fb6eae4388e86f9f14696a3, type: 3}
+  - {fileID: 21300000, guid: ce4dab4f2b4520947a78178868572798, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: 4edc149011ac14c4ea1eb56c9742ed26, type: 3}
+  - {fileID: 21300000, guid: 53e071720ee960b4d8639f9d90aff069, type: 3}
+  - {fileID: 21300000, guid: 67f2e7cb538176b4a8aaf964c877af0b, type: 3}
+  - {fileID: 21300000, guid: e859fa6dd40d3ef48a0960d6ca5aae50, type: 3}
+  - {fileID: 21300000, guid: c327a3fcfc3726249b7e0d95dbe9a97f, type: 3}
+  - {fileID: 21300000, guid: 74f33cc7483375642b6b9700f4ea4765, type: 3}
+  - {fileID: 21300000, guid: 1e9e90238e4d336419db53eab141c5b2, type: 3}
+  - {fileID: 21300000, guid: 9a7ba970c4d86734eae0ea28581f53d5, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: ce564be7e09f685468f1bfe0694dddda, type: 3}
+  - {fileID: 21300000, guid: 511962ccbcbd4ad49b51cadd6039fb74, type: 3}
+  - {fileID: 21300000, guid: 231c9fc8514569d4db50900259ed6fa0, type: 3}
+  - {fileID: 21300000, guid: b31a20989577c09458af90cbbaef5479, type: 3}
+  - {fileID: 21300000, guid: 19a907c2629f7674fa7e2d451242c464, type: 3}
+  - {fileID: 21300000, guid: 6c54477f4a3dd084ab8127e5eb9cc736, type: 3}
+  - {fileID: 21300000, guid: eec71c2ea39087744ba246fcb18c9842, type: 3}
   riderIdleSprites:
   - {fileID: 21300000, guid: a073e3708db1ac548945355d414fda41, type: 3}
   - {fileID: 21300000, guid: 273635578b6b3054c8aac66284220842, type: 3}

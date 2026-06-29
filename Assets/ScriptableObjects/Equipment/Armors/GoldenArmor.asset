@@ -40,6 +40,31 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 151a4dcd0323dc34290fa60a9109d77d, type: 3}
   - {fileID: 21300000, guid: 73b55aef6987bc4498cf6a0278c52a56, type: 3}
   - {fileID: 21300000, guid: 9262192f40589244c9158ba51c1d54a3, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: 1896caa74daf6e9478747d35f0f50411, type: 3}
+  - {fileID: 21300000, guid: 464d236a92b2dfd44bc6fd74b30216e3, type: 3}
+  - {fileID: 21300000, guid: a1f670b6e4d8f524ab0b96f4039a2751, type: 3}
+  - {fileID: 21300000, guid: 0453d9149d53bc042a79a245b83275be, type: 3}
+  - {fileID: 21300000, guid: ca3f16f64261b4145833850186ab8d8f, type: 3}
+  - {fileID: 21300000, guid: 64149995db983ee41aa7a9c76936929d, type: 3}
+  - {fileID: 21300000, guid: c623b4d1783dd6b49a3c8ec18274fc4e, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: c89d4759a44cc0c4b879c23daa68b7a1, type: 3}
+  - {fileID: 21300000, guid: faa15cc357c520a4d99dc65d58dcd996, type: 3}
+  - {fileID: 21300000, guid: eca5edcf5b67e7a46b382b9c194d52b8, type: 3}
+  - {fileID: 21300000, guid: 495079659fe881949b1c87060c0f8432, type: 3}
+  - {fileID: 21300000, guid: c2e5b8c91e573e24a8d8eb4a94bc80d7, type: 3}
+  - {fileID: 21300000, guid: 1c345fb13ac4ca9429de180eb5018b74, type: 3}
+  - {fileID: 21300000, guid: 48f327ad2d37f8045943827f556664f9, type: 3}
+  - {fileID: 21300000, guid: e41e176f06ed3c84d95f5c24a1bbdc0a, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: bf554bd28bbddce4f9e62836f769ad4b, type: 3}
+  - {fileID: 21300000, guid: c92dd9a235e8cd84cabe99d5dc970c62, type: 3}
+  - {fileID: 21300000, guid: 43cf901e1e2e7fa42b813bdc2a3513dd, type: 3}
+  - {fileID: 21300000, guid: 727e110ad789ba34fabef404a52e3033, type: 3}
+  - {fileID: 21300000, guid: 595e342218035a04b8d4dddb904c7f32, type: 3}
+  - {fileID: 21300000, guid: 09d64ee804fcfdf47adcaac7000ccd4b, type: 3}
+  - {fileID: 21300000, guid: 271898f008595484abac79b6294841ca, type: 3}
   riderIdleSprites:
   - {fileID: 21300000, guid: 93cc5fd3d05fef34788a2f9959442651, type: 3}
   - {fileID: 21300000, guid: d757543b9a520184bbd978601661ca1b, type: 3}

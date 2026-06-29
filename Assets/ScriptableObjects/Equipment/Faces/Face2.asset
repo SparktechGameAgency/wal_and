@@ -40,6 +40,31 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 76fdb8b0624979043969c96c3e506bb3, type: 3}
   - {fileID: 21300000, guid: 43d79889c5220974ca4c20e2e93c9fc1, type: 3}
   - {fileID: 21300000, guid: d3e91178a48801f4a818eee98457ec65, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: 323415e658950d04087c6abd8a673df7, type: 3}
+  - {fileID: 21300000, guid: a1586d6f4ace22f41a21b554c861ffb9, type: 3}
+  - {fileID: 21300000, guid: e8947ad6db7ee6845863286307f78699, type: 3}
+  - {fileID: 21300000, guid: c3097ccaf3a79fc4fb5e9ce265b17d2e, type: 3}
+  - {fileID: 21300000, guid: aed7c8311a85709439bc5019175e83a2, type: 3}
+  - {fileID: 21300000, guid: 7e9a0ec2e338bd9479535b15b82cbbb2, type: 3}
+  - {fileID: 21300000, guid: 5d0951a26089875488ddc6e2607aa48b, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: 59aa8e57622465f45a65403bd71b0740, type: 3}
+  - {fileID: 21300000, guid: 6b3892fca797f7b4c9d424ce11b1e44f, type: 3}
+  - {fileID: 21300000, guid: 87099f0e6d666814c9597603a4c7244a, type: 3}
+  - {fileID: 21300000, guid: 68146546143f2d34bb2224027d662f5b, type: 3}
+  - {fileID: 21300000, guid: c1e3b422a2f833449b602d0afc394e7f, type: 3}
+  - {fileID: 21300000, guid: d7ad50bdfbb16e642b1caa480c7dad7b, type: 3}
+  - {fileID: 21300000, guid: ed6c3354561bc1649a68295169f71e5b, type: 3}
+  - {fileID: 21300000, guid: 8f8c7bc160398d94f94a9bd9caf07315, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: 728ab72b4b5ca594682c413f69cfc453, type: 3}
+  - {fileID: 21300000, guid: 5cd3c8eb994580043839d42f7e8ca6bb, type: 3}
+  - {fileID: 21300000, guid: cb674c70d1c41324c9a7558f245f6ac7, type: 3}
+  - {fileID: 21300000, guid: 8c70f4961eea50945abb27d5e6d8f02f, type: 3}
+  - {fileID: 21300000, guid: c840b8af5ba0b504e90ce795bd17a619, type: 3}
+  - {fileID: 21300000, guid: 0d32d4b703209f6468cad8b520667e56, type: 3}
+  - {fileID: 21300000, guid: b7e06bd070468014db1152ed1d5b1356, type: 3}
   riderIdleSprites:
   - {fileID: 21300000, guid: 28435c7deeaa95c4c8019c6d1e89f8f6, type: 3}
   - {fileID: 21300000, guid: a6cebffb5e5efac4b8eedad97deeba35, type: 3}

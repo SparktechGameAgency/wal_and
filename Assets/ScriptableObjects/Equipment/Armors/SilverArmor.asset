@@ -40,6 +40,31 @@ MonoBehaviour:
   - {fileID: 21300000, guid: a5817301ec4320f4484190524a6b0036, type: 3}
   - {fileID: 21300000, guid: e7aa5ef34cef3334b972531ee3467a18, type: 3}
   - {fileID: 21300000, guid: aa9e7d86ddb42674ab5f73ec24c8208c, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: 497ba8a5e68d4ed419fe23055959d73b, type: 3}
+  - {fileID: 21300000, guid: 8be74fb8bdcc3ef49838e36491951220, type: 3}
+  - {fileID: 21300000, guid: afb370ac0ae21944b9a026cd1da8a683, type: 3}
+  - {fileID: 21300000, guid: abecd9bd7e04dc248a8e2d9237294ef7, type: 3}
+  - {fileID: 21300000, guid: 3cd491bbf9d8b3c4e8d69b0459b46de0, type: 3}
+  - {fileID: 21300000, guid: a791056ca799e064384344f7d5f13d41, type: 3}
+  - {fileID: 21300000, guid: b2b56a6656f34dd4aad5724f5b0514ef, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: 7d4296ebc4b3dbd4e94a5c942ea2bf52, type: 3}
+  - {fileID: 21300000, guid: d3004ea71ec062649b172806cb12a963, type: 3}
+  - {fileID: 21300000, guid: cb23768d67617ab4094a45dc15649c6b, type: 3}
+  - {fileID: 21300000, guid: 85a4767d1069ddd40b594514e60b4453, type: 3}
+  - {fileID: 21300000, guid: bdbc1c404e1316540995cb5e4dbe7ceb, type: 3}
+  - {fileID: 21300000, guid: 57f312d2cda499f4c893c98ec54bc993, type: 3}
+  - {fileID: 21300000, guid: 5b37c276e45008a429cebc030607ff0e, type: 3}
+  - {fileID: 21300000, guid: 9731f8500fa1758429e68c322b44c0bb, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: 6186861730adb52449f0fd556f815560, type: 3}
+  - {fileID: 21300000, guid: e0f683ad60da63244a32737ee545229a, type: 3}
+  - {fileID: 21300000, guid: 9615bc875372fdb48bce92f8a992cdcf, type: 3}
+  - {fileID: 21300000, guid: 730c349b5542f4046950ce5493845f4f, type: 3}
+  - {fileID: 21300000, guid: e3aceae7d327d094fbafb85d00071a78, type: 3}
+  - {fileID: 21300000, guid: 3097f899896dd814cba635429bc3a0cc, type: 3}
+  - {fileID: 21300000, guid: fa1b269223203374ea95f62aa1d9500e, type: 3}
   riderIdleSprites:
   - {fileID: 21300000, guid: b6769da844ead944492382ec25456db2, type: 3}
   - {fileID: 21300000, guid: dd89911a658fecc409cafb8959406ccc, type: 3}

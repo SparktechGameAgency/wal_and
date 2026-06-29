@@ -34,6 +34,27 @@ public class SoldierController : MonoBehaviour
     [SerializeField] private float restDurationMin = 1.5f;
     [SerializeField] private float restDurationMax = 3.5f;
 
+    [Header("Enemy Combat")]
+    [Tooltip("Radius (canvas units) in which this soldier scans for EnemyUnit targets.\n" +
+             "Uses Physics2D.OverlapCircleAll — make sure your EnemyUnit GameObjects\n" +
+             "have a Collider2D and are on the layer set in Enemy Layer Mask.")]
+    [SerializeField] private float detectionRadius = 200f;
+
+    [Tooltip("Layer mask for EnemyUnit colliders. Set to the layer your enemies use.")]
+    [SerializeField] private LayerMask enemyLayerMask = ~0;
+
+    [Tooltip("Canvas units per second when chasing an enemy. Usually faster than patrol.")]
+    [SerializeField] private float chaseSpeed = 130f;
+
+    [Tooltip("Canvas units — how close the soldier must get before starting to attack.")]
+    [SerializeField] private float attackRange = 30f;
+
+    [Tooltip("Seconds between each attack hit.")]
+    [SerializeField] private float attackInterval = 1f;
+
+    [Tooltip("Damage dealt to the enemy per hit (uses SoldierStats.AttackDamage when > 0).")]
+    [SerializeField] private float attackDamageOverride = 0f;
+
     // ─── Private ──────────────────────────────────────────────────────────────
 
     private SoldierStats _stats;
@@ -49,6 +70,10 @@ public class SoldierController : MonoBehaviour
     private bool _isDead = false;
     private bool _isPatrolling = false;
     private bool _isResting = false;
+
+    // Combat state
+    private EnemyUnit _target;          // currently tracked enemy
+    private bool _isInCombat = false;   // true while chasing or fighting
 
     // ─── Unity Lifecycle ──────────────────────────────────────────────────────
 
@@ -85,7 +110,20 @@ public class SoldierController : MonoBehaviour
 
     private void Update()
     {
-        if (_isDead || !_isPatrolling || _isResting) return;
+        if (_isDead) return;
+
+        // ── Combat runs in CombatLoop coroutine — skip patrol while active ──
+        if (_isInCombat) return;
+
+        // ── Scan for enemies while patrolling / resting ────────────────────
+        if (TryFindEnemy(out EnemyUnit found))
+        {
+            EngageEnemy(found);
+            return;
+        }
+
+        // ── Normal patrol ─────────────────────────────────────────────────
+        if (!_isPatrolling || _isResting) return;
         MovePatrol();
     }
 
@@ -134,16 +172,12 @@ public class SoldierController : MonoBehaviour
 
             if (_direction == 1 && x >= _rightBound)
             {
-                var p = _rect.anchoredPosition;
-                p.x = _rightBound;
-                _rect.anchoredPosition = p;
+                var p = _rect.anchoredPosition; p.x = _rightBound; _rect.anchoredPosition = p;
                 SetDirection(-1);
             }
             else if (_direction == -1 && x <= _leftBound)
             {
-                var p = _rect.anchoredPosition;
-                p.x = _leftBound;
-                _rect.anchoredPosition = p;
+                var p = _rect.anchoredPosition; p.x = _leftBound; _rect.anchoredPosition = p;
                 SetDirection(1);
             }
         }
@@ -154,16 +188,12 @@ public class SoldierController : MonoBehaviour
 
             if (_direction == 1 && x >= _rightBound)
             {
-                var pos = transform.localPosition;
-                pos.x = _rightBound;
-                transform.localPosition = pos;
+                var pos = transform.localPosition; pos.x = _rightBound; transform.localPosition = pos;
                 SetDirection(-1);
             }
             else if (_direction == -1 && x <= _leftBound)
             {
-                var pos = transform.localPosition;
-                pos.x = _leftBound;
-                transform.localPosition = pos;
+                var pos = transform.localPosition; pos.x = _leftBound; transform.localPosition = pos;
                 SetDirection(1);
             }
         }
@@ -176,7 +206,7 @@ public class SoldierController : MonoBehaviour
         while (!_isDead)
         {
             yield return new WaitForSeconds(Random.Range(restIntervalMin, restIntervalMax));
-            if (_isDead) yield break;
+            if (_isDead || _isInCombat) { yield return null; continue; }
 
             _isResting = true;
             _spriteAnim.SetState(AnimationState.Idle);
@@ -184,9 +214,159 @@ public class SoldierController : MonoBehaviour
             yield return new WaitForSeconds(Random.Range(restDurationMin, restDurationMax));
             if (_isDead) yield break;
 
-            _spriteAnim.SetState(AnimationState.Walk);
+            if (!_isInCombat)
+                _spriteAnim.SetState(AnimationState.Walk);
             _isResting = false;
         }
+    }
+
+    // ─── Enemy Detection ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Scans nearby colliders for a living EnemyUnit.
+    /// Returns true and sets <paramref name="found"/> if one is in range.
+    /// </summary>
+    private bool TryFindEnemy(out EnemyUnit found)
+    {
+        found = null;
+        Vector2 centre = _rect != null
+            ? (Vector2)_rect.position
+            : (Vector2)transform.position;
+
+        Collider2D[] hits = Physics2D.OverlapCircleAll(centre, detectionRadius, enemyLayerMask);
+        float bestDist = float.MaxValue;
+
+        foreach (var col in hits)
+        {
+            var enemy = col.GetComponent<EnemyUnit>();
+            if (enemy == null || enemy.IsDead) continue;
+
+            float dist = Vector2.Distance(centre, col.transform.position);
+            if (dist < bestDist) { bestDist = dist; found = enemy; }
+        }
+
+        return found != null;
+    }
+
+    // ─── Combat ───────────────────────────────────────────────────────────────
+
+    private void EngageEnemy(EnemyUnit enemy)
+    {
+        _target = enemy;
+        _isInCombat = true;
+        _isPatrolling = false;
+        _isResting = false;
+
+        // Subscribe so we know when the enemy dies
+        _target.OnDied += OnTargetDied;
+
+        StopAllCoroutines();           // pause rest cycle while in combat
+        _spriteAnim.SetState(AnimationState.Run);
+        StartCoroutine(CombatLoop());
+
+        Debug.Log($"[SoldierController] '{name}' engaging enemy '{enemy.name}'.");
+    }
+
+    private IEnumerator CombatLoop()
+    {
+        while (!_isDead && _target != null && !_target.IsDead)
+        {
+            float dist = DistanceToTarget();
+
+            if (dist > attackRange)
+            {
+                // ── Chase: run toward the enemy ────────────────────────────
+                if (_spriteAnim != null)
+                    _spriteAnim.SetState(AnimationState.Run);
+
+                MoveTowardTarget();
+            }
+            else
+            {
+                // ── Fight: face the enemy and attack ──────────────────────
+                FaceTarget();
+
+                if (_spriteAnim != null)
+                    _spriteAnim.SetState(AnimationState.Fight);
+
+                float dmg = attackDamageOverride > 0f
+                    ? attackDamageOverride
+                    : _stats.AttackDamage;
+
+                _target.TakeDamage(dmg);
+                Debug.Log($"[SoldierController] '{name}' hit '{_target.name}' for {dmg} damage.");
+
+                yield return new WaitForSeconds(attackInterval);
+            }
+
+            yield return null;
+        }
+
+        // Enemy is dead or gone — return to patrol
+        ReturnToPatrol();
+    }
+
+    private void MoveTowardTarget()
+    {
+        if (_target == null) return;
+
+        Vector2 myPos = _rect != null
+            ? (Vector2)_rect.position
+            : (Vector2)transform.position;
+
+        Vector2 targetPos = (Vector2)_target.transform.position;
+        float dx = targetPos.x - myPos.x;
+        int dir = dx >= 0 ? 1 : -1;
+        SetDirection(dir);
+
+        float step = chaseSpeed * Time.deltaTime;
+
+        if (_rect != null)
+            _rect.anchoredPosition += new Vector2(dir * step, 0f);
+        else
+            transform.Translate(dir * step, 0f, 0f, Space.Self);
+    }
+
+    private void FaceTarget()
+    {
+        if (_target == null) return;
+        float dx = _target.transform.position.x - (_rect != null ? _rect.position.x : transform.position.x);
+        SetDirection(dx >= 0 ? 1 : -1);
+    }
+
+    private float DistanceToTarget()
+    {
+        if (_target == null) return float.MaxValue;
+        Vector2 myPos = _rect != null
+            ? (Vector2)_rect.position
+            : (Vector2)transform.position;
+        return Vector2.Distance(myPos, _target.transform.position);
+    }
+
+    private void OnTargetDied(EnemyUnit dead)
+    {
+        dead.OnDied -= OnTargetDied;
+        _target = null;
+        // CombatLoop will exit on the next iteration; ReturnToPatrol() is called there.
+    }
+
+    private void ReturnToPatrol()
+    {
+        if (_isDead) return;
+
+        _isInCombat = false;
+        _target = null;
+
+        Debug.Log($"[SoldierController] '{name}' returning to patrol.");
+
+        // Recalculate bounds from current position so the soldier doesn't
+        // snap back to the original spawn — it resumes patrol from where it stands.
+        float cx = CurrentLocalX();
+        _leftBound = Mathf.Min(cx, destinationX);
+        _rightBound = Mathf.Max(cx, destinationX);
+
+        StartWalking();
+        StartCoroutine(RestCycle());
     }
 
     // ─── Death ────────────────────────────────────────────────────────────────
@@ -194,7 +374,15 @@ public class SoldierController : MonoBehaviour
     private void HandleDeath(SoldierStats _)
     {
         _isDead = true;
-        StopWalking();
+        _isInCombat = false;
+
+        if (_target != null)
+        {
+            _target.OnDied -= OnTargetDied;
+            _target = null;
+        }
+
+        StopAllCoroutines();
         _spriteAnim.SetState(AnimationState.Death);
         Debug.Log($"[SoldierController] '{name}' died.");
     }
@@ -207,26 +395,10 @@ public class SoldierController : MonoBehaviour
         ApplyFlip(dir);
     }
 
-    /// <summary>
-    /// Flips the VisualFlip child to face the movement direction.
-    ///
-    /// spriteDefaultFacingLeft = true (most pixel art faces left by default):
-    ///   positive scale.x = sprite faces LEFT
-    ///   negative scale.x = sprite faces RIGHT (mirrored)
-    ///   So: dir=1 (moving right) needs NEGATIVE scale
-    ///       dir=-1 (moving left) needs POSITIVE scale
-    ///
-    /// spriteDefaultFacingLeft = false (sprite faces right by default):
-    ///   dir=1 needs POSITIVE scale — no inversion needed.
-    /// </summary>
     private void ApplyFlip(int dir)
     {
         if (visualRoot == null) return;
-
-        // Invert sign when sprite naturally faces left,
-        // so the soldier always faces the direction it moves.
         float sign = spriteDefaultFacingLeft ? -dir : dir;
-
         Vector3 s = visualRoot.localScale;
         s.x = _visualBaseScaleX * sign;
         visualRoot.localScale = s;
@@ -237,65 +409,44 @@ public class SoldierController : MonoBehaviour
 
     // ─── Public API ───────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Pause (false) or resume (true) patrol.
-    /// Does NOT recalculate bounds — patrol range is fixed from spawn.
-    /// </summary>
     public void SetPatrolling(bool active)
     {
-        if (_isDead) return;
+        if (_isDead || _isInCombat) return;
         if (active) StartWalking();
         else StopWalking();
     }
 
     /// <summary>
     /// Fully restarts patrol AND the rest-cycle coroutine.
-    ///
-    /// WHY THIS EXISTS: any code path that does gameObject.SetActive(false)
-    /// on this soldier (e.g. SoldierDragDrop.StationOnArcherSlot) silently
-    /// kills every running coroutine on this component — including the
-    /// RestCycle() coroutine started back in Start()/InitPatrol(). Calling
-    /// SetPatrolling(true) alone only flips the _isPatrolling flag; it does
-    /// NOT relaunch RestCycle(), so the soldier is left with a permanently
-    /// dead rest-cycle after being recalled from an archer slot (and would
-    /// have the same problem after a horse/cannon slot, if those paths ever
-    /// disable the GameObject too).
-    ///
-    /// This mirrors the exact fix already applied to HorseController/
-    /// HorseWalkZone for the "patrolling horses freeze after SetActive(false)"
-    /// bug — restart every coroutine explicitly on re-enable rather than
-    /// assuming it survived.
+    /// Call this after SetActive(false/true) to revive killed coroutines.
     /// </summary>
     public void RestartPatrol()
     {
         if (_isDead) return;
 
-        StopAllCoroutines();   // clear out any stale/duplicate coroutine state
+        _isInCombat = false;
+        _target = null;
+
+        StopAllCoroutines();
         _isResting = false;
         StartWalking();
         StartCoroutine(RestCycle());
 
-        Debug.Log($"[SoldierController] '{name}' patrol fully restarted (coroutines relaunched).");
+        Debug.Log($"[SoldierController] '{name}' patrol fully restarted.");
     }
 
     public void EnterRidingState()
     {
         if (_isDead) return;
 
-        // Stop patrol and rest cycle
         StopAllCoroutines();
         _isPatrolling = false;
         _isResting = false;
+        _isInCombat = false;
 
-        // Neutralise the soldier's own flip — the dragon's localScale flip
-        // propagates down the hierarchy, so the soldier automatically faces
-        // whichever direction the dragon is flying.
+        if (_target != null) { _target.OnDied -= OnTargetDied; _target = null; }
+
         ResetFlipForMount();
-
-        // Play the sitting-on-dragon animation on every equipped layer.
-        // SpriteLayerAnimator.AdvanceAllLayers() calls item.GetSprites(Riding, bodyType)
-        // for each slot, so the correct sprites are shown regardless of which
-        // of the 6 armors is currently equipped.
         _spriteAnim.SetState(AnimationState.RiderIdle);
 
         Debug.Log($"[SoldierController] '{name}' entered riding state.");
@@ -304,46 +455,23 @@ public class SoldierController : MonoBehaviour
     public void ExitRidingState()
     {
         if (_isDead) return;
-
-        // Re-apply the patrol direction flip now that we're back on the ground.
         RefreshFlip();
-
-        // Resume walking — this also calls _spriteAnim.SetState(Walk).
         StartWalking();
-
-        // Restart the random rest cycle that EnterRidingState stopped.
         StartCoroutine(RestCycle());
-
         Debug.Log($"[SoldierController] '{name}' exited riding state.");
     }
 
-    /// <summary>
-    /// Re-applies the flip for the current direction on the VisualFlip child.
-    /// Called by SoldierDragDrop after SetParent() as a safety net.
-    /// Only touches visualRoot.localScale — never root.localScale.
-    /// </summary>
     public void RefreshFlip() => ApplyFlip(_direction);
 
-    /// <summary>
-    /// Resets the visualRoot flip to its natural (un-mirrored) state.
-    /// Called when mounting a dragon so the dragon's own localScale flip
-    /// drives the facing direction through the hierarchy — if the soldier's
-    /// visualRoot kept its own flip, the two would cancel each other out.
-    /// </summary>
     public void ResetFlipForMount()
     {
         if (visualRoot == null) return;
         Vector3 s = visualRoot.localScale;
-        // Restore to the base absolute scale — no sign applied.
-        // Dragon's parent flip in the hierarchy handles direction from here.
         s.x = Mathf.Abs(_visualBaseScaleX);
         visualRoot.localScale = s;
-        Debug.Log("[SoldierController] Flip reset for dragon mount.");
+        Debug.Log("[SoldierController] Flip reset for mount.");
     }
 
-    /// <summary>
-    /// Override destination X to change the patrol range at runtime.
-    /// </summary>
     public void SetDestinationX(float newX)
     {
         destinationX = newX;
@@ -356,6 +484,15 @@ public class SoldierController : MonoBehaviour
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
     {
+        // Detection radius
+        Gizmos.color = new Color(1f, 0.5f, 0f, 0.25f);
+        Gizmos.DrawWireSphere(transform.position, detectionRadius);
+
+        // Attack range
+        Gizmos.color = new Color(1f, 0f, 0f, 0.35f);
+        Gizmos.DrawWireSphere(transform.position, attackRange);
+
+        // Patrol bounds
         float spawnApprox = Application.isPlaying ? _leftBound : CurrentLocalX();
 
         Vector3 leftWorld = transform.parent != null

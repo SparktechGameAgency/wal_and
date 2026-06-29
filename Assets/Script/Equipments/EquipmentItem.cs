@@ -276,7 +276,7 @@ public class EquipmentItem : ScriptableObject
     // ─── 3a. ON-FOOT ANIMATION SPRITES ─────────────────────────────────────────
 
     [Header("─── 3a. ON-FOOT ANIMATION SPRITES ──────────────")]
-    [Tooltip("Sprites IN ORDER for the Walk/Run animation (frame 0, 1, 2...)")]
+    [Tooltip("Sprites IN ORDER for the Walk/Patrol animation (frame 0, 1, 2...)")]
     public Sprite[] walkSprites;
 
     [Tooltip("Sprites IN ORDER for the Idle/Rest animation")]
@@ -284,6 +284,18 @@ public class EquipmentItem : ScriptableObject
 
     [Tooltip("Sprites for the Death animation (optional)")]
     public Sprite[] deathSprites;
+
+    [Tooltip("Sprites IN ORDER for the on-foot RUN animation — played when chasing an enemy.\n" +
+             "Leave empty → falls back to walkSprites.")]
+    public Sprite[] runSprites;
+
+    [Tooltip("Sprites IN ORDER for the on-foot FIGHT animation — played while attacking an enemy.\n" +
+             "Leave empty → falls back to walkSprites.")]
+    public Sprite[] fightSprites;
+
+    [Tooltip("Sprites IN ORDER for the on-foot JUMP animation (optional — e.g. leap attack).\n" +
+             "Leave empty → falls back to runSprites then walkSprites.")]
+    public Sprite[] jumpSprites;
 
     // ─── 3b. DRAGON RIDER SPRITES ──────────────────────────────────────────────
 
@@ -329,6 +341,11 @@ public class EquipmentItem : ScriptableObject
 
     /// <summary>
     /// Returns the sprite array for the given animation state and body type.
+    ///
+    /// On-foot combat fallback chains:
+    ///   Run   → variant.runSprites   → runSprites   → walkSprites
+    ///   Fight → variant.fightSprites → fightSprites → walkSprites
+    ///   Jump  → variant.jumpSprites  → jumpSprites  → runSprites → walkSprites
     ///
     /// Horse fallback chains:
     ///   HorseIdle  → variant.horseIdleSprites  → horseIdleSprites  → idleSprites
@@ -417,6 +434,34 @@ public class EquipmentItem : ScriptableObject
                 variant?.idleSprites,
                 idleSprites);
 
+        // ── On-foot combat states ────────────────────────────────────────────
+        //   Run   → variant.runSprites   → runSprites   → walkSprites
+        //   Fight → variant.fightSprites → fightSprites → walkSprites
+        //   Jump  → variant.jumpSprites  → jumpSprites  → runSprites → walkSprites
+
+        if (state == AnimationState.Run)
+            return FirstNonEmpty(
+                variant?.runSprites,
+                runSprites,
+                variant?.walkSprites,
+                walkSprites);
+
+        if (state == AnimationState.Fight)
+            return FirstNonEmpty(
+                variant?.fightSprites,
+                fightSprites,
+                variant?.walkSprites,
+                walkSprites);
+
+        if (state == AnimationState.Jump)
+            return FirstNonEmpty(
+                variant?.jumpSprites,
+                jumpSprites,
+                variant?.runSprites,
+                runSprites,
+                variant?.walkSprites,
+                walkSprites);
+
         // ── On-foot states ───────────────────────────────────────────────────
         if (variant != null)
         {
@@ -459,6 +504,12 @@ public class BodyTypeVariant
     public Sprite[] walkSprites;
     public Sprite[] idleSprites;
     public Sprite[] deathSprites;
+    [Tooltip("On-foot run for this body type. Leave empty → parent's runSprites.")]
+    public Sprite[] runSprites;
+    [Tooltip("On-foot fight for this body type. Leave empty → parent's fightSprites.")]
+    public Sprite[] fightSprites;
+    [Tooltip("On-foot jump for this body type. Leave empty → parent's jumpSprites.")]
+    public Sprite[] jumpSprites;
 
     // Dragon rider
     [Tooltip("Sitting-still sprites (dragon idle). Leave empty → parent's riderIdleSprites.")]
@@ -501,6 +552,9 @@ public enum AnimationState
     Idle,
     Walk,
     Death,
+    Run,        // chasing enemy on foot
+    Fight,      // attacking enemy on foot
+    Jump,       // leap / jump attack on foot
 
     // ── Dragon-mounted ───────────────────
     RiderIdle,
