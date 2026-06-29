@@ -61,6 +61,8 @@ public class SoldierController : MonoBehaviour
 
     private float _leftBound;
     private float _rightBound;
+    private float _originalLeftBound;
+    private float _originalRightBound;
 
     private int _direction = 1;
     private bool _isDead = false;
@@ -99,6 +101,41 @@ public class SoldierController : MonoBehaviour
             _stats.OnSoldierDied -= HandleDeath;
     }
 
+    private void OnEnable()
+    {
+        // Coroutines are killed when the GameObject (or any parent) is deactivated.
+        // When the panel comes back, we need to restart whatever was running.
+        if (_isDead) return;
+        if (!Application.isPlaying) return;
+
+        // _stats won't be assigned yet on the very first OnEnable (Awake hasn't run).
+        // Guard by checking if init has happened (bounds will be 0 at that point).
+        bool initialized = (_originalRightBound != 0f || _originalLeftBound != 0f);
+        if (!initialized) return;
+
+        StopAllCoroutines(); // clear any half-dead state
+
+        if (_isInCombat && _target != null && !_target.IsDead)
+        {
+            // Resume chasing the enemy
+            _spriteAnim.SetState(AnimationState.Run);
+            StartCoroutine(CombatLoop());
+            Debug.Log($"[SoldierController] '{name}' OnEnable: resuming combat.");
+        }
+        else if (_isInCombat)
+        {
+            // Target gone while panel was hidden — return to patrol
+            ReturnToPatrol();
+        }
+        else if (_isPatrolling)
+        {
+            // Resume patrol + rest cycle
+            _spriteAnim.SetState(AnimationState.Walk);
+            StartCoroutine(RestCycle());
+            Debug.Log($"[SoldierController] '{name}' OnEnable: resuming patrol.");
+        }
+    }
+
     private void Start()
     {
         StartCoroutine(InitPatrol());
@@ -132,6 +169,8 @@ public class SoldierController : MonoBehaviour
         float spawnX = CurrentLocalX();
         _leftBound = Mathf.Min(spawnX, destinationX);
         _rightBound = Mathf.Max(spawnX, destinationX);
+        _originalLeftBound = _leftBound;
+        _originalRightBound = _rightBound;
 
         _direction = destinationX >= spawnX ? 1 : -1;
         ApplyFlip(_direction);
@@ -226,18 +265,16 @@ public class SoldierController : MonoBehaviour
     private bool TryFindEnemy(out EnemyUnit found)
     {
         found = null;
-        Vector2 myPos = _rect != null
-            ? (Vector2)_rect.position
-            : (Vector2)transform.position;
-
         float bestDist = detectionRadius;
 
         foreach (var enemy in EnemyUnit.All)
         {
             if (enemy == null || enemy.IsDead) continue;
 
-            // X-axis only detection — enemies directly above/below are ignored
-            float dist = Mathf.Abs(enemy.transform.position.x - myPos.x);
+            // Convert enemy world position to this soldier's parent local space for consistent X comparison
+            float enemyLocalX = GetWorldToLocalX(enemy.transform.position);
+            float myLocalX = _rect != null ? _rect.anchoredPosition.x : transform.localPosition.x;
+            float dist = Mathf.Abs(enemyLocalX - myLocalX);
             if (dist < bestDist)
             {
                 bestDist = dist;
@@ -269,39 +306,54 @@ public class SoldierController : MonoBehaviour
 
     private IEnumerator CombatLoop()
     {
+        bool _wasChasing = false;
+        bool _wasFighting = false;
+
+        // Always start in Run state when engaging
+        if (_spriteAnim != null)
+            _spriteAnim.SetState(AnimationState.Run);
+        _wasChasing = true;
+
         while (!_isDead && _target != null && !_target.IsDead)
         {
             float dist = DistanceToTarget();
 
             if (dist > attackRange)
             {
-                // ── Chase: run toward the enemy ────────────────────────────
-                if (_spriteAnim != null)
-                    _spriteAnim.SetState(AnimationState.Run);
+                // ── Chase: run toward the enemy ──────────────────────────────────────
+                if (!_wasChasing)
+                {
+                    if (_spriteAnim != null)
+                        _spriteAnim.SetState(AnimationState.Run);
+                    _wasChasing = true;
+                    _wasFighting = false;
+                }
 
                 MoveTowardTarget();
+                yield return null;
             }
             else
             {
-                // ── Fight: face the enemy and attack ──────────────────────
-                FaceTarget();
-
-                if (_spriteAnim != null)
-                    _spriteAnim.SetState(AnimationState.Fight);
+                // ── Fight: face the enemy and attack ─────────────────────────────────
+                if (!_wasFighting)
+                {
+                    FaceTarget();
+                    if (_spriteAnim != null)
+                        _spriteAnim.SetState(AnimationState.Fight);
+                    _wasFighting = true;
+                    _wasChasing = false;
+                }
 
                 float dmg = attackDamageOverride > 0f
                     ? attackDamageOverride
                     : _stats.AttackDamage;
 
                 _target.TakeDamage(dmg);
-                Debug.Log($"[SoldierController] '{name}' hit '{_target.name}' for {dmg} damage.");
+                Debug.Log($"[SoldierController] '{{name}}' hit '{{_target.name}}' for {{dmg}} damage.");
 
                 yield return new WaitForSeconds(attackInterval);
             }
-
-            yield return null;
         }
-
         // Enemy is dead or gone — return to patrol
         ReturnToPatrol();
     }
@@ -310,13 +362,8 @@ public class SoldierController : MonoBehaviour
     {
         if (_target == null) return;
 
-        Vector2 myPos = _rect != null
-            ? (Vector2)_rect.position
-            : (Vector2)transform.position;
-
-        Vector2 targetPos = (Vector2)_target.transform.position;
-        float dx = targetPos.x - myPos.x;
-        int dir = dx >= 0 ? 1 : -1;
+        float dx = GetTargetDeltaX();
+        int dir = dx >= 0f ? 1 : -1;
         SetDirection(dir);
 
         float step = chaseSpeed * Time.deltaTime;
@@ -330,16 +377,13 @@ public class SoldierController : MonoBehaviour
     private void FaceTarget()
     {
         if (_target == null) return;
-        float dx = _target.transform.position.x - (_rect != null ? _rect.position.x : transform.position.x);
-        SetDirection(dx >= 0 ? 1 : -1);
+        SetDirection(GetTargetDeltaX() >= 0f ? 1 : -1);
     }
 
     private float DistanceToTarget()
     {
         if (_target == null) return float.MaxValue;
-        float myX = _rect != null ? _rect.position.x : transform.position.x;
-        // X-axis only — attack range is checked horizontally
-        return Mathf.Abs(_target.transform.position.x - myX);
+        return Mathf.Abs(GetTargetDeltaX());
     }
 
     private void OnTargetDied(EnemyUnit dead)
@@ -356,13 +400,31 @@ public class SoldierController : MonoBehaviour
         _isInCombat = false;
         _target = null;
 
-        Debug.Log($"[SoldierController] '{name}' returning to patrol.");
+        // Restore the original patrol bounds
+        _leftBound = _originalLeftBound;
+        _rightBound = _originalRightBound;
 
-        // Recalculate bounds from current position so the soldier doesn't
-        // snap back to the original spawn — it resumes patrol from where it stands.
+        // Clamp soldier back inside bounds in case it chased beyond them
+        if (_rect != null)
+        {
+            Vector2 p = _rect.anchoredPosition;
+            p.x = Mathf.Clamp(p.x, _leftBound, _rightBound);
+            _rect.anchoredPosition = p;
+        }
+        else
+        {
+            Vector3 p = transform.localPosition;
+            p.x = Mathf.Clamp(p.x, _leftBound, _rightBound);
+            transform.localPosition = p;
+        }
+
+        // Point direction toward the opposite end so the soldier walks the full range
         float cx = CurrentLocalX();
-        _leftBound = Mathf.Min(cx, destinationX);
-        _rightBound = Mathf.Max(cx, destinationX);
+        float distToLeft = cx - _leftBound;
+        float distToRight = _rightBound - cx;
+        SetDirection(distToLeft >= distToRight ? -1 : 1);
+
+        Debug.Log($"[SoldierController] '{name}' returning to patrol. Bounds: {_leftBound:F0} to {_rightBound:F0}, pos: {cx:F0}, dir: {_direction}");
 
         StartWalking();
         StartCoroutine(RestCycle());
@@ -387,6 +449,35 @@ public class SoldierController : MonoBehaviour
     }
 
     // ─── Flip ─────────────────────────────────────────────────────────────────
+
+    // ─── Canvas-space helpers ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the X delta from soldier to target in the soldier's parent local space.
+    /// Works correctly regardless of canvas scale or hierarchy depth.
+    /// </summary>
+    private float GetTargetDeltaX()
+    {
+        if (_target == null) return 0f;
+        float myLocalX = _rect != null ? _rect.anchoredPosition.x : transform.localPosition.x;
+        float targetLocalX = GetWorldToLocalX(_target.transform.position);
+        return targetLocalX - myLocalX;
+    }
+
+    /// <summary>
+    /// Converts a world position's X into this soldier's parent RectTransform local X,
+    /// matching the coordinate space of anchoredPosition.
+    /// </summary>
+    private float GetWorldToLocalX(Vector3 worldPos)
+    {
+        if (_rect != null && _rect.parent != null)
+        {
+            // InverseTransformPoint converts world → local of the parent
+            return _rect.parent.InverseTransformPoint(worldPos).x;
+        }
+        // Fallback: no parent, use world X directly
+        return worldPos.x;
+    }
 
     private void SetDirection(int dir)
     {
