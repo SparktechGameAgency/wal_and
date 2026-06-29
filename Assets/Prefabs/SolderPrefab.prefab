@@ -382,6 +382,11 @@ MonoBehaviour:
   restIntervalMax: 7
   restDurationMin: 1.5
   restDurationMax: 3.5
+  detectionRadius: 200
+  chaseSpeed: 130
+  attackRange: 30
+  attackInterval: 1
+  attackDamageOverride: 10
 --- !u!222 &4585076851735702295
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -478,6 +483,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpriteLayerAnimator
   idleFps: 6
   walkFps: 10
+  runFps: 12
+  fightFps: 10
+  jumpFps: 12
   ridingFps: 8
   horseFps: 10
   deathFps: 6
@@ -741,8 +749,8 @@ RectTransform:
   - {fileID: 9216828625431561692}
   - {fileID: 3463420145751563204}
   - {fileID: 4219145767066442350}
-  - {fileID: 8655148545958398588}
   - {fileID: 1312281716866531117}
+  - {fileID: 8655148545958398588}
   - {fileID: 6358447035048013380}
   - {fileID: 3797766803675431455}
   m_Father: {fileID: 2753678114452268361}

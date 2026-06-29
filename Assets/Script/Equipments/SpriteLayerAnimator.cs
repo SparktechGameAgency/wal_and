@@ -291,9 +291,10 @@ public class SpriteLayerAnimator : MonoBehaviour
     private CharacterEquipment _equipment;
     private CharacterVisuals _visuals;
 
-    // Per-slot frame state
+    // Per-slot frame state — timer is shared so all layers stay in sync
     private readonly Dictionary<EquipmentSlot, int> _slotFrame = new();
-    private readonly Dictionary<EquipmentSlot, float> _slotTimer = new();
+    private float _sharedTimer = 0f;
+    private int _sharedFrame = 0;
 
     // All animated slots — ordered back-to-front for readability
     private static readonly EquipmentSlot[] AllSlots =
@@ -323,7 +324,6 @@ public class SpriteLayerAnimator : MonoBehaviour
         foreach (var slot in AllSlots)
         {
             _slotFrame[slot] = 0;
-            _slotTimer[slot] = 0f;
         }
     }
 
@@ -332,8 +332,18 @@ public class SpriteLayerAnimator : MonoBehaviour
         if (_equipment == null || _visuals == null) return;
 
         float fps = FpsForState(_visuals.CurrentState);
-        float dt = Time.deltaTime;
+        float frameDuration = 1f / fps;
 
+        // ── Advance the shared frame counter once per Update ──────────────────
+        _sharedTimer += Time.deltaTime;
+        bool advanceFrame = _sharedTimer >= frameDuration;
+        if (advanceFrame)
+        {
+            _sharedTimer -= frameDuration;
+            _sharedFrame++;   // will be clamped per-slot below
+        }
+
+        // ── Apply the current frame to every equipped slot ────────────────────
         foreach (var slot in AllSlots)
         {
             var item = _equipment.GetEquipped(slot);
@@ -344,14 +354,13 @@ public class SpriteLayerAnimator : MonoBehaviour
             if (sprites == null || sprites.Length == 0) continue;
             if (sprites.Length == 1) continue;   // static frame — already set
 
-            _slotTimer[slot] += dt;
-            float frameDuration = 1f / fps;
-            if (_slotTimer[slot] < frameDuration) continue;
+            int frame = _sharedFrame % sprites.Length;
 
-            _slotTimer[slot] -= frameDuration;
-            _slotFrame[slot] = (_slotFrame[slot] + 1) % sprites.Length;
+            // Only push a new sprite when the frame actually changed
+            if (!advanceFrame && _slotFrame[slot] == frame) continue;
 
-            _visuals.SetSprite(slot, sprites[_slotFrame[slot]]);
+            _slotFrame[slot] = frame;
+            _visuals.SetSprite(slot, sprites[frame]);
         }
     }
 
@@ -373,10 +382,13 @@ public class SpriteLayerAnimator : MonoBehaviour
 
         _visuals.CurrentState = newState;
 
+        // Reset shared counter so all layers start at frame 0 together
+        _sharedTimer = 0f;
+        _sharedFrame = 0;
+
         foreach (var slot in AllSlots)
         {
             _slotFrame[slot] = 0;
-            _slotTimer[slot] = 0f;
 
             var item = _equipment?.GetEquipped(slot);
             if (item == null) continue;

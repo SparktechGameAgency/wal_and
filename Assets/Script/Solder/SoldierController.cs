@@ -35,13 +35,9 @@ public class SoldierController : MonoBehaviour
     [SerializeField] private float restDurationMax = 3.5f;
 
     [Header("Enemy Combat")]
-    [Tooltip("Radius (canvas units) in which this soldier scans for EnemyUnit targets.\n" +
-             "Uses Physics2D.OverlapCircleAll — make sure your EnemyUnit GameObjects\n" +
-             "have a Collider2D and are on the layer set in Enemy Layer Mask.")]
+    [Tooltip("Radius (canvas units) in which this soldier detects enemies.\n" +
+             "No collider or layer setup needed on the enemy — uses a direct scene scan.")]
     [SerializeField] private float detectionRadius = 200f;
-
-    [Tooltip("Layer mask for EnemyUnit colliders. Set to the layer your enemies use.")]
-    [SerializeField] private LayerMask enemyLayerMask = ~0;
 
     [Tooltip("Canvas units per second when chasing an enemy. Usually faster than patrol.")]
     [SerializeField] private float chaseSpeed = 130f;
@@ -223,26 +219,30 @@ public class SoldierController : MonoBehaviour
     // ─── Enemy Detection ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// Scans nearby colliders for a living EnemyUnit.
-    /// Returns true and sets <paramref name="found"/> if one is in range.
+    /// Finds the nearest living EnemyUnit within detectionRadius.
+    /// Does NOT require a Collider2D or any layer setup on the enemy —
+    /// it scans all active EnemyUnit components in the scene directly.
     /// </summary>
     private bool TryFindEnemy(out EnemyUnit found)
     {
         found = null;
-        Vector2 centre = _rect != null
+        Vector2 myPos = _rect != null
             ? (Vector2)_rect.position
             : (Vector2)transform.position;
 
-        Collider2D[] hits = Physics2D.OverlapCircleAll(centre, detectionRadius, enemyLayerMask);
-        float bestDist = float.MaxValue;
+        float bestDist = detectionRadius;
 
-        foreach (var col in hits)
+        foreach (var enemy in EnemyUnit.All)
         {
-            var enemy = col.GetComponent<EnemyUnit>();
             if (enemy == null || enemy.IsDead) continue;
 
-            float dist = Vector2.Distance(centre, col.transform.position);
-            if (dist < bestDist) { bestDist = dist; found = enemy; }
+            // X-axis only detection — enemies directly above/below are ignored
+            float dist = Mathf.Abs(enemy.transform.position.x - myPos.x);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                found = enemy;
+            }
         }
 
         return found != null;
@@ -337,10 +337,9 @@ public class SoldierController : MonoBehaviour
     private float DistanceToTarget()
     {
         if (_target == null) return float.MaxValue;
-        Vector2 myPos = _rect != null
-            ? (Vector2)_rect.position
-            : (Vector2)transform.position;
-        return Vector2.Distance(myPos, _target.transform.position);
+        float myX = _rect != null ? _rect.position.x : transform.position.x;
+        // X-axis only — attack range is checked horizontally
+        return Mathf.Abs(_target.transform.position.x - myX);
     }
 
     private void OnTargetDied(EnemyUnit dead)

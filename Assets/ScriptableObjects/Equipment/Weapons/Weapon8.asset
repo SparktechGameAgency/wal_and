@@ -40,6 +40,31 @@ MonoBehaviour:
   - {fileID: 21300000, guid: e6ecfa668d7612740a6818449a5fad58, type: 3}
   - {fileID: 21300000, guid: ef9e5d3edf9e2844cb37a32a5a5181c0, type: 3}
   - {fileID: 21300000, guid: 0ad4b57cfa007374d9a606858c15b98c, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: 679dcecf2d917c14ebc30c9e247bb80a, type: 3}
+  - {fileID: 21300000, guid: 39049a8d62768e34e8e0ba953f57e3ed, type: 3}
+  - {fileID: 21300000, guid: 692fa22990de924409d9653610b124e7, type: 3}
+  - {fileID: 21300000, guid: 020ebae447a4c5241af939d7e2562b9c, type: 3}
+  - {fileID: 21300000, guid: 3db68a123e0e2774fba8cff8bc29aff1, type: 3}
+  - {fileID: 21300000, guid: 56ebd12b9faf22b40bb2240bd5719406, type: 3}
+  - {fileID: 21300000, guid: 2a707d55fa27c3d42afe408b9b6b7ee2, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: d1ea069a51dd87841979fa572b9d569e, type: 3}
+  - {fileID: 21300000, guid: cbb002b3162912e46aa656390fee35d3, type: 3}
+  - {fileID: 21300000, guid: d60bb479841285746ae4850be5fc6b76, type: 3}
+  - {fileID: 21300000, guid: 9bfce2c5373d49e419a69eade1aabf6c, type: 3}
+  - {fileID: 21300000, guid: 924d3c6e0102f424483ce5509d8c1b37, type: 3}
+  - {fileID: 21300000, guid: ef03975f7f226184999f23c771bad37a, type: 3}
+  - {fileID: 21300000, guid: cd6578c749ecef94fa0699d83ea9b7d4, type: 3}
+  - {fileID: 21300000, guid: 50c37a00b9c89bc44ad58f2e44f45b31, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: 8a54e8757f1df464aa7c1d6bd9cd18c3, type: 3}
+  - {fileID: 21300000, guid: c73786697b6b05f4da89fcf073ba6dc2, type: 3}
+  - {fileID: 21300000, guid: acaca70fa23edb848aed6b38fabf0795, type: 3}
+  - {fileID: 21300000, guid: 177e9059b3dcfde4dbe8a02609809d72, type: 3}
+  - {fileID: 21300000, guid: 455a3f85799ccfe48ac69d9c3346ad9d, type: 3}
+  - {fileID: 21300000, guid: d476ccfeb690afe4b9771699b506a424, type: 3}
+  - {fileID: 21300000, guid: 69adb03396a82d247b08f992a7f63654, type: 3}
   riderIdleSprites: []
   riderFlySprites: []
   horseIdleSprites:
