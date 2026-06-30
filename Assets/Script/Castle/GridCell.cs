@@ -84,7 +84,15 @@ public class GridCell : MonoBehaviour
         rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
         rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
         rt.anchoredPosition = Vector2.zero;
-        rt.SetAsLastSibling();
+
+        // CastleBlock and CastleBlockUnitSlot are siblings under this GridCell.
+        // Sibling order = draw order on a Screen Space Overlay canvas, so the
+        // LAST sibling always renders on top. Previously this was SetAsLastSibling(),
+        // which made the cannon/archer always render in FRONT of the castle wall art.
+        // Pushing the slot to be the FIRST sibling makes the wall art (the CastleBlock,
+        // which stays after it in the hierarchy) render on top instead, so the
+        // cannon/archer visually sit inside/behind the block.
+        rt.SetAsFirstSibling();
     }
 
     /// <summary>

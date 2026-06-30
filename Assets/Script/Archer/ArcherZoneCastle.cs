@@ -1907,6 +1907,11 @@ public class ArcherZoneCastle : MonoBehaviour,
             rt.localScale = Vector3.one;
         }
 
+        // Push the archer to the back of the sibling order under its spawnpoint
+        // so the castle wall art (a later sibling, e.g. a front-wall overlay
+        // Image) renders on top and visually "contains" the archer inside the block.
+        _archerInstance.transform.SetAsFirstSibling();
+
         ArcherUnit archerUnit = _archerInstance.GetComponent<ArcherUnit>();
         if (archerUnit != null) archerUnit.Init(null);
 

@@ -3905,6 +3905,11 @@ public class CannonSlotCastle : MonoBehaviour
                 _cannonInstance.transform.position = parent.position;
                 _cannonInstance.transform.localScale = Vector3.one;
             }
+
+            // Push the cannon to the back of the sibling order so the castle
+            // wall art (which sits later in the hierarchy, e.g. the front-wall
+            // overlay Image) renders on top and visually "contains" the cannon.
+            _cannonInstance.transform.SetAsFirstSibling();
         }
 
         hasCannon = true;

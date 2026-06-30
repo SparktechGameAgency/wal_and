@@ -43,6 +43,28 @@ public class CastleBlock : MonoBehaviour
         _health = maxHealth;
         _shield = maxShield;
         _durability = maxDurability;
+
+        DisableArtRaycasts();
+    }
+
+    /// <summary>
+    /// CastleBlock renders ON TOP of its sibling CastleBlockUnitSlot
+    /// (see GridCell.ShowUnitSlot — the slot is pushed to the first sibling
+    /// so the wall art draws over the cannon/archer, making them appear
+    /// "inside" the castle). That means every Image making up this block's
+    /// visuals would otherwise intercept pointer events meant for the
+    /// CannonZone/ArcherZone buttons sitting behind it. Disable raycastTarget
+    /// on all purely decorative Images here so clicks pass through.
+    /// </summary>
+    private void DisableArtRaycasts()
+    {
+        foreach (var img in GetComponentsInChildren<UnityEngine.UI.Image>(true))
+        {
+            // Leave any Image that's part of an actual interactive element alone —
+            // only strip raycasting from pure decoration (wall sprites, HUD bars).
+            if (img.GetComponent<UnityEngine.UI.Button>() != null) continue;
+            img.raycastTarget = false;
+        }
     }
 
     private void Start()
