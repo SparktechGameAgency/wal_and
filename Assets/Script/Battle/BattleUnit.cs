@@ -104,6 +104,34 @@ public class BattleUnit : MonoBehaviour
         canMove = data.unitType != BattleUnitType.Cannon &&
                         data.unitType != BattleUnitType.Archer;
         UpdateHPBar();
+
+        ApplyRiderVisuals(data);
+    }
+
+    /// <summary>
+    /// Horse and Dragon prefabs carry Face/Helmet/Armor/Weapon child Images
+    /// driven by HorseRiderVisual / DragonRiderVisual, exactly like the
+    /// Village scene. Those components need a live CharacterEquipment to
+    /// read from, so we build a throwaway one here and feed it the
+    /// snapshotted items (player's real loadout, or the bot's random one).
+    /// </summary>
+    private void ApplyRiderVisuals(BattleUnitData data)
+    {
+        bool hasRiderData = data.riderFace != null || data.riderArmor != null ||
+                             data.riderHelmet != null || data.riderWeapon != null;
+        if (!hasRiderData) return;
+
+        CharacterEquipment equipment = gameObject.AddComponent<CharacterEquipment>();
+        if (data.riderFace != null) equipment.Equip(data.riderFace);
+        if (data.riderArmor != null) equipment.Equip(data.riderArmor);
+        if (data.riderHelmet != null) equipment.Equip(data.riderHelmet);
+        if (data.riderWeapon != null) equipment.Equip(data.riderWeapon);
+
+        HorseRiderVisual horseRider = GetComponentInChildren<HorseRiderVisual>(true);
+        if (horseRider != null) horseRider.ShowRider(equipment);
+
+        DragonRiderVisual dragonRider = GetComponentInChildren<DragonRiderVisual>(true);
+        if (dragonRider != null) dragonRider.ShowForSoldier(equipment);
     }
 
     public void TakeDamage(float amount)

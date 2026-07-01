@@ -73,6 +73,16 @@ public class HorseController : MonoBehaviour, IDropHandler
     public HorseState CurrentState => _state;
     public bool IsOccupied => seat != null && seat.IsOccupied;
 
+    /// <summary>
+    /// CharacterEquipment of the currently mounted rider, or null if unoccupied.
+    /// Mirrors DragonController's RiderSeat.MountedSoldier pattern so callers
+    /// (e.g. BattleStarter) can snapshot the rider's equipped look.
+    /// </summary>
+    public CharacterEquipment MountedRiderEquipment =>
+        (seat != null && seat.IsOccupied && seat.MountedSoldier != null)
+            ? seat.MountedSoldier.GetComponent<CharacterEquipment>()
+            : null;
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void Awake()

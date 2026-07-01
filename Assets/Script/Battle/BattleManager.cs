@@ -5,6 +5,42 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
+/// One shared set of unit prefabs — used for BOTH the player and bot sides.
+/// Assign these once on BattleManager; BotArmyGenerator receives the same
+/// references at Start(), so there is only ever one prefab per unit type
+/// in the whole project.
+/// </summary>
+[System.Serializable]
+public class BattleUnitPrefabs
+{
+    public GameObject soldierPrefab;
+    public GameObject archerPrefab;
+    public GameObject dragonPrefab;  // dragon with rider visuals wired in
+
+    [Tooltip("All 3 HorseData assets (e.g. Brown/Black/White). Each one's own " +
+             ".prefab field is used directly — no separate battle-only horse prefabs needed.")]
+    public HorseData[] horseTypes;
+
+    [Tooltip("All 3 CannonData assets. Each one's own .prefab field is used " +
+             "directly — no separate battle-only cannon prefabs needed.")]
+    public CannonData[] cannonTypes;
+}
+
+/// <summary>
+/// Pool of equipment items the bot side picks randomly from when spawning a
+/// Horse or Dragon unit, so bot riders look varied instead of either bare
+/// or an exact clone of the player's own soldier.
+/// </summary>
+[System.Serializable]
+public class RiderLoadoutPool
+{
+    public EquipmentItem[] faces;
+    public EquipmentItem[] armors;
+    public EquipmentItem[] helmets;
+    public EquipmentItem[] weapons;
+}
+
+/// <summary>
 /// BattleManager
 ///
 /// Master controller for the Battle scene. Place on a single empty
@@ -23,10 +59,10 @@ using System.Collections.Generic;
 ///
 ///  Canvas
 ///  ├── PlayerSide              ← RectTransform, anchored left half
-///  │   ├── PlayerCastleRoot    ← BotCastleGenerator (re-used for player visuals)
+///  │   ├── PlayerCastleRoot    ← BotCastleGenerator (flipHorizontally OFF)
 ///  │   └── PlayerArmyRoot      ← player units spawn here
 ///  ├── BotSide                 ← RectTransform, anchored right half
-///  │   ├── BotCastleRoot       ← BotCastleGenerator
+///  │   ├── BotCastleRoot       ← BotCastleGenerator (flipHorizontally ON)
 ///  │   └── BotArmyRoot         ← BotArmyGenerator
 ///  └── ResultPanel             ← starts inactive
 ///      ├── WinText
@@ -42,12 +78,13 @@ public class BattleManager : MonoBehaviour
 
     [Header("Player Side")]
     [SerializeField] private Transform playerArmyRoot;
-    [Tooltip("Prefab for each player unit type. Index matches BattleUnitType enum.")]
-    [SerializeField] private GameObject playerSoldierPrefab;
-    [SerializeField] private GameObject playerMountedPrefab;
-    [SerializeField] private GameObject playerArcherPrefab;
-    [SerializeField] private GameObject playerDragonPrefab;
-    [SerializeField] private GameObject playerCannonPrefab;
+    [Tooltip("BotCastleGenerator on PlayerCastleRoot — flipHorizontally OFF, " +
+             "builds the exact player block count (no randomization).")]
+    [SerializeField] private BotCastleGenerator playerCastleGenerator;
+    [Tooltip("Shared prefabs — also passed to BotArmyGenerator for the bot side.")]
+    [SerializeField] private BattleUnitPrefabs unitPrefabs;
+    [Tooltip("Random rider looks the bot side picks from for Horse/Dragon units.")]
+    [SerializeField] private RiderLoadoutPool botRiderLoadouts;
 
     [Header("Spawn Layout (Player)")]
     [SerializeField] private float playerStartX = -400f;
@@ -87,9 +124,16 @@ public class BattleManager : MonoBehaviour
     {
         SpawnPlayerArmy();
 
+        // Player castle — exact block count, gate facing right (not flipped).
+        playerCastleGenerator?.GenerateExact(BattleSaveData.PlayerBlockCount);
+
         // Bot side — castle first, then army.
+        // Reuses the SAME unitPrefabs as the player (no separate bot prefabs).
         botCastleGenerator?.Generate(BattleSaveData.PlayerBlockCount);
-        botArmyGenerator?.Generate(BattleSaveData.PlayerUnits.Count);
+        botArmyGenerator?.Generate(
+            BattleSaveData.PlayerUnits.Count,
+            unitPrefabs,
+            botRiderLoadouts);
 
         // Collect bot units after generation.
         if (botArmyGenerator != null)
@@ -109,7 +153,7 @@ public class BattleManager : MonoBehaviour
         for (int i = 0; i < BattleSaveData.PlayerUnits.Count; i++)
         {
             BattleUnitData data = BattleSaveData.PlayerUnits[i];
-            GameObject prefab = GetPlayerPrefab(data.unitType);
+            GameObject prefab = GetPrefabFor(data);
             if (prefab == null) continue;
 
             GameObject go = Instantiate(prefab, playerArmyRoot);
@@ -133,16 +177,25 @@ public class BattleManager : MonoBehaviour
         Debug.Log($"[BattleManager] Spawned {_playerUnits.Count} player units.");
     }
 
-    private GameObject GetPlayerPrefab(BattleUnitType type)
+    /// <summary>
+    /// Resolves the correct prefab for a unit. Cannons use their own
+    /// CannonData.prefab (one of the 3 types); everything else comes from
+    /// the shared unitPrefabs set.
+    /// </summary>
+    private GameObject GetPrefabFor(BattleUnitData data)
     {
-        return type switch
+        if (data.unitType == BattleUnitType.Cannon)
+            return data.cannonType != null ? data.cannonType.prefab : null;
+
+        if (data.unitType == BattleUnitType.Horse)
+            return data.horseType != null ? data.horseType.prefab : null;
+
+        return data.unitType switch
         {
-            BattleUnitType.Soldier => playerSoldierPrefab,
-            BattleUnitType.MountedSoldier => playerMountedPrefab,
-            BattleUnitType.Archer => playerArcherPrefab,
-            BattleUnitType.Dragon => playerDragonPrefab,
-            BattleUnitType.Cannon => playerCannonPrefab,
-            _ => playerSoldierPrefab,
+            BattleUnitType.Soldier => unitPrefabs.soldierPrefab,
+            BattleUnitType.Archer => unitPrefabs.archerPrefab,
+            BattleUnitType.Dragon => unitPrefabs.dragonPrefab,
+            _ => unitPrefabs.soldierPrefab,
         };
     }
 

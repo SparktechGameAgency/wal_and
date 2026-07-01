@@ -3,12 +3,16 @@ using UnityEngine;
 /// <summary>
 /// BotCastleGenerator
 ///
-/// Instantiates a random stack of castle block Images on the RIGHT side
-/// of the Battle scene canvas. The bot castle is never taller than the
-/// player's castle (read from BattleSaveData.PlayerBlockCount).
+/// Instantiates a stack of castle block Images as a tapered staircase
+/// silhouette (not a straight tower). Reused for BOTH sides:
+///   • Bot side  → Generate(playerBlockCount) — random height, capped at
+///     the player's block count, gate flipped to face left (toward player).
+///   • Player side → GenerateExact(blockCount) — exact height (no random),
+///     gate NOT flipped (default prefab orientation already faces right,
+///     toward the battlefield / bot side).
 ///
-/// Assign this to an empty RectTransform called "BotCastleRoot" on the
-/// right side of the Battle scene canvas.
+/// Assign one instance to "PlayerCastleRoot" (flipHorizontally = false) and
+/// another to "BotCastleRoot" (flipHorizontally = true, the original setup).
 /// </summary>
 public class BotCastleGenerator : MonoBehaviour
 {
@@ -21,36 +25,58 @@ public class BotCastleGenerator : MonoBehaviour
     [Tooltip("Gap between blocks in pixels.")]
     [SerializeField] private float blockSpacing = 4f;
 
+    [Tooltip("Flip blocks horizontally so the gate faces the opposite side. " +
+             "ON for the bot castle (gate faces left, toward the player). " +
+             "OFF for the player castle (default orientation already faces right).")]
+    [SerializeField] private bool flipHorizontally = true;
+
+    [Tooltip("Horizontal shift (pixels) applied per level, tapering the stack " +
+             "into a staircase/triangle silhouette instead of a straight tower. " +
+             "Use a POSITIVE value on the player side (tapers right, toward the " +
+             "battlefield) and a NEGATIVE value on the bot side (tapers left).")]
+    [SerializeField] private float taperPerLevel = 0f;
+
     // How many blocks were generated (BattleManager reads this).
     public int GeneratedBlockCount { get; private set; }
 
+    /// <summary>Bot side: random height between 1 and playerBlockCount (inclusive).</summary>
     public void Generate(int playerBlockCount)
     {
-        // Bot castle is between 1 and playerBlockCount blocks tall.
         int botBlocks = Random.Range(1, playerBlockCount + 1);
-        GeneratedBlockCount = botBlocks;
+        BuildBlocks(botBlocks);
+    }
+
+    /// <summary>Player side: exact height, no randomization.</summary>
+    public void GenerateExact(int blockCount)
+    {
+        BuildBlocks(Mathf.Max(0, blockCount));
+    }
+
+    private void BuildBlocks(int blockCount)
+    {
+        GeneratedBlockCount = blockCount;
 
         float step = blockSize + blockSpacing;
 
-        for (int i = 0; i < botBlocks; i++)
+        for (int i = 0; i < blockCount; i++)
         {
             GameObject block = Instantiate(castleBlockPrefab, transform);
             RectTransform rt = block.GetComponent<RectTransform>();
-            rt.anchoredPosition = new Vector2(0f, i * step);
+            rt.anchoredPosition = new Vector2(i * taperPerLevel, i * step);
             rt.sizeDelta = new Vector2(blockSize, blockSize);
 
-            // Disable all interactive scripts — bot castle is pure visuals.
+            // Disable all interactive scripts — battle castle is pure visuals.
             foreach (var mb in block.GetComponentsInChildren<MonoBehaviour>(true))
             {
                 if (mb is CastleBlock || mb is CastleBlockHUD)
                     mb.enabled = false;
             }
 
-            // Flip the block horizontally so the gate faces left (toward the player).
-            rt.localScale = new Vector3(-1f, 1f, 1f);
+            if (flipHorizontally)
+                rt.localScale = new Vector3(-1f, 1f, 1f);
         }
 
-        Debug.Log($"[BotCastleGenerator] Generated {botBlocks} bot blocks " +
-                  $"(player had {playerBlockCount}).");
+        Debug.Log($"[BotCastleGenerator] '{name}': generated {blockCount} blocks " +
+                  $"(taper={taperPerLevel}, flip={flipHorizontally}).");
     }
 }

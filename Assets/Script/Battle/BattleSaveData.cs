@@ -37,7 +37,6 @@ public static class BattleSaveData
 
 /// <summary>
 /// Lightweight description of one battle unit.
-/// Add more fields (weapon type, sprite names, etc.) as needed.
 /// </summary>
 [System.Serializable]
 public class BattleUnitData
@@ -46,6 +45,26 @@ public class BattleUnitData
     public float health;
     public float damage;
     public float moveSpeed;
+
+    // ── Rider visuals — only used for Horse / Dragon units ─────────────────────
+    // EquipmentItem is a ScriptableObject asset reference, so it survives the
+    // scene load fine without any extra copying.
+    public EquipmentItem riderFace;
+    public EquipmentItem riderArmor;
+    public EquipmentItem riderHelmet;
+    public EquipmentItem riderWeapon;
+
+    // ── Horse type — only used for Horse units ──────────────────────────────────
+    // Which of the 3 HorseData assets (e.g. Brown/Black/White) this horse is,
+    // so BattleManager / BotArmyGenerator can spawn HorseData.prefab directly —
+    // same pattern as cannonType below.
+    public HorseData horseType;
+
+    // ── Cannon type — only used for Cannon units ────────────────────────────────
+    // Which of the 3 CannonData assets this cannon is, so BattleManager /
+    // BotArmyGenerator can spawn CannonData.prefab directly (no separate
+    // battle-only cannon prefabs needed).
+    public CannonData cannonType;
 
     public BattleUnitData(BattleUnitType type, float hp, float dmg, float speed)
     {
@@ -59,8 +78,8 @@ public class BattleUnitData
 public enum BattleUnitType
 {
     Soldier,
-    MountedSoldier,   // horse + soldier
+    Horse,     // horse with a soldier already mounted (rider visuals via Face/Helmet/Armor/Weapon)
     Archer,
-    Dragon,
-    Cannon,           // castle-mounted, fires at bot units automatically
+    Dragon,    // dragon with a soldier already mounted (same rider visual pattern)
+    Cannon,
 }

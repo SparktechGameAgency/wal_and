@@ -148,6 +148,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1233949095}
+  - {fileID: 534468096}
   m_Father: {fileID: 1889738570}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
@@ -292,6 +293,59 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 378462572}
   m_CullTransparentMesh: 1
+--- !u!1 &534468095
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 534468096}
+  - component: {fileID: 534468097}
+  m_Layer: 5
+  m_Name: PlayerCastleRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &534468096
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 534468095}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 146918402}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0.5}
+  m_AnchorMax: {x: 0, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: -131}
+  m_SizeDelta: {x: 600, y: 300}
+  m_Pivot: {x: 0, y: 0.5}
+--- !u!114 &534468097
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 534468095}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10eb5a823623feb4f99b65d3e648f605, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BotCastleGenerator
+  castleBlockPrefab: {fileID: 5277657931440314103, guid: 22e659926d2354c4c82b559753a735e1, type: 3}
+  blockSize: 120
+  blockSpacing: 4
+  flipHorizontally: 0
+  taperPerLevel: 0
 --- !u!1 &618702346
 GameObject:
   m_ObjectHideFlags: 0
@@ -548,11 +602,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1bba4c5e39ce8c4ab50a6d41d98f5ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BotArmyGenerator
-  botSoldierPrefab: {fileID: 0}
-  botMountedPrefab: {fileID: 0}
-  botArcherPrefab: {fileID: 0}
-  botDragonPrefab: {fileID: 0}
-  botCannonPrefab: {fileID: 0}
   startX: 0
   unitSpacingX: 80
   unitSpacingY: 60
@@ -745,21 +794,60 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e2c1a6946033d214298d7f2685cd6e56, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleManager
-  playerArmyRoot: {fileID: 0}
-  playerSoldierPrefab: {fileID: 0}
-  playerMountedPrefab: {fileID: 0}
-  playerArcherPrefab: {fileID: 0}
-  playerDragonPrefab: {fileID: 0}
-  playerCannonPrefab: {fileID: 0}
+  playerArmyRoot: {fileID: 1233949095}
+  playerCastleGenerator: {fileID: 534468097}
+  unitPrefabs:
+    soldierPrefab: {fileID: 4226479539583937247, guid: 4e17e9a530dbed94794d9696af5f2d4e, type: 3}
+    archerPrefab: {fileID: 3086005079186851311, guid: ef101f0e2289d0e43b5cdaecc38de746, type: 3}
+    dragonPrefab: {fileID: 5747055853561432504, guid: 401d7cb198da4ea41b9e888920b80e45, type: 3}
+    horseTypes:
+    - {fileID: 11400000, guid: 3ea5354f8c0bb1342b34d8f2b7faab37, type: 2}
+    - {fileID: 11400000, guid: b6128d0ee56b4a44f9d8ec980cf05426, type: 2}
+    - {fileID: 11400000, guid: 4e2c24f0d296600469ccd8f445b68432, type: 2}
+    cannonTypes:
+    - {fileID: 11400000, guid: 435bb2fc9cb23c34a8fd0e76a79de202, type: 2}
+    - {fileID: 11400000, guid: 519f3fc96c0919745b7e75e0852994f4, type: 2}
+    - {fileID: 11400000, guid: c0f5e45c9c3b88243bd44db61c47481a, type: 2}
+  botRiderLoadouts:
+    faces:
+    - {fileID: 11400000, guid: 617eb4263a01d544bb66fd218813ad94, type: 2}
+    - {fileID: 11400000, guid: 77aa5cafa409d0243b64fe39410d3e33, type: 2}
+    - {fileID: 11400000, guid: 96731704254c2c6438a86f53c8a5484d, type: 2}
+    - {fileID: 11400000, guid: 9a70ececceb1cd747ac82a08ad6f12d3, type: 2}
+    - {fileID: 11400000, guid: f62bfb373cbe78644976f130a94b792f, type: 2}
+    - {fileID: 11400000, guid: 70668d5565b6fc14f86850c5f0abd15e, type: 2}
+    armors:
+    - {fileID: 11400000, guid: a27cc21d116f90a4b8f985d01d23a790, type: 2}
+    - {fileID: 11400000, guid: f585bd1f16407be4ca02c53e29310300, type: 2}
+    - {fileID: 11400000, guid: 8c6689317bc923e44acf77130f1815e6, type: 2}
+    - {fileID: 11400000, guid: 0e945c062e7f8e145addbf0dafe0ad78, type: 2}
+    - {fileID: 11400000, guid: 64c437fb0e14d144abf4af04706e1304, type: 2}
+    - {fileID: 11400000, guid: a4698c16484c00942a6c68ab43bb79ff, type: 2}
+    helmets:
+    - {fileID: 11400000, guid: 0f8cb3d7b66ea984196ec9173b22fd1c, type: 2}
+    - {fileID: 11400000, guid: 9e60ea6ea16c74d43a4e2180404c310b, type: 2}
+    - {fileID: 11400000, guid: abb819c9583083240a6529e3905d9e01, type: 2}
+    - {fileID: 11400000, guid: cb7ad828e6b593e45a125e2d0a530a3a, type: 2}
+    - {fileID: 11400000, guid: 279978247e76fa840bf71890108aaa0f, type: 2}
+    - {fileID: 11400000, guid: 385f696acc638db4bab1122052e20ecc, type: 2}
+    weapons:
+    - {fileID: 11400000, guid: 5cf3709f60f1a2c48b551f7fb14f91f2, type: 2}
+    - {fileID: 11400000, guid: d4ef03a7dbde54e46af5d087bd916544, type: 2}
+    - {fileID: 11400000, guid: 63b435120b0a78f42962997e4a01e5c2, type: 2}
+    - {fileID: 11400000, guid: aa9110a818157484ebda30e494902762, type: 2}
+    - {fileID: 11400000, guid: cd1ca53c156df434da6673279b36ac8c, type: 2}
+    - {fileID: 11400000, guid: aac1a39422d965d44aa9dca11b66a7a5, type: 2}
+    - {fileID: 11400000, guid: e23a5b61fef54754f95fe8bf0b09c39f, type: 2}
+    - {fileID: 11400000, guid: 620698c1ecb7f494d8e74d946bb03d86, type: 2}
   playerStartX: -400
   playerUnitSpacingX: 80
   playerUnitSpacingY: 60
   playerUnitsPerRow: 3
-  botCastleGenerator: {fileID: 0}
-  botArmyGenerator: {fileID: 0}
-  resultPanel: {fileID: 0}
-  winText: {fileID: 0}
-  loseText: {fileID: 0}
+  botCastleGenerator: {fileID: 1075766123}
+  botArmyGenerator: {fileID: 805411190}
+  resultPanel: {fileID: 1205678132}
+  winText: {fileID: 378462572}
+  loseText: {fileID: 1382804963}
   villageSceneName: Village
 --- !u!1 &905140148
 GameObject:
@@ -891,6 +979,8 @@ MonoBehaviour:
   castleBlockPrefab: {fileID: 5277657931440314103, guid: 22e659926d2354c4c82b559753a735e1, type: 3}
   blockSize: 120
   blockSpacing: 4
+  flipHorizontally: 1
+  taperPerLevel: -40
 --- !u!1 &1080086032
 GameObject:
   m_ObjectHideFlags: 0
@@ -1000,7 +1090,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1205678133
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1094,7 +1184,7 @@ RectTransform:
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
   m_AnchoredPosition: {x: 0, y: -131}
-  m_SizeDelta: {x: 600, y: 300}
+  m_SizeDelta: {x: 459.1, y: 300}
   m_Pivot: {x: 1, y: 0.5}
 --- !u!1 &1382804963
 GameObject:

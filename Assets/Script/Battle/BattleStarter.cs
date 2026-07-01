@@ -40,17 +40,43 @@ public class BattleStarter : MonoBehaviour
             ? CastleGrid.Instance.GetPlacedBlockCount()
             : 1;
 
-        // ── Mounted soldiers (horse with rider) ───────────────────────────────
-        // HorseController.IsOccupied is the correct property name.
+        // ── Horses (with a soldier mounted) ─────────────────────────────────────
         var horses = FindObjectsByType<HorseController>(
             FindObjectsInactive.Include, FindObjectsSortMode.None);
 
         foreach (var h in horses)
         {
             if (!h.IsOccupied) continue;
-            BattleSaveData.PlayerUnits.Add(new BattleUnitData(
-                BattleUnitType.MountedSoldier,
-                mountedHP, mountedDmg, mountedSpeed));
+
+            // Pull stats from this horse's own HorseData asset so each of the
+            // 3 horse types (different level/ScriptableObject) carries its own
+            // HP/Damage/Speed into battle instead of one flat value for all
+            // horses. Falls back to the inspector defaults only if Data is
+            // somehow unassigned (e.g. horse spawned without Setup()).
+            HorseData horseType = h.Data;
+            float hp = horseType != null ? horseType.health : mountedHP;
+            float dmg = horseType != null ? horseType.damage : mountedDmg;
+            // HorseData has no dedicated "speed" stat — ability is the closest
+            // per-type stat available, so it doubles as move speed here.
+            float speed = horseType != null ? horseType.ability : mountedSpeed;
+
+            var unit = new BattleUnitData(
+                BattleUnitType.Horse,
+                hp, dmg, speed);
+            unit.horseType = horseType;
+
+            // Snapshot the rider's real equipment so the Battle scene shows
+            // the same soldier look as the Village scene.
+            CharacterEquipment riderEquipment = h.MountedRiderEquipment;
+            if (riderEquipment != null)
+            {
+                unit.riderFace = riderEquipment.GetEquipped(EquipmentSlot.Face);
+                unit.riderArmor = riderEquipment.GetEquipped(EquipmentSlot.Armor);
+                unit.riderHelmet = riderEquipment.GetEquipped(EquipmentSlot.Helmet);
+                unit.riderWeapon = riderEquipment.GetEquipped(EquipmentSlot.Weapon);
+            }
+
+            BattleSaveData.PlayerUnits.Add(unit);
         }
 
         // ── Foot soldiers ─────────────────────────────────────────────────────
@@ -83,19 +109,24 @@ public class BattleStarter : MonoBehaviour
                 archerHP, archerDmg, archerSpeed));
         }
 
-        // ── Cannons ───────────────────────────────────────────────────────────
-        var cannonZones = FindObjectsByType<CastleUnitDropZone>(
+        // ── Cannons (placed via CannonSlotCastle / CannonPanelManager) ───────
+        var cannonSlots = FindObjectsByType<CannonSlotCastle>(
             FindObjectsInactive.Include, FindObjectsSortMode.None);
 
-        foreach (var cz in cannonZones)
+        foreach (var cs in cannonSlots)
         {
-            if (!cz.HasUnit) continue;
-            BattleSaveData.PlayerUnits.Add(new BattleUnitData(
+            if (!cs.hasCannon || cs.equippedEntry == null || cs.equippedEntry.data == null) continue;
+
+            var entry = cs.equippedEntry;
+            var cannonUnit = new BattleUnitData(
                 BattleUnitType.Cannon,
-                0f, 30f, 0f));
+                entry.CurrentHealth, entry.CurrentDamage, 0f);
+            cannonUnit.cannonType = entry.data;
+
+            BattleSaveData.PlayerUnits.Add(cannonUnit);
         }
 
-        // ── Dragons ───────────────────────────────────────────────────────────
+        // ── Dragons (with a soldier mounted) ─────────────────────────────────
         var dragons = FindObjectsByType<DragonController>(
             FindObjectsInactive.Include, FindObjectsSortMode.None);
 
@@ -103,10 +134,26 @@ public class BattleStarter : MonoBehaviour
         foreach (var d in dragons)
         {
             if (!d.gameObject.activeInHierarchy) continue;
+            if (d.RiderSeat == null || !d.RiderSeat.IsOccupied) continue;
+
             BattleSaveData.DragonCount++;
-            BattleSaveData.PlayerUnits.Add(new BattleUnitData(
+
+            var unit = new BattleUnitData(
                 BattleUnitType.Dragon,
-                dragonHP, dragonDmg, dragonSpeed));
+                dragonHP, dragonDmg, dragonSpeed);
+
+            CharacterEquipment riderEquipment = d.RiderSeat.MountedSoldier != null
+                ? d.RiderSeat.MountedSoldier.GetComponent<CharacterEquipment>()
+                : null;
+            if (riderEquipment != null)
+            {
+                unit.riderFace = riderEquipment.GetEquipped(EquipmentSlot.Face);
+                unit.riderArmor = riderEquipment.GetEquipped(EquipmentSlot.Armor);
+                unit.riderHelmet = riderEquipment.GetEquipped(EquipmentSlot.Helmet);
+                unit.riderWeapon = riderEquipment.GetEquipped(EquipmentSlot.Weapon);
+            }
+
+            BattleSaveData.PlayerUnits.Add(unit);
         }
 
         Debug.Log($"[BattleStarter] Packed {BattleSaveData.PlayerUnits.Count} units, " +
