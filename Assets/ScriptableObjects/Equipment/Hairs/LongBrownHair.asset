@@ -19,7 +19,56 @@ MonoBehaviour:
   healthBonus: 0
   abilityBonus: 0
   damageBonus: 0
-  walkSprites: []
-  idleSprites: []
-  deathSprites: []
+  walkSprites:
+  - {fileID: 21300000, guid: f87bee2a25db8064f86eaa2925152462, type: 3}
+  - {fileID: 21300000, guid: b362f9c6e54b183438acd34b0e6a730a, type: 3}
+  - {fileID: 21300000, guid: 55a8ff8695c67754ba2460a8d84fd2d1, type: 3}
+  - {fileID: 21300000, guid: 5e53f5079f327e849bcfd3a97d5f169d, type: 3}
+  - {fileID: 21300000, guid: 395d7640c5dde8d42881fb98bc538d40, type: 3}
+  - {fileID: 21300000, guid: 52cf87e721194d4409656b722159bcae, type: 3}
+  - {fileID: 21300000, guid: a05a0135304dca949a1c8dcea5e29e97, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: 5cabc5427c417484ebea427788bd0398, type: 3}
+  - {fileID: 21300000, guid: d9ff379bf35b6904e89c4af44352f144, type: 3}
+  - {fileID: 21300000, guid: c408f7358496ee9458f98b9752900a21, type: 3}
+  - {fileID: 21300000, guid: 16a7dcd4f86220c4b807c4df90ae2120, type: 3}
+  deathSprites:
+  - {fileID: 21300000, guid: 6d075f3bcd004ca4abf77a1a23ed468b, type: 3}
+  - {fileID: 21300000, guid: 07a0bd8448f08154f8818a41ad040fac, type: 3}
+  - {fileID: 21300000, guid: bcabed5631980ee40829fcb7f287886d, type: 3}
+  - {fileID: 21300000, guid: 146bc0876e4504949a8d6c8d155c4a3f, type: 3}
+  - {fileID: 21300000, guid: bc2abdd462e5ed54c984e6622d3555b2, type: 3}
+  - {fileID: 21300000, guid: e9bd777d7338e774694ea62bd38664b3, type: 3}
+  - {fileID: 21300000, guid: d26156f461c732845a4b39bc403dfef1, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: 85643b00c07238d4c9a01c5b5b15f5d8, type: 3}
+  - {fileID: 21300000, guid: d273c7e564a71a94ba44eadaae2bf239, type: 3}
+  - {fileID: 21300000, guid: ac2402b9348f81b49824143ae87a7493, type: 3}
+  - {fileID: 21300000, guid: f423da5cf0f963041b827d69b96d0584, type: 3}
+  - {fileID: 21300000, guid: c8871e951e42c1141a29437cf6b103c9, type: 3}
+  - {fileID: 21300000, guid: ff7de87c5bb35424986cdee3a197e155, type: 3}
+  - {fileID: 21300000, guid: 45fbfc1945214ed4f89c0d0dc4c4670f, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: 58d8d3a722568ce4b8de2d09903996ee, type: 3}
+  - {fileID: 21300000, guid: 4ff43e03cb1286742997a5dd89855a45, type: 3}
+  - {fileID: 21300000, guid: 0328d359ac86e244891f699710801153, type: 3}
+  - {fileID: 21300000, guid: cc9d166bb55a56c4eb6ac06a16a1b968, type: 3}
+  - {fileID: 21300000, guid: e76419ef9a5683f439aef88c0c958272, type: 3}
+  - {fileID: 21300000, guid: a38e439859b94d94994e2325a6207708, type: 3}
+  - {fileID: 21300000, guid: f43fb02ad93c6314f95de970a539e887, type: 3}
+  - {fileID: 21300000, guid: 1cf871af8d1c818489a000d1f14915a8, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: 453154188670f064097282687c65a706, type: 3}
+  - {fileID: 21300000, guid: cecc527cf70157e4abd566bd4e5c3f71, type: 3}
+  - {fileID: 21300000, guid: af857f2d5f5394b47be1f77790631416, type: 3}
+  - {fileID: 21300000, guid: 76b8b7abf28c1a544855cfc743339325, type: 3}
+  - {fileID: 21300000, guid: f77943a44acb2dc46b103d42a264863e, type: 3}
+  - {fileID: 21300000, guid: 7c1bd49ff6785fb4fb6cf0d74e0a094c, type: 3}
+  - {fileID: 21300000, guid: 3161dc5eab97f4d42992d08bc8ba2060, type: 3}
+  riderIdleSprites: []
+  riderFlySprites: []
+  horseIdleSprites: []
+  horseRunSprites: []
+  horseFightSprites: []
+  horseDeadSprites: []
   bodyTypeVariants: []

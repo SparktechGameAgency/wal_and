@@ -260,6 +260,20 @@ public class CastleGrid : MonoBehaviour
         InBounds(r, c) ? _grid[r, c] : null;
 
     /// <summary>
+    /// Returns the total number of castle blocks currently placed.
+    /// Used by BattleStarter to tell the bot how large to make its castle.
+    /// </summary>
+    public int GetPlacedBlockCount()
+    {
+        int count = 0;
+        for (int r = 0; r < totalRows; r++)
+            for (int c = 0; c < totalCols; c++)
+                if (_grid[r, c] != null && _grid[r, c].HasBlock)
+                    count++;
+        return count;
+    }
+
+    /// <summary>
     /// Called immediately after a block is placed at (row, col).
     /// If the cell directly below (row-1, col) has placed units, they are
     /// migrated up into the new block's slot before RefreshUnitSlots() removes

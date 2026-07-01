@@ -12,14 +12,63 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 977c467d2b88d514d86a49d2013057c9, type: 3}
   m_Name: LongYellowHair
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentItem
-  itemName: ShortYellowHair
+  itemName: LongYellowHair
   slot: 2
   inventoryIcon: {fileID: 21300000, guid: 573bc6a6c741e5947a3c919e67790be2, type: 3}
   rarityColour: {r: 1, g: 1, b: 1, a: 1}
   healthBonus: 0
   abilityBonus: 0
   damageBonus: 0
-  walkSprites: []
-  idleSprites: []
-  deathSprites: []
+  walkSprites:
+  - {fileID: 21300000, guid: f87ecc9cbe8f51747b963da6b1599898, type: 3}
+  - {fileID: 21300000, guid: 0d1e3b24013f7ee4ba6dbc560aa7710b, type: 3}
+  - {fileID: 21300000, guid: 71658b0f13b477c4f9b5a85c3f19b45e, type: 3}
+  - {fileID: 21300000, guid: 4cb371609f2b6454583dcd27c3386508, type: 3}
+  - {fileID: 21300000, guid: 37a969aeafce8094baa7714659d14f01, type: 3}
+  - {fileID: 21300000, guid: 642cb87b9635572459632ada094e0c22, type: 3}
+  - {fileID: 21300000, guid: fd408a0cb1b8a9f46915c9ccf756c443, type: 3}
+  idleSprites:
+  - {fileID: 21300000, guid: 498b5994b95bbba47899299c168cecc5, type: 3}
+  - {fileID: 21300000, guid: 25f5e00e53226344095e8c04f10f4990, type: 3}
+  - {fileID: 21300000, guid: 9806fb0f773328147a98571b69ce6765, type: 3}
+  - {fileID: 21300000, guid: a2402004eb4511047b7887876fb03d52, type: 3}
+  deathSprites:
+  - {fileID: 21300000, guid: 52d94f4e18fc9d047bcbb9daed1009e2, type: 3}
+  - {fileID: 21300000, guid: a1afa8ca1bf521b41a6ead8231f7538b, type: 3}
+  - {fileID: 21300000, guid: 2165d3e644298d048a46d69c05231512, type: 3}
+  - {fileID: 21300000, guid: 545d04758ff9c9143a701021dd754bf3, type: 3}
+  - {fileID: 21300000, guid: 711a65b1288d31d48b579531b36158da, type: 3}
+  - {fileID: 21300000, guid: 9e5552e7a4e3d294e9b9176a560467dc, type: 3}
+  - {fileID: 21300000, guid: a3375229184161d408c9e7007feab1a5, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: 3dfe2fc671daa7245b3a45cec96edfb0, type: 3}
+  - {fileID: 21300000, guid: 3e393e0b1631a2e4a9d0ac781a2fd404, type: 3}
+  - {fileID: 21300000, guid: 67a4045e0ec28574797b376a92439b5b, type: 3}
+  - {fileID: 21300000, guid: 63817784cff41f54e8670340804a7e4a, type: 3}
+  - {fileID: 21300000, guid: 138f9e0073cfa4e46a028c771e419cb0, type: 3}
+  - {fileID: 21300000, guid: 20357a79049cdff46aeb6b1b199b2227, type: 3}
+  - {fileID: 21300000, guid: 556063d2b86b7eb4a9512dbca05e133e, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: afa2030535d007a4e9a7d6526ddd9c96, type: 3}
+  - {fileID: 21300000, guid: 0bfd96ce7495c5f429bc1bb8ad6d5b98, type: 3}
+  - {fileID: 21300000, guid: 8e3c7b624ce45d048ad73f8ee9f6e4b1, type: 3}
+  - {fileID: 21300000, guid: bd3398a7ecba7604e89e9f0368e5a050, type: 3}
+  - {fileID: 21300000, guid: 6755403cbb9849f449752136ad6ec224, type: 3}
+  - {fileID: 21300000, guid: 252b1b6de60520748a7be9c16a3fada2, type: 3}
+  - {fileID: 21300000, guid: 238b8a2dd5d1fd448afe7b47d26502cd, type: 3}
+  - {fileID: 21300000, guid: 70c98c079e926ef45b7c0b95383d8a4a, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: b9685f2772dae67478ed6d52efbb6b7d, type: 3}
+  - {fileID: 21300000, guid: c9fd0239fd1d7c34bbf050863ca498de, type: 3}
+  - {fileID: 21300000, guid: 87a6a14066a3821429b85e21478c4566, type: 3}
+  - {fileID: 21300000, guid: 9c434612f91313142ab99538aa7e131a, type: 3}
+  - {fileID: 21300000, guid: 38d7c6af1b37b2744a5ad0313b05dc16, type: 3}
+  - {fileID: 21300000, guid: 77f508e21c1678343b253e740efbd00e, type: 3}
+  - {fileID: 21300000, guid: b53d98954e923cc4e8770f4d7abcd8b3, type: 3}
+  riderIdleSprites: []
+  riderFlySprites: []
+  horseIdleSprites: []
+  horseRunSprites: []
+  horseFightSprites: []
+  horseDeadSprites: []
   bodyTypeVariants: []

@@ -40,4 +40,35 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 5e3d12f53a14e7647981bb483817dc03, type: 3}
   - {fileID: 21300000, guid: 1756b5b36e753af4d9c91d17dcf98975, type: 3}
   - {fileID: 21300000, guid: 5068447772e936c49951dc220480a781, type: 3}
+  runSprites:
+  - {fileID: 21300000, guid: e72deff327da087439be575339e4c670, type: 3}
+  - {fileID: 21300000, guid: c98c547ce91e1ca45b6c0310940f7787, type: 3}
+  - {fileID: 21300000, guid: ec5f7191fc295954890b1fc547fee73b, type: 3}
+  - {fileID: 21300000, guid: 140376b4e8a8b024f9f0cc8ea9787259, type: 3}
+  - {fileID: 21300000, guid: c8bbc0aa528a8d246a6884917aecdb77, type: 3}
+  - {fileID: 21300000, guid: 3d4662eafe625c94ebe3e02bfc0634ca, type: 3}
+  - {fileID: 21300000, guid: 7eb09f7f57c679d4d88a1f73fa890b6d, type: 3}
+  fightSprites:
+  - {fileID: 21300000, guid: 8bc20084954f89145a047b88bb5f2024, type: 3}
+  - {fileID: 21300000, guid: abb6ec1c422640840805efcdacd57d16, type: 3}
+  - {fileID: 21300000, guid: 043e11ccf0c13b54ead98bb127346eff, type: 3}
+  - {fileID: 21300000, guid: ec40e4fbb5b58cf44b42889ff281a398, type: 3}
+  - {fileID: 21300000, guid: 14457cf0d2746644aaa2ed643fa650c6, type: 3}
+  - {fileID: 21300000, guid: b7bc96235b6d9b342a118482da3a4fbe, type: 3}
+  - {fileID: 21300000, guid: 0298d28d18339e148a5f2d7f77a83d89, type: 3}
+  - {fileID: 21300000, guid: 54fc826a513619d4985f774967a90b0e, type: 3}
+  jumpSprites:
+  - {fileID: 21300000, guid: d0614776cca30a5489b4d43d7e1bc25e, type: 3}
+  - {fileID: 21300000, guid: 9d5cf38ef1287b64ca3959fcbfea86dd, type: 3}
+  - {fileID: 21300000, guid: bc1f75866c1025740b2203ff0ab9fd0c, type: 3}
+  - {fileID: 21300000, guid: d1b5a9cde20721344b6fd4d1400e5eb0, type: 3}
+  - {fileID: 21300000, guid: c0f16dc8542721b47ad2507dbc972366, type: 3}
+  - {fileID: 21300000, guid: f0f9ed496dd372143bb8be56697a7c31, type: 3}
+  - {fileID: 21300000, guid: ddde322bca524304183abff4e65acc2f, type: 3}
+  riderIdleSprites: []
+  riderFlySprites: []
+  horseIdleSprites: []
+  horseRunSprites: []
+  horseFightSprites: []
+  horseDeadSprites: []
   bodyTypeVariants: []
