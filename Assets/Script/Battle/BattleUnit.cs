@@ -49,6 +49,13 @@ public class BattleUnit : MonoBehaviour
         UpdateHPBar();
     }
 
+    // Temporary diagnostics — set true on the soldier's BattleUnit in the
+    // Inspector (or leave the default here) to print target/distance/position
+    // once a second, to pin down exactly why a unit isn't moving.
+    [Header("Debug")]
+    public bool debugLog = false;
+    private float _debugTimer;
+
     private void Update()
     {
         if (IsDead) return;
@@ -56,6 +63,18 @@ public class BattleUnit : MonoBehaviour
         // Try to keep a valid target.
         if (_target == null || _target.IsDead)
             _target = BattleManager.Instance?.FindNearestEnemy(this);
+
+        if (debugLog)
+        {
+            _debugTimer += Time.deltaTime;
+            if (_debugTimer >= 1f)
+            {
+                _debugTimer = 0f;
+                Debug.Log($"[BattleUnit] '{name}' isPlayerUnit={isPlayerUnit} canMove={canMove} " +
+                          $"target={(_target != null ? _target.name : "NULL")} " +
+                          $"pos={_rt.anchoredPosition} parent={transform.parent?.name}");
+            }
+        }
 
         if (_target == null) return;
 

@@ -97,7 +97,21 @@ public class BotArmyGenerator : MonoBehaviour
                 row * unitSpacingY);
 
             BattleUnit bu = go.GetComponent<BattleUnit>();
-            if (bu == null) continue;
+            if (bu == null)
+            {
+                // A unit prefab missing its BattleUnit component used to make
+                // this silently `continue`, which could (and did) drop the
+                // ENTIRE bot army down to 0 units if every randomly-picked
+                // prefab in the pool happened to be missing it — leaving the
+                // player side with no target to fight, looking permanently
+                // "stuck" in idle/walk. Auto-add it instead of skipping, same
+                // fallback BattleManager.ReceivePlayerSoldiers() already uses
+                // for carried-over soldiers.
+                bu = go.AddComponent<BattleUnit>();
+                Debug.LogWarning($"[BotArmyGenerator] '{entry.prefab.name}' had no BattleUnit " +
+                                  "component — added one at runtime. Add it to the prefab directly " +
+                                  "to avoid this warning.");
+            }
 
             BattleUnitData data = BuildData(entry, riderLoadouts);
             bu.Init(data, playerUnit: false);

@@ -252,10 +252,31 @@ public class BattleManager : MonoBehaviour
             // Horse/Dragon BattleUnitData entries.
             if (!go.activeInHierarchy) continue;
 
+            // Pull the soldier OUT of SoldierSpawnArea and directly onto
+            // PlayerArmyRoot, preserving its current visual spot
+            // (worldPositionStays: true recomputes anchoredPosition for the
+            // new parent). BattleUnit.RectPos / FindNearestEnemy compare raw
+            // anchoredPosition between units, and every other unit (bot side
+            // included) is parented directly onto its *ArmyRoot — leaving
+            // soldiers nested one level deeper inside SoldierSpawnArea put
+            // them in a different coordinate frame, so distance checks came
+            // out wrong and the soldier looked "stuck" (effectively already
+            // in attack range from frame 1, so it never walked).
+            go.transform.SetParent(playerArmyRoot, worldPositionStays: true);
+
             // Village-only interaction must be turned off so the soldier can't
             // be dragged or resume patrolling mid-battle.
             SoldierDragDrop dragDrop = go.GetComponent<SoldierDragDrop>();
             if (dragDrop != null) dragDrop.enabled = false;
+
+            // enabled = false only stops Update() — it does NOT stop coroutines
+            // SoldierController already started in OnEnable() (RestCycle /
+            // CombatLoop / InitPatrol). Those keep writing to this soldier's
+            // RectTransform every frame in the background, fighting BattleUnit
+            // for control and making the soldier look stuck/pinned in place.
+            // StopAllCoroutines() kills them for good before handing movement
+            // over to BattleUnit.
+            soldier.StopAllCoroutines();
             soldier.enabled = false;
 
             // Any drag/mount CanvasGroup.alpha left below 1 (mid-drag = 0.75,
@@ -277,9 +298,19 @@ public class BattleManager : MonoBehaviour
             if (bu == null) bu = go.AddComponent<BattleUnit>();
             bu.Init(data, playerUnit: true);
             _playerUnits.Add(bu);
+
+            Debug.Log($"[BattleManager] Soldier '{go.name}' ready — " +
+                      $"activeSelf={go.activeSelf}, enabled(SoldierController)={soldier.enabled}, " +
+                      $"BattleUnit.enabled={bu.enabled}, parent={go.transform.parent?.name}, " +
+                      $"anchoredPos={go.GetComponent<RectTransform>().anchoredPosition}");
         }
 
         Debug.Log($"[BattleManager] Carried over {_playerUnits.Count} live soldier unit(s).");
+
+        // SoldierSpawnArea was only a carrier for the trip over — every
+        // soldier has now been reparented directly onto playerArmyRoot, so
+        // the (now empty) container is no longer needed in the Battle scene.
+        Destroy(spawnArea.gameObject);
     }
 
     /// <summary>
