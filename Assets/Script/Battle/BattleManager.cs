@@ -127,13 +127,14 @@ public class BattleManager : MonoBehaviour
         // Player castle — the ACTUAL CastleGridPanel the player built in the
         // Village, carried over via DontDestroyOnLoad and reparented here.
         // Must run before SpawnPlayerArmy() so cannons/archers can find their block.
-        int playerBlockCount = ReceivePlayerCastle();
+        // x = rows, y = cols — the real dimensions of the player's castle.
+        Vector2Int playerDimensions = ReceivePlayerCastle();
 
         SpawnPlayerArmy();
 
         // Bot side — castle first, then army.
         // Reuses the SAME unitPrefabs as the player (no separate bot prefabs).
-        botCastleGenerator?.Generate(playerBlockCount);
+        botCastleGenerator?.Generate(playerDimensions.x, playerDimensions.y);
         botArmyGenerator?.Generate(
             BattleSaveData.PlayerUnits.Count,
             unitPrefabs,
@@ -146,11 +147,13 @@ public class BattleManager : MonoBehaviour
 
     /// <summary>
     /// Reparents the carried-over CastleGrid into PlayerCastleRoot and
-    /// centers it there. Returns the block count for bot castle sizing.
-    /// Falls back to BattleSaveData.PlayerBlockCount if nothing carried over
-    /// (e.g. testing the Battle scene directly without going through Village).
+    /// centers it there. Returns the player's real castle dimensions
+    /// (x = rows, y = cols) so the bot castle can be sized to match.
+    /// Falls back to BattleSaveData.PlayerBlockPositions if nothing carried
+    /// over (e.g. testing the Battle scene directly without going through
+    /// the Village).
     /// </summary>
-    private int ReceivePlayerCastle()
+    private Vector2Int ReceivePlayerCastle()
     {
         CastleGrid grid = CastleGrid.Instance;
 
@@ -160,8 +163,8 @@ public class BattleManager : MonoBehaviour
 
         if (grid == null || playerCastleRoot == null)
         {
-            Debug.LogWarning("[BattleManager] No carried CastleGrid found — falling back to saved block count only.");
-            return BattleSaveData.PlayerBlockCount;
+            Debug.LogWarning("[BattleManager] No carried CastleGrid found — falling back to saved block positions only.");
+            return GetCastleDimensions(BattleSaveData.PlayerBlockPositions);
         }
 
         grid.transform.SetParent(playerCastleRoot, false);
@@ -180,7 +183,28 @@ public class BattleManager : MonoBehaviour
                   $"'{playerCastleRoot.name}'. Actual parent now: {grid.transform.parent.name}. " +
                   $"Block count: {grid.GetPlacedBlockCount()}.");
 
-        return grid.GetPlacedBlockCount();
+        return GetCastleDimensions(grid.GetPlacedBlockPositions());
+    }
+
+    /// <summary>
+    /// Turns a list of placed (row, col) block positions into the castle's
+    /// real dimensions — x = rows, y = cols — by taking the bounding box of
+    /// the staircase (max row + 1, max col + 1). Returns (1,1) if empty so
+    /// the bot castle generator always has something sane to work with.
+    /// </summary>
+    private Vector2Int GetCastleDimensions(List<Vector2Int> blockPositions)
+    {
+        if (blockPositions == null || blockPositions.Count == 0)
+            return new Vector2Int(1, 1);
+
+        int maxRow = 0, maxCol = 0;
+        foreach (var pos in blockPositions)
+        {
+            if (pos.x > maxRow) maxRow = pos.x;
+            if (pos.y > maxCol) maxCol = pos.y;
+        }
+
+        return new Vector2Int(maxRow + 1, maxCol + 1);
     }
 
     // ── Player Army Spawning ──────────────────────────────────────────────────
