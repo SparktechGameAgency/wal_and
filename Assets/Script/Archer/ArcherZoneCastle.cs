@@ -1774,6 +1774,11 @@ public class ArcherZoneCastle : MonoBehaviour,
 
     public bool IsOccupied { get; private set; }
 
+    /// <summary>The live archer GameObject spawned in this zone (null if empty).
+    /// Used by BattleManager to attach a BattleUnit to the EXISTING archer
+    /// instead of spawning a duplicate when the castle carries into battle.</summary>
+    public GameObject ArcherInstance => _archerInstance;
+
     /// <summary>
     /// Set to true when a zone is clicked to open the Army panel.
     /// UIManager reads this to know it should return to Castle+Archer after buying.

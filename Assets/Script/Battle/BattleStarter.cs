@@ -30,14 +30,44 @@ public class BattleStarter : MonoBehaviour
     {
         BattleSaveData.Clear();
         GatherArmyData();
+        CarryCastleIntoBattle();
         SceneManager.LoadScene(battleSceneName);
+    }
+
+    /// <summary>
+    /// Detaches the live CastleGridPanel and flags it to survive the scene
+    /// load, so the ACTUAL castle (blocks, cannons, archers, all of it)
+    /// shifts into the Battle scene instead of a data-driven rebuild.
+    /// BattleManager reparents it into PlayerCastleRoot on the other side.
+    /// </summary>
+    private void CarryCastleIntoBattle()
+    {
+        if (CastleGrid.Instance == null)
+        {
+            Debug.LogWarning("[BattleStarter] No CastleGrid.Instance found — castle will not carry over.");
+            return;
+        }
+
+        GameObject panel = CastleGrid.Instance.gameObject;
+        Debug.Log($"[BattleStarter] Carrying '{panel.name}' into battle. " +
+                  $"Parent before detach: {(panel.transform.parent != null ? panel.transform.parent.name : "none")}");
+
+        CastleGrid.Instance.SetBattleMode(true);
+        CastleGrid.Instance.PrepareForSceneCarry();
+
+        Debug.Log($"[BattleStarter] '{panel.name}' detached. Parent after detach: " +
+                  $"{(panel.transform.parent != null ? panel.transform.parent.name : "none (root)")}");
     }
 
     private void GatherArmyData()
     {
-        // ── Castle block count ────────────────────────────────────────────────
-        BattleSaveData.PlayerBlockCount = CastleGrid.Instance != null
-            ? CastleGrid.Instance.GetPlacedBlockCount()
+        // ── Castle shape (exact block positions, not just a count) ──────────────
+        BattleSaveData.PlayerBlockPositions = CastleGrid.Instance != null
+            ? CastleGrid.Instance.GetPlacedBlockPositions()
+            : new System.Collections.Generic.List<Vector2Int>();
+
+        BattleSaveData.PlayerBlockCount = BattleSaveData.PlayerBlockPositions.Count > 0
+            ? BattleSaveData.PlayerBlockPositions.Count
             : 1;
 
         // ── Horses (with a soldier mounted) ─────────────────────────────────────
@@ -104,9 +134,22 @@ public class BattleStarter : MonoBehaviour
         foreach (var az in archerZones)
         {
             if (!az.IsOccupied) continue;
-            BattleSaveData.PlayerUnits.Add(new BattleUnitData(
+
+            var archerUnit = new BattleUnitData(
                 BattleUnitType.Archer,
-                archerHP, archerDmg, archerSpeed));
+                archerHP, archerDmg, archerSpeed);
+
+            // Record which castle block this archer is stationed on so it
+            // spawns seated on the matching block in the Battle scene,
+            // instead of the flat army row.
+            GridCell cell = az.GetComponentInParent<GridCell>();
+            if (cell != null)
+            {
+                archerUnit.hasGridPosition = true;
+                archerUnit.gridPosition = new Vector2Int(cell.Row, cell.Col);
+            }
+
+            BattleSaveData.PlayerUnits.Add(archerUnit);
         }
 
         // ── Cannons (placed via CannonSlotCastle / CannonPanelManager) ───────
@@ -122,6 +165,16 @@ public class BattleStarter : MonoBehaviour
                 BattleUnitType.Cannon,
                 entry.CurrentHealth, entry.CurrentDamage, 0f);
             cannonUnit.cannonType = entry.data;
+
+            // Record which castle block this cannon is mounted on so it
+            // spawns seated on the matching block in the Battle scene,
+            // instead of the flat army row.
+            GridCell cell = cs.GetComponentInParent<GridCell>();
+            if (cell != null)
+            {
+                cannonUnit.hasGridPosition = true;
+                cannonUnit.gridPosition = new Vector2Int(cell.Row, cell.Col);
+            }
 
             BattleSaveData.PlayerUnits.Add(cannonUnit);
         }

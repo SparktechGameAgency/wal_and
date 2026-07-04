@@ -41,11 +41,102 @@ public class CastleGrid : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            // A persisted CastleGrid already exists — either it just came
+            // back from the Battle scene (DontDestroyOnLoad'd there) or this
+            // is some other stray duplicate. Either way, hand this freshly
+            // loaded placeholder's parent/position over to the real one
+            // instead of building a second grid, then remove the duplicate.
+            HandOffSlotTo(Instance);
+            Destroy(gameObject);
+            return;
+        }
+
         Instance = this;
 
         BuildGrid();
         PlaceDefaultBlocks();
+    }
+
+    /// <summary>
+    /// Gives the persisted CastleGrid this placeholder's parent, sibling
+    /// index, and RectTransform layout, then restores normal Village
+    /// interaction on it. Called when the Village scene reloads after a
+    /// battle and the real castle (carried over via DontDestroyOnLoad)
+    /// needs to slot back into the newly built Village hierarchy.
+    /// </summary>
+    private void HandOffSlotTo(CastleGrid persisted)
+    {
+        RectTransform myRt = GetComponent<RectTransform>();
+        RectTransform theirRt = persisted.GetComponent<RectTransform>();
+
+        persisted.transform.SetParent(transform.parent, false);
+        persisted.transform.SetSiblingIndex(transform.GetSiblingIndex());
+
+        if (myRt != null && theirRt != null)
+        {
+            theirRt.anchorMin = myRt.anchorMin;
+            theirRt.anchorMax = myRt.anchorMax;
+            theirRt.pivot = myRt.pivot;
+            theirRt.anchoredPosition = myRt.anchoredPosition;
+            theirRt.sizeDelta = myRt.sizeDelta;
+        }
+
+        persisted.SetBattleMode(false);
+    }
+
+    /// <summary>
+    /// Detaches this castle from wherever it currently lives and marks it to
+    /// survive the upcoming scene load. Call from BattleStarter right before
+    /// SceneManager.LoadScene(battleSceneName). DontDestroyOnLoad only works
+    /// on root GameObjects, so this un-parents first.
+    /// </summary>
+    public void PrepareForSceneCarry()
+    {
+        transform.SetParent(null, true);
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private CanvasGroup _interactionGroup;
+
+    /// <summary>
+    /// Switches this castle between normal Village interaction (drag/drop,
+    /// buying expansions, cannon panel) and Battle mode, where it's a pure
+    /// visual — fully visible, but nothing can be clicked or dragged, and
+    /// expansion/buy slots never show mid-battle.
+    /// </summary>
+    public void SetBattleMode(bool inBattle)
+    {
+        if (_interactionGroup == null)
+        {
+            _interactionGroup = GetComponent<CanvasGroup>();
+            if (_interactionGroup == null)
+                _interactionGroup = gameObject.AddComponent<CanvasGroup>();
+        }
+
+        _interactionGroup.interactable = !inBattle;
+        _interactionGroup.blocksRaycasts = !inBattle;
+
+        if (inBattle)
+        {
+            for (int r = 0; r < totalRows; r++)
+                for (int c = 0; c < totalCols; c++)
+                    _grid[r, c]?.HideExpansionSlot();
+        }
+        else
+        {
+            RefreshExpansionSlots();
+            RefreshUnitSlots();
+        }
+    }
+
+    /// <summary>The block's RectTransform at (row, col), or null if empty/out of bounds.
+    /// Used by BattleManager to seat spawned units on the matching live block.</summary>
+    public RectTransform GetBlockTransform(int row, int col)
+    {
+        GridCell cell = GetCell(row, col);
+        return cell != null ? cell.GetComponent<RectTransform>() : null;
     }
 
     private void Start()
@@ -271,6 +362,23 @@ public class CastleGrid : MonoBehaviour
                 if (_grid[r, c] != null && _grid[r, c].HasBlock)
                     count++;
         return count;
+    }
+
+    /// <summary>
+    /// Returns the exact (row, col) of every placed block — the real castle
+    /// shape (half-triangle/staircase), not just a count. Used by
+    /// BattleStarter so the Battle scene can rebuild the identical silhouette
+    /// instead of a generic tapered stack.
+    /// x = row, y = col — same convention as defaultBlockPositions.
+    /// </summary>
+    public List<Vector2Int> GetPlacedBlockPositions()
+    {
+        var positions = new List<Vector2Int>();
+        for (int r = 0; r < totalRows; r++)
+            for (int c = 0; c < totalCols; c++)
+                if (_grid[r, c] != null && _grid[r, c].HasBlock)
+                    positions.Add(new Vector2Int(r, c));
+        return positions;
     }
 
     /// <summary>

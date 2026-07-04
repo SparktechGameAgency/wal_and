@@ -59,8 +59,10 @@ public class RiderLoadoutPool
 ///
 ///  Canvas
 ///  ├── PlayerSide              ← RectTransform, anchored left half
-///  │   ├── PlayerCastleRoot    ← BotCastleGenerator (flipHorizontally OFF)
-///  │   └── PlayerArmyRoot      ← player units spawn here
+///  │   ├── PlayerCastleRoot    ← PlayerCastleBuilder (rebuilds the EXACT
+///  │   │                          Village castle shape, cannons/archers
+///  │   │                          included)
+///  │   └── PlayerArmyRoot      ← soldiers / horses / dragons spawn here
 ///  ├── BotSide                 ← RectTransform, anchored right half
 ///  │   ├── BotCastleRoot       ← BotCastleGenerator (flipHorizontally ON)
 ///  │   └── BotArmyRoot         ← BotArmyGenerator
@@ -78,9 +80,9 @@ public class BattleManager : MonoBehaviour
 
     [Header("Player Side")]
     [SerializeField] private Transform playerArmyRoot;
-    [Tooltip("BotCastleGenerator on PlayerCastleRoot — flipHorizontally OFF, " +
-             "builds the exact player block count (no randomization).")]
-    [SerializeField] private BotCastleGenerator playerCastleGenerator;
+    [Tooltip("Where the carried-over CastleGridPanel gets reparented into. " +
+             "BattlePanel → PlayerSide → PlayerCastleRoot.")]
+    [SerializeField] private RectTransform playerCastleRoot;
     [Tooltip("Shared prefabs — also passed to BotArmyGenerator for the bot side.")]
     [SerializeField] private BattleUnitPrefabs unitPrefabs;
     [Tooltip("Random rider looks the bot side picks from for Horse/Dragon units.")]
@@ -122,14 +124,16 @@ public class BattleManager : MonoBehaviour
 
     private void Start()
     {
-        SpawnPlayerArmy();
+        // Player castle — the ACTUAL CastleGridPanel the player built in the
+        // Village, carried over via DontDestroyOnLoad and reparented here.
+        // Must run before SpawnPlayerArmy() so cannons/archers can find their block.
+        int playerBlockCount = ReceivePlayerCastle();
 
-        // Player castle — exact block count, gate facing right (not flipped).
-        playerCastleGenerator?.GenerateExact(BattleSaveData.PlayerBlockCount);
+        SpawnPlayerArmy();
 
         // Bot side — castle first, then army.
         // Reuses the SAME unitPrefabs as the player (no separate bot prefabs).
-        botCastleGenerator?.Generate(BattleSaveData.PlayerBlockCount);
+        botCastleGenerator?.Generate(playerBlockCount);
         botArmyGenerator?.Generate(
             BattleSaveData.PlayerUnits.Count,
             unitPrefabs,
@@ -138,6 +142,45 @@ public class BattleManager : MonoBehaviour
         // Collect bot units after generation.
         if (botArmyGenerator != null)
             _botUnits.AddRange(botArmyGenerator.SpawnedUnits);
+    }
+
+    /// <summary>
+    /// Reparents the carried-over CastleGrid into PlayerCastleRoot and
+    /// centers it there. Returns the block count for bot castle sizing.
+    /// Falls back to BattleSaveData.PlayerBlockCount if nothing carried over
+    /// (e.g. testing the Battle scene directly without going through Village).
+    /// </summary>
+    private int ReceivePlayerCastle()
+    {
+        CastleGrid grid = CastleGrid.Instance;
+
+        Debug.Log($"[BattleManager] ReceivePlayerCastle — CastleGrid.Instance is " +
+                  $"{(grid == null ? "NULL" : grid.gameObject.name)}, " +
+                  $"playerCastleRoot is {(playerCastleRoot == null ? "NULL" : playerCastleRoot.name)}.");
+
+        if (grid == null || playerCastleRoot == null)
+        {
+            Debug.LogWarning("[BattleManager] No carried CastleGrid found — falling back to saved block count only.");
+            return BattleSaveData.PlayerBlockCount;
+        }
+
+        grid.transform.SetParent(playerCastleRoot, false);
+
+        RectTransform rt = grid.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.localScale = Vector3.one;
+        }
+
+        Debug.Log($"[BattleManager] Reparented '{grid.gameObject.name}' under " +
+                  $"'{playerCastleRoot.name}'. Actual parent now: {grid.transform.parent.name}. " +
+                  $"Block count: {grid.GetPlacedBlockCount()}.");
+
+        return grid.GetPlacedBlockCount();
     }
 
     // ── Player Army Spawning ──────────────────────────────────────────────────
@@ -150,17 +193,45 @@ public class BattleManager : MonoBehaviour
             return;
         }
 
+        // Separate counter for the flat army row — cannons/archers seated
+        // directly on a castle block don't consume a row/col slot here, so
+        // the remaining foot units/horses/dragons stay tightly packed.
+        int flatIndex = 0;
+
         for (int i = 0; i < BattleSaveData.PlayerUnits.Count; i++)
         {
             BattleUnitData data = BattleSaveData.PlayerUnits[i];
+
+            // Cannons/archers already exist as real, live GameObjects on the
+            // carried-over castle (they traveled over with it) — turn THOSE
+            // into the combat unit instead of spawning a duplicate prefab.
+            if (data.unitType == BattleUnitType.Cannon || data.unitType == BattleUnitType.Archer)
+            {
+                GameObject existing = FindExistingCastleUnit(data);
+                if (existing == null)
+                {
+                    Debug.LogWarning($"[BattleManager] Couldn't find the live {data.unitType} " +
+                                      $"at ({data.gridPosition.x},{data.gridPosition.y}) on the carried castle — skipping.");
+                    continue;
+                }
+
+                BattleUnit existingBu = existing.GetComponent<BattleUnit>();
+                if (existingBu == null) existingBu = existing.AddComponent<BattleUnit>();
+                existingBu.Init(data, playerUnit: true);
+                _playerUnits.Add(existingBu);
+                continue;
+            }
+
             GameObject prefab = GetPrefabFor(data);
             if (prefab == null) continue;
 
             GameObject go = Instantiate(prefab, playerArmyRoot);
 
             // Grid layout — left to right, then upward.
-            int col = i % playerUnitsPerRow;
-            int row = i / playerUnitsPerRow;
+            int col = flatIndex % playerUnitsPerRow;
+            int row = flatIndex / playerUnitsPerRow;
+            flatIndex++;
+
             RectTransform rt = go.GetComponent<RectTransform>();
             rt.anchoredPosition = new Vector2(
                 playerStartX + col * playerUnitSpacingX,
@@ -175,6 +246,35 @@ public class BattleManager : MonoBehaviour
         }
 
         Debug.Log($"[BattleManager] Spawned {_playerUnits.Count} player units.");
+    }
+
+    /// <summary>
+    /// Finds the actual cannon/archer GameObject already placed on the
+    /// carried-over castle at the unit's saved grid position, so BattleManager
+    /// can turn the real Village object into a combat unit instead of
+    /// instantiating a fresh prefab on top of it.
+    /// </summary>
+    private GameObject FindExistingCastleUnit(BattleUnitData data)
+    {
+        if (!data.hasGridPosition || CastleGrid.Instance == null) return null;
+
+        GridCell cell = CastleGrid.Instance.GetCell(data.gridPosition.x, data.gridPosition.y);
+        if (cell == null) return null;
+
+        if (data.unitType == BattleUnitType.Cannon)
+        {
+            foreach (var zone in cell.GetComponentsInChildren<CastleUnitDropZone>(true))
+                if (zone.acceptedType == CastleUnitType.Cannon && zone.HasUnit)
+                    return zone.PlacedInstance;
+        }
+        else if (data.unitType == BattleUnitType.Archer)
+        {
+            foreach (var zone in cell.GetComponentsInChildren<ArcherZoneCastle>(true))
+                if (zone.IsOccupied)
+                    return zone.ArcherInstance;
+        }
+
+        return null;
     }
 
     /// <summary>

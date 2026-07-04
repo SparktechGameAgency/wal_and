@@ -45,6 +45,11 @@ public class CastleUnitDropZone : MonoBehaviour,
     public bool HasUnit { get; private set; }
     public int PlacedVariantId { get; private set; } = -1;
 
+    /// <summary>The live cannon GameObject placed in this zone (null if empty).
+    /// Used by BattleManager to attach a BattleUnit to the EXISTING cannon
+    /// instead of spawning a duplicate when the castle carries into battle.</summary>
+    public GameObject PlacedInstance => _placedInstance;
+
     /// <summary>
     /// The ExpansionSlot above this block that should be shown/hidden
     /// as the cannon moves. Auto-linked on drop if not already set.

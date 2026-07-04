@@ -1,26 +1,36 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// BattleSaveData
 ///
-/// Static snapshot of the player's army taken the moment they press Start Battle
-/// in the Village panel. Survives the scene load because it's a static class —
-/// no MonoBehaviour, no DontDestroyOnLoad needed.
+/// Static snapshot of the player's army AND castle taken the moment they
+/// press Start Battle in the Village panel. Survives the scene load because
+/// it's a static class — no MonoBehaviour, no DontDestroyOnLoad needed.
 ///
-/// The Battle scene reads this once in BattleManager.Start() to spawn the
-/// player's army and build the player's castle wall on the left side.
+/// The Battle scene reads this once in BattleManager.Start() to rebuild the
+/// player's real castle shape (via PlayerCastleBuilder) and to spawn the
+/// player's army — including seating cannons/archers back on the exact
+/// block they were stationed on in the Village.
 /// </summary>
 public static class BattleSaveData
 {
     // ── Castle ────────────────────────────────────────────────────────────────
     /// <summary>
-    /// Number of castle blocks the player has placed (read from CastleGrid).
-    /// The bot castle will be Random.Range(1, blockCount+1) blocks tall.
+    /// Number of castle blocks the player has placed. Still used to size the
+    /// bot's random castle height (Random.Range(1, blockCount+1)).
     /// </summary>
     public static int PlayerBlockCount;
 
+    /// <summary>
+    /// Exact (row, col) of every block the player placed — the real
+    /// half-triangle/staircase shape. PlayerCastleBuilder rebuilds this
+    /// exact silhouette in the Battle scene instead of a generic stack.
+    /// </summary>
+    public static List<Vector2Int> PlayerBlockPositions = new List<Vector2Int>();
+
     // ── Army units ────────────────────────────────────────────────────────────
-    /// <summary>Each entry = one soldier or horse-mounted soldier.</summary>
+    /// <summary>Each entry = one soldier, horse-mounted soldier, cannon, or archer.</summary>
     public static List<BattleUnitData> PlayerUnits = new List<BattleUnitData>();
 
     /// <summary>Number of dragons the player has stationed.</summary>
@@ -30,6 +40,7 @@ public static class BattleSaveData
     public static void Clear()
     {
         PlayerBlockCount = 0;
+        PlayerBlockPositions.Clear();
         PlayerUnits.Clear();
         DragonCount = 0;
     }
@@ -47,24 +58,24 @@ public class BattleUnitData
     public float moveSpeed;
 
     // ── Rider visuals — only used for Horse / Dragon units ─────────────────────
-    // EquipmentItem is a ScriptableObject asset reference, so it survives the
-    // scene load fine without any extra copying.
     public EquipmentItem riderFace;
     public EquipmentItem riderArmor;
     public EquipmentItem riderHelmet;
     public EquipmentItem riderWeapon;
 
     // ── Horse type — only used for Horse units ──────────────────────────────────
-    // Which of the 3 HorseData assets (e.g. Brown/Black/White) this horse is,
-    // so BattleManager / BotArmyGenerator can spawn HorseData.prefab directly —
-    // same pattern as cannonType below.
     public HorseData horseType;
 
     // ── Cannon type — only used for Cannon units ────────────────────────────────
-    // Which of the 3 CannonData assets this cannon is, so BattleManager /
-    // BotArmyGenerator can spawn CannonData.prefab directly (no separate
-    // battle-only cannon prefabs needed).
     public CannonData cannonType;
+
+    // ── Castle position — only used for Cannon / Archer units ───────────────────
+    // Set when this unit was stationed on a specific block in the Village
+    // CastleGrid. BattleManager uses this to seat the unit directly onto the
+    // matching block in PlayerCastleBuilder instead of the flat army row, so
+    // the cannon/archer visually shifts WITH the castle into battle.
+    public bool hasGridPosition;
+    public Vector2Int gridPosition;
 
     public BattleUnitData(BattleUnitType type, float hp, float dmg, float speed)
     {
