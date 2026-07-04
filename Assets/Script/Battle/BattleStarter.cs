@@ -31,6 +31,7 @@ public class BattleStarter : MonoBehaviour
         BattleSaveData.Clear();
         GatherArmyData();
         CarryCastleIntoBattle();
+        CarrySoldiersIntoBattle();
         SceneManager.LoadScene(battleSceneName);
     }
 
@@ -57,6 +58,46 @@ public class BattleStarter : MonoBehaviour
 
         Debug.Log($"[BattleStarter] '{panel.name}' detached. Parent after detach: " +
                   $"{(panel.transform.parent != null ? panel.transform.parent.name : "none (root)")}");
+    }
+
+    /// <summary>
+    /// Detaches the live SoldierSpawnArea (the same container every village
+    /// soldier is instantiated into and reparented between Village/Castle
+    /// panels — see CastleGridMover) and flags it to survive the scene load,
+    /// exactly like CarryCastleIntoBattle() does for the CastleGrid. This
+    /// carries the ACTUAL soldier GameObjects — equipment, animation state
+    /// and all — into the Battle scene instead of a data-driven respawn.
+    /// BattleManager reparents it into PlayerSide/PlayerArmyRoot on the
+    /// other side (ReceivePlayerSoldiers()).
+    /// </summary>
+    private void CarrySoldiersIntoBattle()
+    {
+        RectTransform spawnArea = CastleGridMover.Instance != null
+            ? CastleGridMover.Instance.soldierSpawnArea
+            : null;
+
+        if (spawnArea == null)
+        {
+            Debug.LogWarning("[BattleStarter] No SoldierSpawnArea found — foot soldiers will not carry over.");
+            return;
+        }
+
+        Debug.Log($"[BattleStarter] Carrying '{spawnArea.name}' into battle. " +
+                  $"Parent before detach: {(spawnArea.parent != null ? spawnArea.parent.name : "none")}.");
+
+        // DontDestroyOnLoad only works on root GameObjects, so unparent first —
+        // same pattern as CastleGrid.PrepareForSceneCarry().
+        spawnArea.SetParent(null, true);
+        DontDestroyOnLoad(spawnArea.gameObject);
+
+        // CastleGridMover itself does NOT survive the scene change (only
+        // CastleGrid and this SoldierSpawnArea do), so its static Instance
+        // goes null once the Battle scene loads. Stash the reference on the
+        // plain-static BattleSaveData instead so BattleManager can still find
+        // the carried GameObject on the other side.
+        BattleSaveData.CarriedSoldierSpawnArea = spawnArea;
+
+        Debug.Log($"[BattleStarter] '{spawnArea.name}' detached and marked to survive the scene load.");
     }
 
     private void GatherArmyData()

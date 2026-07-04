@@ -1,16 +1,22 @@
 using UnityEngine;
+using UnityEngine.UI;
 using System.Collections.Generic;
 
 /// <summary>
 /// BotCastleGenerator
 ///
-/// Builds the bot castle as a real staircase/half-triangle shape — the same
-/// shape a player's own castle naturally forms in CastleGrid, where a block
-/// can only be added on top of an existing block or next to one already on
-/// the ground row. The castle is sized off the PLAYER's actual dimensions
-/// (rows x cols), each axis independently nudged by -1, 0, or +1, then grown
-/// into a staircase using CastleGrid's own adjacency rule — so it is never a
-/// solid rectangle and never the same rigid diagonal every time.
+/// Builds the bot castle using the SAME grid-layout structure as the
+/// Village's CastleGrid: for every generated position, an invisible
+/// GridCell container is placed on the grid, and the actual castle block
+/// is instantiated as its child, centered at (0,0) — exactly like
+/// CastleGrid.BuildGrid() + PlaceBlockAt() does. This keeps the bot castle
+/// structurally identical to the player's castle instead of dropping raw
+/// block sprites straight onto computed coordinates.
+///
+/// The shape itself is still a random staircase/half-triangle grown with
+/// CastleGrid's own adjacency rule (a cell can only get a block if the cell
+/// below it or to its left already has one), sized off the PLAYER's actual
+/// dimensions (rows x cols), each axis independently nudged by -1, 0, or +1.
 ///
 /// Reused for BOTH sides:
 ///   • Bot side    → Generate(playerRows, playerCols) — randomized +/-1 per
@@ -23,16 +29,21 @@ using System.Collections.Generic;
 /// </summary>
 public class BotCastleGenerator : MonoBehaviour
 {
+    [Tooltip("Same invisible layout-cell prefab used by CastleGrid (has GridCell, " +
+             "Image, Box Collider 2D, Button). Leave empty to fall back to placing " +
+             "block sprites directly with no cell wrapper.")]
+    [SerializeField] private GameObject gridCellPrefab;
+
     [Tooltip("Your CastleBlock prefab — the same visual used in the Village scene.")]
     [SerializeField] private GameObject castleBlockPrefab;
 
-    [Tooltip("Size of one block in pixels. Match your Village scene block size.")]
+    [Tooltip("Size of one cell/block in pixels. Match your Village scene's CastleGrid.cellSize.")]
     [SerializeField] private float blockSize = 120f;
 
-    [Tooltip("Gap between blocks in pixels.")]
+    [Tooltip("Gap between cells in pixels. Match your Village scene's CastleGrid.cellSpacing.")]
     [SerializeField] private float blockSpacing = 0f;
 
-    [Tooltip("Flip blocks horizontally so the gate faces the opposite side. " +
+    [Tooltip("Flip the castle horizontally so the gate faces the opposite side. " +
              "ON for the bot castle (gate faces left, toward the player). " +
              "OFF for the player castle (default orientation already faces right).")]
     [SerializeField] private bool flipHorizontally = true;
@@ -40,6 +51,17 @@ public class BotCastleGenerator : MonoBehaviour
     [Tooltip("How far each axis (rows, cols) is allowed to drift from the " +
              "player's own castle dimensions. 1 = -1/0/+1 per axis.")]
     [SerializeField] private int dimensionVariance = 1;
+
+    [Header("Fixed Grid Capacity (must match Village's CastleGrid)")]
+    [Tooltip("Same value as CastleGrid.totalRows in the Village scene. Used ONLY " +
+             "to compute the origin so the coordinate system never changes size " +
+             "between battles — NOT used to clamp/limit the generated shape.")]
+    [SerializeField] private int fixedTotalRows = 6;
+
+    [Tooltip("Same value as CastleGrid.totalCols in the Village scene. Used ONLY " +
+             "to compute the origin so the coordinate system never changes size " +
+             "between battles — NOT used to clamp/limit the generated shape.")]
+    [SerializeField] private int fixedTotalCols = 8;
 
     [Range(0.2f, 1f)]
     [Tooltip("How much of the bounding rows x cols box gets filled. 0.5 gives " +
@@ -66,14 +88,14 @@ public class BotCastleGenerator : MonoBehaviour
         int botCols = Mathf.Max(1, playerCols + Random.Range(-dimensionVariance, dimensionVariance + 1));
 
         List<Vector2Int> shape = GenerateStaircaseShape(botRows, botCols);
-        BuildBlocks(shape);
+        BuildGridCells(shape);
     }
 
     /// <summary>Player side: exact dimensions, still a staircase shape (no randomization).</summary>
     public void GenerateExact(int rows, int cols)
     {
         List<Vector2Int> shape = GenerateStaircaseShape(Mathf.Max(1, rows), Mathf.Max(1, cols));
-        BuildBlocks(shape);
+        BuildGridCells(shape);
     }
 
     /// <summary>
@@ -133,12 +155,15 @@ public class BotCastleGenerator : MonoBehaviour
     }
 
     /// <summary>
-    /// Instantiates one block per grid position, centering the whole shape
-    /// the same way CastleGrid/PlayerCastleBuilder do. flipHorizontally
-    /// mirrors both the column axis (so the shape climbs toward the left)
-    /// and the block sprite itself (so the gate art faces the player).
+    /// Builds the castle using the same two-tier structure as
+    /// CastleGrid.BuildGrid() + PlaceBlockAt(): one invisible GridCell
+    /// container per grid position, with the actual block instantiated as
+    /// its child at anchoredPosition zero. flipHorizontally mirrors the
+    /// column axis (so the shape climbs toward the left) by flipping the
+    /// CELL's position and scale — the block inside just rides along at
+    /// (0,0), exactly like the real castle.
     /// </summary>
-    private void BuildBlocks(List<Vector2Int> positions)
+    private void BuildGridCells(List<Vector2Int> positions)
     {
         GeneratedBlockCount = positions.Count;
 
@@ -156,37 +181,102 @@ public class BotCastleGenerator : MonoBehaviour
 
         float step = blockSize + blockSpacing;
 
-        int maxRow = 0, maxCol = 0;
-        foreach (var pos in positions)
-        {
-            if (pos.x > maxRow) maxRow = pos.x;
-            if (pos.y > maxCol) maxCol = pos.y;
-        }
-
-        float gridW = (maxCol + 1) * step - blockSpacing;
-        float gridH = (maxRow + 1) * step - blockSpacing;
+        // Anchor the origin off a FIXED grid capacity (fixedTotalRows x
+        // fixedTotalCols — same numbers as CastleGrid.totalRows/totalCols
+        // in the Village) using the exact same centering formula
+        // CastleGrid.BuildGrid() uses, instead of centering around THIS
+        // shape's own bounding box (GeneratedRows x GeneratedCols).
+        //
+        // GeneratedRows/GeneratedCols change every battle because of the
+        // +/-1 dimensionVariance, so if the origin were computed from them,
+        // the whole coordinate system would grow/shrink by half a cell each
+        // time and row 0 would land at a different height every battle —
+        // that's what made the castle look like it was floating/flying.
+        // Anchoring off the fixed capacity instead keeps the coordinate
+        // system a constant size, so BotCastleRoot's Transform position
+        // (tuned once in the Inspector) lines up with the ground on every
+        // single battle, no matter how big the generated shape ends up.
+        float gridW = fixedTotalCols * step - blockSpacing;
+        float gridH = fixedTotalRows * step - blockSpacing;
         float originX = -gridW * 0.5f + blockSize * 0.5f;
         float originY = -gridH * 0.5f + blockSize * 0.5f;
+
+        if (gridCellPrefab == null)
+        {
+            Debug.LogWarning("[BotCastleGenerator] gridCellPrefab is not assigned — " +
+                              "falling back to flat block placement with NO cell wrapper. " +
+                              "Assign your Village's cell prefab to use the real grid-cell layout.");
+        }
 
         foreach (var pos in positions)
         {
             int row = pos.x;
             int col = pos.y;
 
-            GameObject block = Instantiate(castleBlockPrefab, transform);
-            block.name = $"BotBlock_{row}_{col}";
-
-            RectTransform rt = block.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0.5f, 0.5f);
-            rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(blockSize, blockSize);
-
             // Mirror the column axis when flipped so the staircase climbs
             // toward the left (toward the player) instead of the right.
             float x = flipHorizontally ? -(originX + col * step) : (originX + col * step);
             float y = originY + row * step;
-            rt.anchoredPosition = new Vector2(x, y);
+
+            // ── Cell container (matches CastleGrid.BuildGrid()) ────────
+            Transform blockParent;
+            GameObject cellObj = null;
+
+            if (gridCellPrefab != null)
+            {
+                cellObj = Instantiate(gridCellPrefab, transform);
+                cellObj.name = $"Cell_{row}_{col}";
+
+                RectTransform crt = cellObj.GetComponent<RectTransform>();
+                crt.anchorMin = new Vector2(0.5f, 0.5f);
+                crt.anchorMax = new Vector2(0.5f, 0.5f);
+                crt.pivot = new Vector2(0.5f, 0.5f);
+                crt.sizeDelta = new Vector2(blockSize, blockSize);
+                crt.anchoredPosition = new Vector2(x, y);
+
+                if (flipHorizontally)
+                    crt.localScale = new Vector3(-1f, 1f, 1f);
+
+                // Purely visual on the battle side — no clicking/expanding.
+                Button cellButton = cellObj.GetComponent<Button>();
+                if (cellButton != null) cellButton.enabled = false;
+
+                Collider2D cellCollider = cellObj.GetComponent<Collider2D>();
+                if (cellCollider != null) cellCollider.enabled = false;
+
+                GridCell gridCellScript = cellObj.GetComponent<GridCell>();
+                if (gridCellScript != null) gridCellScript.enabled = false;
+
+                blockParent = cellObj.transform;
+            }
+            else
+            {
+                // No cell prefab assigned — fall back to placing the block directly.
+                blockParent = transform;
+            }
+
+            // ── Block (matches CastleGrid.PlaceBlockAt()) ──────────────
+            GameObject block = Instantiate(castleBlockPrefab, blockParent);
+            block.name = $"BotBlock_{row}_{col}";
+
+            RectTransform brt = block.GetComponent<RectTransform>();
+            brt.anchorMin = new Vector2(0.5f, 0.5f);
+            brt.anchorMax = new Vector2(0.5f, 0.5f);
+            brt.pivot = new Vector2(0.5f, 0.5f);
+            brt.sizeDelta = new Vector2(blockSize, blockSize);
+
+            if (cellObj != null)
+            {
+                // Sits centered inside its cell — the cell already carries
+                // the grid position (and the flip), just like the real castle.
+                brt.anchoredPosition = Vector2.zero;
+            }
+            else
+            {
+                brt.anchoredPosition = new Vector2(x, y);
+                if (flipHorizontally)
+                    brt.localScale = new Vector3(-1f, 1f, 1f);
+            }
 
             // Disable all interactive scripts — battle castle is pure visuals.
             foreach (var mb in block.GetComponentsInChildren<MonoBehaviour>(true))
@@ -194,12 +284,10 @@ public class BotCastleGenerator : MonoBehaviour
                 if (mb is CastleBlock || mb is CastleBlockHUD)
                     mb.enabled = false;
             }
-
-            if (flipHorizontally)
-                rt.localScale = new Vector3(-1f, 1f, 1f);
         }
 
         Debug.Log($"[BotCastleGenerator] '{name}': generated {positions.Count} blocks " +
-                  $"as a staircase inside a {maxRow + 1}x{maxCol + 1} box (flip={flipHorizontally}).");
+                  $"as a {GeneratedRows}x{GeneratedCols}-box staircase " +
+                  $"(cells={(gridCellPrefab != null)}, flip={flipHorizontally}).");
     }
 }

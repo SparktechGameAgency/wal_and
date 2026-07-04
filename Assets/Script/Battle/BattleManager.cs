@@ -83,6 +83,9 @@ public class BattleManager : MonoBehaviour
     [Tooltip("Where the carried-over CastleGridPanel gets reparented into. " +
              "BattlePanel → PlayerSide → PlayerCastleRoot.")]
     [SerializeField] private RectTransform playerCastleRoot;
+    [Tooltip("The fixed anchoredPosition SoldierSpawnArea is placed at once it's " +
+             "reparented into PlayerArmyRoot (X = -603, Y = -53 by default).")]
+    [SerializeField] private Vector2 soldierSpawnAreaPosition = new Vector2(-603f, -53f);
     [Tooltip("Shared prefabs — also passed to BotArmyGenerator for the bot side.")]
     [SerializeField] private BattleUnitPrefabs unitPrefabs;
     [Tooltip("Random rider looks the bot side picks from for Horse/Dragon units.")]
@@ -129,6 +132,13 @@ public class BattleManager : MonoBehaviour
         // Must run before SpawnPlayerArmy() so cannons/archers can find their block.
         // x = rows, y = cols — the real dimensions of the player's castle.
         Vector2Int playerDimensions = ReceivePlayerCastle();
+
+        // Foot soldiers — the ACTUAL soldier GameObjects the player placed in
+        // the Village, carried over via DontDestroyOnLoad and reparented here.
+        // Must run before SpawnPlayerArmy() so the Soldier entries in
+        // BattleSaveData.PlayerUnits are consumed here instead of spawning
+        // duplicate prefabs.
+        ReceivePlayerSoldiers();
 
         SpawnPlayerArmy();
 
@@ -187,6 +197,92 @@ public class BattleManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Reparents the carried-over SoldierSpawnArea (detached and
+    /// DontDestroyOnLoad'd by BattleStarter.CarrySoldiersIntoBattle()) into
+    /// PlayerArmyRoot at the fixed battle position, then turns every real
+    /// soldier GameObject inside it into a live BattleUnit — same soldier,
+    /// same equipment, same visuals, just handed off from village
+    /// patrol/drag behaviour to battle combat behaviour.
+    ///
+    /// Falls back to doing nothing (SpawnPlayerArmy's data-driven path takes
+    /// over) if no SoldierSpawnArea was carried — e.g. testing the Battle
+    /// scene directly without going through the Village.
+    /// </summary>
+    private void ReceivePlayerSoldiers()
+    {
+        // NOTE: CastleGridMover.Instance is NOT valid here — CastleGridMover
+        // lived in the Village scene and was destroyed with it on the scene
+        // change (it never DontDestroyOnLoad's itself, only the SoldierSpawnArea
+        // it hands off does). The reference has to come from BattleSaveData,
+        // which BattleStarter populated right before the scene load.
+        RectTransform spawnArea = BattleSaveData.CarriedSoldierSpawnArea;
+
+        if (spawnArea == null || playerArmyRoot == null)
+        {
+            Debug.LogWarning("[BattleManager] No carried SoldierSpawnArea found — " +
+                              "falling back to data-driven soldier spawn only.");
+            return;
+        }
+
+        spawnArea.SetParent(playerArmyRoot, false);
+        spawnArea.anchorMin = new Vector2(0.5f, 0.5f);
+        spawnArea.anchorMax = new Vector2(0.5f, 0.5f);
+        spawnArea.pivot = new Vector2(0.5f, 0.5f);
+        spawnArea.anchoredPosition = soldierSpawnAreaPosition;
+        spawnArea.localScale = Vector3.one;
+
+        Debug.Log($"[BattleManager] Reparented '{spawnArea.name}' under " +
+                  $"'{playerArmyRoot.name}' at {soldierSpawnAreaPosition}.");
+
+        // Matching stat entries gathered by BattleStarter — consumed in
+        // order so each carried soldier still gets its configured HP/damage/
+        // speed instead of duplicating those inspector fields here.
+        var soldierData = BattleSaveData.PlayerUnits.FindAll(
+            u => u.unitType == BattleUnitType.Soldier);
+        int nextData = 0;
+
+        var soldiers = spawnArea.GetComponentsInChildren<SoldierController>(true);
+        foreach (var soldier in soldiers)
+        {
+            GameObject go = soldier.gameObject;
+
+            // Mounted soldiers are hidden (SetActive(false)) by HorseController/
+            // DragonController and travel as part of the Horse/Dragon unit
+            // instead — skip them here, BattleStarter already packed them as
+            // Horse/Dragon BattleUnitData entries.
+            if (!go.activeInHierarchy) continue;
+
+            // Village-only interaction must be turned off so the soldier can't
+            // be dragged or resume patrolling mid-battle.
+            SoldierDragDrop dragDrop = go.GetComponent<SoldierDragDrop>();
+            if (dragDrop != null) dragDrop.enabled = false;
+            soldier.enabled = false;
+
+            // Any drag/mount CanvasGroup.alpha left below 1 (mid-drag = 0.75,
+            // hidden-for-mount = 0) must be restored, or the soldier is
+            // invisible in battle despite existing in the hierarchy.
+            CanvasGroup cg = go.GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1f;
+                cg.blocksRaycasts = false;
+                cg.interactable = false;
+            }
+
+            BattleUnitData data = nextData < soldierData.Count
+                ? soldierData[nextData++]
+                : new BattleUnitData(BattleUnitType.Soldier, 100f, 10f, 80f);
+
+            BattleUnit bu = go.GetComponent<BattleUnit>();
+            if (bu == null) bu = go.AddComponent<BattleUnit>();
+            bu.Init(data, playerUnit: true);
+            _playerUnits.Add(bu);
+        }
+
+        Debug.Log($"[BattleManager] Carried over {_playerUnits.Count} live soldier unit(s).");
+    }
+
+    /// <summary>
     /// Turns a list of placed (row, col) block positions into the castle's
     /// real dimensions — x = rows, y = cols — by taking the bounding box of
     /// the staircase (max row + 1, max col + 1). Returns (1,1) if empty so
@@ -225,6 +321,11 @@ public class BattleManager : MonoBehaviour
         for (int i = 0; i < BattleSaveData.PlayerUnits.Count; i++)
         {
             BattleUnitData data = BattleSaveData.PlayerUnits[i];
+
+            // Foot soldiers already carried over as live GameObjects and
+            // turned into BattleUnits by ReceivePlayerSoldiers() — skip here
+            // to avoid spawning a duplicate prefab copy.
+            if (data.unitType == BattleUnitType.Soldier) continue;
 
             // Cannons/archers already exist as real, live GameObjects on the
             // carried-over castle (they traveled over with it) — turn THOSE

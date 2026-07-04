@@ -36,6 +36,16 @@ public static class BattleSaveData
     /// <summary>Number of dragons the player has stationed.</summary>
     public static int DragonCount;
 
+    /// <summary>
+    /// The live SoldierSpawnArea RectTransform, detached and DontDestroyOnLoad'd
+    /// by BattleStarter.CarrySoldiersIntoBattle() right before the scene load.
+    /// CastleGridMover (the MonoBehaviour that normally owns this reference)
+    /// does NOT survive the scene change itself, so its static Instance goes
+    /// null in the Battle scene — this static field is how BattleManager finds
+    /// the carried GameObject on the other side instead.
+    /// </summary>
+    public static RectTransform CarriedSoldierSpawnArea;
+
     // ── Helpers ───────────────────────────────────────────────────────────────
     public static void Clear()
     {
@@ -43,6 +53,7 @@ public static class BattleSaveData
         PlayerBlockPositions.Clear();
         PlayerUnits.Clear();
         DragonCount = 0;
+        CarriedSoldierSpawnArea = null;
     }
 }
 

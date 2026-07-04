@@ -147,8 +147,8 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1233949095}
   - {fileID: 534468096}
+  - {fileID: 1233949095}
   m_Father: {fileID: 1889738570}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
@@ -585,7 +585,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -126}
+  m_AnchoredPosition: {x: 0, y: -208}
   m_SizeDelta: {x: 459.1, y: 300}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &805411190
@@ -794,6 +794,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattleManager
   playerArmyRoot: {fileID: 1233949095}
   playerCastleRoot: {fileID: 534468096}
+  soldierSpawnAreaPosition: {x: -603, y: -53}
   unitPrefabs:
     soldierPrefab: {fileID: 4226479539583937247, guid: 4e17e9a530dbed94794d9696af5f2d4e, type: 3}
     archerPrefab: {fileID: 3086005079186851311, guid: ef101f0e2289d0e43b5cdaecc38de746, type: 3}
@@ -959,7 +960,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -152}
+  m_AnchoredPosition: {x: -123, y: -34}
   m_SizeDelta: {x: 600, y: 500}
   m_Pivot: {x: 1, y: 0.5}
 --- !u!114 &1075766123
@@ -974,11 +975,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10eb5a823623feb4f99b65d3e648f605, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BotCastleGenerator
+  gridCellPrefab: {fileID: 8012074761302108501, guid: 9537dd407e1aad84d8e966142ee6055a, type: 3}
   castleBlockPrefab: {fileID: 5277657931440314103, guid: 22e659926d2354c4c82b559753a735e1, type: 3}
   blockSize: 80
   blockSpacing: 0
   flipHorizontally: 1
   dimensionVariance: 1
+  fixedTotalRows: 6
+  fixedTotalCols: 8
   fillRatio: 0.5
 --- !u!1 &1080086032
 GameObject:
@@ -1180,11 +1184,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 146918402}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 1, y: 0.5}
-  m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -131}
-  m_SizeDelta: {x: 459.1, y: 300}
-  m_Pivot: {x: 1, y: 0.5}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 149.52997, y: -176}
+  m_SizeDelta: {x: 760.05, y: 200}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1382804963
 GameObject:
   m_ObjectHideFlags: 0
