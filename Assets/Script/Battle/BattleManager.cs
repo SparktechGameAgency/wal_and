@@ -255,13 +255,13 @@ public class BattleManager : MonoBehaviour
             // Pull the soldier OUT of SoldierSpawnArea and directly onto
             // PlayerArmyRoot, preserving its current visual spot
             // (worldPositionStays: true recomputes anchoredPosition for the
-            // new parent). BattleUnit.RectPos / FindNearestEnemy compare raw
-            // anchoredPosition between units, and every other unit (bot side
-            // included) is parented directly onto its *ArmyRoot — leaving
-            // soldiers nested one level deeper inside SoldierSpawnArea put
-            // them in a different coordinate frame, so distance checks came
-            // out wrong and the soldier looked "stuck" (effectively already
-            // in attack range from frame 1, so it never walked).
+            // new parent). NOTE: distance/targeting itself no longer relies
+            // on anchoredPosition at all (see BattleUnit.WorldX) — player and
+            // bot units sit under two different roots (PlayerArmyRoot /
+            // BotArmyRoot) at different screen positions, so their local
+            // anchoredPosition was never comparable in the first place. This
+            // reparent is still done for a clean, sane hierarchy and correct
+            // *movement* origin, not for the distance math.
             go.transform.SetParent(playerArmyRoot, worldPositionStays: true);
 
             // Village-only interaction must be turned off so the soldier can't
@@ -470,7 +470,7 @@ public class BattleManager : MonoBehaviour
         foreach (var e in enemies)
         {
             if (e == null || e.IsDead) continue;
-            float d = Mathf.Abs(e.RectPos.x - asker.RectPos.x);
+            float d = Mathf.Abs(e.WorldX - asker.WorldX);
             if (d < closestDist)
             {
                 closestDist = d;

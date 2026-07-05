@@ -37,14 +37,25 @@ public class BattleUnit : MonoBehaviour
     public bool canMove = true;
 
     private RectTransform _rt;
+    private Canvas _canvas;
     private BattleUnit _target;
     private float _attackTimer;
+
+    // Drives Walk/Fight/Idle for on-foot units (Soldier/Archer) that carry
+    // their own SpriteLayerAnimator directly on this GameObject. Horse/Dragon
+    // units use a different animation system on their own root (Animator
+    // component / DragonBodyAnimator), so GetComponent (non-recursive) simply
+    // finds nothing there and this safely no-ops for them.
+    private SpriteLayerAnimator _animator;
+    private AnimationState _currentAnimState = AnimationState.Idle;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void Awake()
     {
         _rt = GetComponent<RectTransform>();
+        _canvas = GetComponentInParent<Canvas>();
+        _animator = GetComponent<SpriteLayerAnimator>();
         CurrentHealth = maxHealth;
         UpdateHPBar();
     }
@@ -60,9 +71,11 @@ public class BattleUnit : MonoBehaviour
     {
         if (IsDead) return;
 
-        // Try to keep a valid target.
-        if (_target == null || _target.IsDead)
-            _target = BattleManager.Instance?.FindNearestEnemy(this);
+        // Always retarget to whoever is currently nearest — a unit shouldn't
+        // stay locked onto its first target for the whole fight if a closer
+        // enemy shows up (e.g. after moving, or another enemy approaching
+        // from the other direction).
+        _target = BattleManager.Instance?.FindNearestEnemy(this);
 
         if (debugLog)
         {
@@ -72,13 +85,13 @@ public class BattleUnit : MonoBehaviour
                 _debugTimer = 0f;
                 Debug.Log($"[BattleUnit] '{name}' isPlayerUnit={isPlayerUnit} canMove={canMove} " +
                           $"target={(_target != null ? _target.name : "NULL")} " +
-                          $"pos={_rt.anchoredPosition} parent={transform.parent?.name}");
+                          $"anchoredPos={_rt.anchoredPosition} worldX={WorldX} parent={transform.parent?.name}");
             }
         }
 
         if (_target == null) return;
 
-        float dist = Mathf.Abs(_target.RectPos.x - RectPos.x);
+        float dist = Mathf.Abs(_target.WorldX - WorldX);
 
         if (dist > attackRange)
         {
@@ -94,11 +107,20 @@ public class BattleUnit : MonoBehaviour
                 Vector3 scale = _rt.localScale;
                 scale.x = isPlayerUnit ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
                 _rt.localScale = scale;
+
+                SetAnimState(AnimationState.Run);
+            }
+            else
+            {
+                // Stationary unit (Cannon/Archer) with no target in range yet.
+                SetAnimState(AnimationState.Idle);
             }
         }
         else
         {
             // Attack.
+            SetAnimState(AnimationState.Fight);
+
             _attackTimer += Time.deltaTime;
             if (_attackTimer >= 1f / attackRate)
             {
@@ -108,9 +130,52 @@ public class BattleUnit : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Switches the on-foot animation state, but only actually calls into
+    /// SpriteLayerAnimator when the state is changing — SetState() resets
+    /// every layer back to frame 0, so calling it every single frame with
+    /// the same state (e.g. "Fight" while repeatedly attacking) would freeze
+    /// the animation on frame 0 instead of playing it.
+    /// </summary>
+    private void SetAnimState(AnimationState state)
+    {
+        if (_animator == null || _currentAnimState == state) return;
+        _currentAnimState = state;
+        _animator.SetState(state);
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     public Vector2 RectPos => _rt.anchoredPosition;
+
+    // Player units live under PlayerArmyRoot and bot units live under
+    // BotArmyRoot — two different RectTransforms positioned at different
+    // places on screen. Their anchoredPosition values are LOCAL to those
+    // different parents, so comparing RectPos.x across player vs bot units
+    // does not represent real screen distance.
+    //
+    // Raw _rt.position (world space) looked like the fix, but the Canvas is
+    // scaled way down by the Canvas Scaler, so ALL units end up bunched
+    // within a few world-units of each other regardless of how far apart
+    // they actually are on screen — e.g. a soldier at anchoredPos x=-577
+    // and an enemy at anchoredPos x=0 came out as worldX -9.78 vs 2.34, a
+    // "distance" of ~12, well under attackRange (60), so the soldier locked
+    // into "attack" the instant it spawned instead of walking over.
+    //
+    // RectTransformUtility.WorldToScreenPoint converts to actual on-screen
+    // PIXEL coordinates, which stay consistent regardless of Canvas scale,
+    // scale factor, or how deeply a unit is nested — exactly the frame
+    // attackRange/moveSpeed were tuned against.
+    public float WorldX
+    {
+        get
+        {
+            Camera cam = (_canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                ? _canvas.worldCamera
+                : null;
+            return RectTransformUtility.WorldToScreenPoint(cam, _rt.position).x;
+        }
+    }
 
     public void Init(BattleUnitData data, bool playerUnit)
     {
@@ -169,6 +234,7 @@ public class BattleUnit : MonoBehaviour
     {
         IsDead = true;
         BattleManager.Instance?.OnUnitDied(this);
+        SetAnimState(AnimationState.Death);
         // Simple fade-out / immediate destroy — replace with animation as needed.
         Destroy(gameObject, 0.3f);
     }
