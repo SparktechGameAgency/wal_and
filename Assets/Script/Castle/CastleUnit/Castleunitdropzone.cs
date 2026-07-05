@@ -571,6 +571,95 @@ public class CastleUnitDropZone : MonoBehaviour,
     }
 
     /// <summary>
+    /// Battle-scene-only placement for the BOT castle — instantiates a cannon
+    /// prefab directly into this zone with none of the Village-only bookkeeping
+    /// PlaceCannonFromPanel does (no CannonInventoryEntry, no ExpansionSlot,
+    /// no equip/unequip). Mirrors the exact same sizing and sibling-order logic
+    /// so a bot-side cannon renders and sits inside its block exactly like a
+    /// player-placed one. Returns the placed GameObject (with its CannonController
+    /// already set up) so BotArmyGenerator can attach a BattleUnit to it, or null
+    /// if placement failed.
+    /// </summary>
+    public GameObject PlaceCannonForBattle(GameObject cannonPrefab, CannonData data)
+    {
+        if (HasUnit)
+        {
+            Debug.Log("[DropZone] PlaceCannonForBattle — slot already occupied.");
+            return null;
+        }
+        if (_parentSlot != null && _parentSlot.IsBlockedByArcher)
+        {
+            Debug.Log("[DropZone] PlaceCannonForBattle — blocked, an archer is stationed on this block.");
+            return null;
+        }
+        if (cannonPrefab == null)
+        {
+            Debug.LogWarning("[DropZone] PlaceCannonForBattle — cannonPrefab is null!");
+            return null;
+        }
+
+        GameObject go = Instantiate(cannonPrefab, transform);
+
+        // Same sizing logic PlaceCannonFromPanel uses, so bot cannons are
+        // pixel-identical in scale/position to a player-placed cannon.
+        RectTransform rt = go.GetComponent<RectTransform>();
+        CastleUnitDraggable draggable = go.GetComponent<CastleUnitDraggable>();
+        if (rt != null)
+        {
+            bool stretch = draggable != null ? draggable.stretchToFillSlot : true;
+            if (stretch)
+            {
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+                rt.anchoredPosition = Vector2.zero;
+            }
+            else
+            {
+                Vector2 sz = draggable != null ? draggable.placedSize : centeredUnitSize;
+                rt.anchorMin = new Vector2(0f, 0.5f);
+                rt.anchorMax = new Vector2(0f, 0.5f);
+                rt.pivot = new Vector2(0f, 0.5f);
+                rt.sizeDelta = sz;
+                rt.anchoredPosition = Vector2.zero;
+            }
+            // Parent cell already carries the bot castle's flipHorizontally
+            // mirror (-1 scale), so leaving this at 1,1,1 inherits the correct
+            // left-facing orientation for free, same as BotCastleGenerator's
+            // old flat-seat path did.
+            rt.localScale = Vector3.one;
+            rt.SetAsLastSibling();
+        }
+
+        var controller = go.GetComponent<CannonController>();
+        controller?.Setup(data);
+
+        _placedInstance = go;
+        HasUnit = true;
+        PlacedVariantId = -1;
+
+        _emptyVisual?.SetActive(false);
+        _highlight?.SetActive(false);
+        _bg.color = normalColor;
+        _soldierImage?.SetActive(true);   // soldier shows with cannon, same as the player's zone
+        RefreshEmptySlotZone();
+
+        // Battle castle is pure visuals — no drag/click possible either way,
+        // but keep the zone in a fully "occupied, closed" visual state so it
+        // matches a player-placed cannon zone exactly.
+        SetInteractable(false);
+        RefreshRemoveButton();
+
+        Debug.Log($"[DropZone] PlaceCannonForBattle — placed '{cannonPrefab.name}' in {gameObject.name}");
+
+        // Hide the other zone now that this one is occupied.
+        _parentSlot?.NotifyOccupancyChanged();
+
+        return go;
+    }
+
+    /// <summary>
     /// Reparents the cannon from this zone into destination.
     /// Source soldier hides, destination soldier shows.
     /// </summary>

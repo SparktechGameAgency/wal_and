@@ -1950,6 +1950,75 @@ public class ArcherZoneCastle : MonoBehaviour,
     }
 
     /// <summary>
+    /// Battle-scene-only placement for the BOT castle — spawns an ArcherUnit
+    /// directly into this zone with none of the Village-only bookkeeping
+    /// PlaceArcher does (no SoldierDragDrop/BecomeArcher, since the bot has
+    /// no real soldier object to convert). Mirrors PlaceArcher's spawn point,
+    /// sizing and sibling-order so a bot archer renders and sits inside its
+    /// block exactly like a player-stationed one. Pass an explicit prefab
+    /// (e.g. BattleUnitPrefabs.archerPrefab) since the bot side shares the
+    /// player's unit prefabs instead of this zone's own archerPrefab field.
+    /// Returns the spawned GameObject, or null if placement failed.
+    /// </summary>
+    public GameObject PlaceArcherForBattle(GameObject archerPrefabOverride = null)
+    {
+        if (IsOccupied)
+        {
+            Debug.Log("[ArcherZoneCastle] PlaceArcherForBattle — slot already occupied.");
+            return null;
+        }
+        if (_parentSlot != null && _parentSlot.IsBlockedByCannon)
+        {
+            Debug.Log("[ArcherZoneCastle] PlaceArcherForBattle — blocked, a cannon is stationed on this block.");
+            return null;
+        }
+
+        GameObject prefabToUse = archerPrefabOverride != null ? archerPrefabOverride : archerPrefab;
+        if (prefabToUse == null)
+        {
+            Debug.LogError("[ArcherZoneCastle] PlaceArcherForBattle — no archer prefab available!", this);
+            return null;
+        }
+
+        _archerInstance = Instantiate(prefabToUse, _spawnpoint.position,
+                                      Quaternion.identity, _spawnpoint);
+
+        RectTransform rt = _archerInstance.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            rt.anchoredPosition = Vector2.zero;
+            // Parent cell already carries the bot castle's flipHorizontally
+            // mirror (-1 scale), so leaving this at 1,1,1 inherits the
+            // correct left-facing orientation for free.
+            rt.localScale = Vector3.one;
+        }
+
+        // Push the archer to the back of the sibling order under its spawnpoint,
+        // same as PlaceArcher, so the castle wall art renders on top.
+        _archerInstance.transform.SetAsFirstSibling();
+
+        ArcherUnit archerUnit = _archerInstance.GetComponent<ArcherUnit>();
+        if (archerUnit != null) archerUnit.Init(null);
+
+        IsOccupied = true;
+
+        // Zone starts inactive by default (see Awake) and is normally only
+        // shown via SetArcherTabActive() when the Village Archer tab opens —
+        // the bot castle never goes through that flow, so activate it here.
+        gameObject.SetActive(true);
+        _emptySlotZone?.SetActive(false);
+        _highlight?.SetActive(false);
+
+        RefreshVisuals();
+        Debug.Log($"[ArcherZoneCastle] PlaceArcherForBattle — archer placed at {gameObject.name}.");
+
+        // Hide the cannon zone now that this block is occupied by an archer.
+        _parentSlot?.NotifyOccupancyChanged();
+
+        return _archerInstance;
+    }
+
+    /// <summary>
     /// Migrates the stationed archer (instance + soldier reference) from this zone
     /// into <paramref name="destination"/>. Mirrors CastleUnitDropZone.MigrateUnitTo.
     /// Call this before the source block/cell is destroyed (e.g. on expansion).

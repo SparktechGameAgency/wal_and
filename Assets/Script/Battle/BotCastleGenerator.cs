@@ -37,6 +37,14 @@ public class BotCastleGenerator : MonoBehaviour
     [Tooltip("Your CastleBlock prefab — the same visual used in the Village scene.")]
     [SerializeField] private GameObject castleBlockPrefab;
 
+    [Tooltip("Same prefab as CastleGrid.castleBlockUnitSlotPrefab — the one with the " +
+             "CastleBlockUnitSlot component and its CannonZone/ArcherZone children. " +
+             "Placed on every exposed bot block (no block above it in the same " +
+             "column), exactly like CastleGrid.RefreshUnitSlots() does for the " +
+             "player, so the bot's cannon/archer zones are the SAME components " +
+             "(not raw prefabs dropped on top) as the player's castle.")]
+    [SerializeField] private GameObject castleBlockUnitSlotPrefab;
+
     [Tooltip("Size of one cell/block in pixels. Match your Village scene's CastleGrid.cellSize.")]
     [SerializeField] private float blockSize = 120f;
 
@@ -77,18 +85,23 @@ public class BotCastleGenerator : MonoBehaviour
     public int GeneratedCols { get; private set; }
 
     /// <summary>
-    /// One entry per generated block — the Transform cannon/archer units get
-    /// seated under so they sit ON the castle grid exactly like the player's
-    /// CastleBlockUnitSlot zones do, instead of floating in a flat army row.
-    /// This is the cell container's transform (already carrying the
-    /// flipHorizontally mirror) when a gridCellPrefab is assigned, or the
-    /// block's own transform in the no-cell-prefab fallback — either way,
-    /// a unit parented here at anchoredPosition zero automatically inherits
-    /// the correct left/right mirroring for free, no extra flip needed.
-    /// BotArmyGenerator consumes and empties this list as it seats units,
-    /// one cannon/archer per block (mirrors the player's mutual-exclusion rule).
+    /// One entry per EXPOSED generated block (no block stacked above it in
+    /// the same column) — the real CastleUnitDropZone/ArcherZoneCastle
+    /// components from an instantiated castleBlockUnitSlotPrefab, exactly
+    /// like the player's CastleBlockUnitSlot zones, instead of a bare
+    /// RectTransform units get dropped onto. BotArmyGenerator consumes and
+    /// empties this list as it seats units — one cannon OR archer per block,
+    /// via CastleUnitDropZone.PlaceCannonForBattle / ArcherZoneCastle.PlaceArcherForBattle
+    /// (mirrors the player's mutual-exclusion rule automatically, since both
+    /// zones share the same CastleBlockUnitSlot parent).
     /// </summary>
-    public List<RectTransform> GeneratedCellAnchors { get; private set; } = new List<RectTransform>();
+    public struct BotUnitSlot
+    {
+        public CastleUnitDropZone cannonZone;
+        public ArcherZoneCastle archerZone;
+    }
+
+    public List<BotUnitSlot> GeneratedUnitSlots { get; private set; } = new List<BotUnitSlot>();
 
     /// <summary>
     /// Bot side: takes the player's real castle dimensions, nudges each axis
@@ -180,7 +193,12 @@ public class BotCastleGenerator : MonoBehaviour
     private void BuildGridCells(List<Vector2Int> positions)
     {
         GeneratedBlockCount = positions.Count;
-        GeneratedCellAnchors.Clear();
+        GeneratedUnitSlots.Clear();
+
+        // "Exposed" = same rule CastleGrid.RefreshUnitSlots uses: no block
+        // stacked directly above this one in the same column. Used below to
+        // decide which blocks get a CastleBlockUnitSlot (cannon/archer zones).
+        var placedSet = new HashSet<Vector2Int>(positions);
 
         if (castleBlockPrefab == null)
         {
@@ -300,14 +318,51 @@ public class BotCastleGenerator : MonoBehaviour
                     mb.enabled = false;
             }
 
-            // Register this block as a seat-able anchor for BotArmyGenerator.
-            // Use the cell container when one exists (it already carries the
-            // flipHorizontally mirror), otherwise fall back to the block's
-            // own transform (which carries the mirror itself in that path).
-            RectTransform anchor = cellObj != null
-                ? cellObj.GetComponent<RectTransform>()
-                : brt;
-            if (anchor != null) GeneratedCellAnchors.Add(anchor);
+            // ── Unit slot (matches CastleGrid.RefreshUnitSlots()) ──────
+            // Only exposed blocks (nothing stacked above in this column) get
+            // a cannon/archer zone — same rule the player's castle follows.
+            // Requires the two-tier cell/block hierarchy (cellObj != null),
+            // since the slot is placed as a SIBLING of the block under the
+            // shared GridCell, exactly like the Village's real castle.
+            bool isExposed = !placedSet.Contains(new Vector2Int(row + 1, col));
+
+            if (isExposed && cellObj != null && castleBlockUnitSlotPrefab != null)
+            {
+                GameObject slotObj = Instantiate(castleBlockUnitSlotPrefab, cellObj.transform);
+                slotObj.name = $"BotUnitSlot_{row}_{col}";
+
+                RectTransform srt = slotObj.GetComponent<RectTransform>();
+                srt.anchorMin = Vector2.zero;
+                srt.anchorMax = Vector2.one;
+                srt.offsetMin = Vector2.zero;
+                srt.offsetMax = Vector2.zero;
+                srt.anchoredPosition = Vector2.zero;
+
+                // CastleBlock and CastleBlockUnitSlot are siblings under the
+                // GridCell — pushing the slot to the FIRST sibling makes the
+                // block (which stays after it) render on top, same as
+                // GridCell.ShowUnitSlot() does for the player's castle.
+                srt.SetAsFirstSibling();
+
+                // Bot castle is pure visuals — block ALL pointer events on
+                // this slot (cannon/archer drag, click-to-open-panel, etc.)
+                // with a CanvasGroup instead of disabling individual scripts,
+                // since Unity's EventSystem still fires IPointerXHandler
+                // methods on disabled MonoBehaviours.
+                CanvasGroup slotCg = slotObj.GetComponent<CanvasGroup>();
+                if (slotCg == null) slotCg = slotObj.AddComponent<CanvasGroup>();
+                slotCg.interactable = false;
+                slotCg.blocksRaycasts = false;
+
+                var cannonZone = slotObj.GetComponentInChildren<CastleUnitDropZone>(true);
+                var archerZone = slotObj.GetComponentInChildren<ArcherZoneCastle>(true);
+
+                GeneratedUnitSlots.Add(new BotUnitSlot
+                {
+                    cannonZone = cannonZone,
+                    archerZone = archerZone
+                });
+            }
         }
 
         Debug.Log($"[BotCastleGenerator] '{name}': generated {positions.Count} blocks " +

@@ -553,6 +553,25 @@ public class SoldierController : MonoBehaviour
 
     public void RefreshFlip() => ApplyFlip(_direction);
 
+    /// <summary>
+    /// Forces the soldier's visual facing directly to right (toward the bot
+    /// side) or left (toward the player side), ignoring whatever direction
+    /// the Village patrol AI last left it in. Call this when handing a
+    /// carried-over soldier off to BattleUnit — the patrol AI's own flip
+    /// lives on <see cref="visualRoot"/>, a CHILD transform, completely
+    /// separate from BattleUnit's own root RectTransform.localScale flip.
+    /// Without this, a soldier that was mid-patrol facing left in the
+    /// Village keeps facing left in Battle even after BattleUnit flips the
+    /// root, because the child's own flip still overrides it.
+    /// Safe to call even while this component is disabled (enabled = false
+    /// only stops Update/coroutines — public methods still run normally).
+    /// </summary>
+    public void SetBattleFacing(bool faceRight)
+    {
+        _direction = faceRight ? 1 : -1;
+        ApplyFlip(_direction);
+    }
+
     public void ResetFlipForMount()
     {
         if (visualRoot == null) return;

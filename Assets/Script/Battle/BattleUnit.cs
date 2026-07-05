@@ -243,6 +243,17 @@ public class BattleUnit : MonoBehaviour
             Vector3 scale = _rt.localScale;
             scale.x = playerUnit ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
             _rt.localScale = scale;
+
+            // Soldiers carried over from the Village patrol drive their own
+            // visual facing through a separate CHILD transform (SoldierController
+            // .visualRoot), completely independent of this root RectTransform's
+            // scale. Flipping the root above does NOT correct a soldier that
+            // was mid-patrol facing the "wrong" way when the battle started —
+            // its child flip still wins. Force it explicitly here so a soldier
+            // always turns to face the enemy before it starts running.
+            SoldierController soldierController = GetComponent<SoldierController>();
+            if (soldierController != null)
+                soldierController.SetBattleFacing(faceRight: playerUnit);
         }
 
         // Horse units need their animation data initialised — HorseController

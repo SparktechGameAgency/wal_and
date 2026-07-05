@@ -977,6 +977,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BotCastleGenerator
   gridCellPrefab: {fileID: 8012074761302108501, guid: 9537dd407e1aad84d8e966142ee6055a, type: 3}
   castleBlockPrefab: {fileID: 5277657931440314103, guid: 22e659926d2354c4c82b559753a735e1, type: 3}
+  castleBlockUnitSlotPrefab: {fileID: 4885474423245658952, guid: a23554899f2aebb4087be35770689a7f, type: 3}
   blockSize: 80
   blockSpacing: 0
   flipHorizontally: 1

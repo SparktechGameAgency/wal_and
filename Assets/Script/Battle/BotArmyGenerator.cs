@@ -41,22 +41,24 @@ public class BotArmyGenerator : MonoBehaviour
     /// and target the player side; the prefab itself is identical either way.
     /// Horse/Dragon units get a randomized rider look from riderLoadouts.
     ///
-    /// <paramref name="castleCellAnchors"/> — the bot castle's per-block
-    /// anchors (BotCastleGenerator.GeneratedCellAnchors). When a Cannon or
-    /// Archer is picked from the pool, it's seated directly onto one of
-    /// these blocks (one unit per block, same mutual-exclusion rule as the
-    /// player's castle) instead of dropping into the flat army row — this is
-    /// what makes the bot's cannon/archer zones live ON the castle grid just
-    /// like the player's CastleBlockUnitSlot zones do. Pass null/empty to
-    /// fall back to the old flat-row placement for every unit type.
+    /// <paramref name="castleUnitSlots"/> — the bot castle's per-block
+    /// CastleBlockUnitSlot zones (BotCastleGenerator.GeneratedUnitSlots). When
+    /// a Cannon or Archer is picked from the pool, it's placed into one of
+    /// these zones via CastleUnitDropZone.PlaceCannonForBattle /
+    /// ArcherZoneCastle.PlaceArcherForBattle — one unit per block, same
+    /// mutual-exclusion rule as the player's castle — instead of dropping
+    /// into the flat army row. This is what makes the bot's cannon/archer
+    /// zones the SAME components as the player's CastleBlockUnitSlot zones,
+    /// not a raw prefab dropped on top. Pass null/empty to fall back to the
+    /// old flat-row placement for every unit type.
     /// </summary>
     public void Generate(int playerUnitCount, BattleUnitPrefabs prefabs, RiderLoadoutPool riderLoadouts,
-                          List<RectTransform> castleCellAnchors = null)
+                          List<BotCastleGenerator.BotUnitSlot> castleUnitSlots = null)
     {
-        // Local, consumable copy — one cell gets used up per cannon/archer seated.
-        var availableCells = castleCellAnchors != null
-            ? new List<RectTransform>(castleCellAnchors)
-            : new List<RectTransform>();
+        // Local, consumable copy — one slot gets used up per cannon/archer seated.
+        var availableSlots = castleUnitSlots != null
+            ? new List<BotCastleGenerator.BotUnitSlot>(castleUnitSlots)
+            : new List<BotCastleGenerator.BotUnitSlot>();
 
         if (prefabs == null)
         {
@@ -104,45 +106,44 @@ public class BotArmyGenerator : MonoBehaviour
         {
             PoolEntry entry = pool[Random.Range(0, pool.Count)];
 
-            // Cannon/Archer prefer a free castle cell so they sit ON the
-            // bot's grid, one per block, exactly like the player's castle.
+            // Cannon/Archer prefer a free castle block slot so they sit ON the
+            // bot's grid through the SAME CastleUnitDropZone/ArcherZoneCastle
+            // components the player's castle uses, one per block.
             bool isSeatable = entry.type == BattleUnitType.Cannon || entry.type == BattleUnitType.Archer;
-            RectTransform seatCell = null;
-            if (isSeatable && availableCells.Count > 0)
+            BotCastleGenerator.BotUnitSlot? seatSlot = null;
+            if (isSeatable && availableSlots.Count > 0)
             {
-                int pick = Random.Range(0, availableCells.Count);
-                seatCell = availableCells[pick];
-                availableCells.RemoveAt(pick);
+                int pick = Random.Range(0, availableSlots.Count);
+                seatSlot = availableSlots[pick];
+                availableSlots.RemoveAt(pick);
             }
 
-            GameObject go;
+            GameObject go = null;
             bool skipFacingFlip;
 
-            if (seatCell != null)
+            if (seatSlot != null && entry.type == BattleUnitType.Cannon && seatSlot.Value.cannonZone != null)
             {
-                go = Instantiate(entry.prefab, seatCell);
-
-                RectTransform rt = go.GetComponent<RectTransform>();
-                rt.anchorMin = new Vector2(0.5f, 0.5f);
-                rt.anchorMax = new Vector2(0.5f, 0.5f);
-                rt.pivot = new Vector2(0.5f, 0.5f);
-                rt.anchoredPosition = Vector2.zero;
-                rt.localScale = Vector3.one;
-
-                // Sit BEHIND the block's wall art (mirrors GridCell.ShowUnitSlot
-                // pushing the unit slot to the first sibling) so the cannon/archer
-                // visually looks embedded in the castle block instead of floating
-                // in front of it.
-                rt.SetAsFirstSibling();
-
-                // seatCell already carries the bot castle's flipHorizontally
-                // mirror (-1 scale), so this unit inherits the correct
-                // left-facing orientation for free — flipping it again here
-                // would cancel that out and leave it facing right.
+                go = seatSlot.Value.cannonZone.PlaceCannonForBattle(entry.prefab, entry.cannonData);
+                // The zone already carries the bot castle's flipHorizontally
+                // mirror (-1 scale) via its GridCell ancestor, so this unit
+                // inherits the correct left-facing orientation for free —
+                // flipping it again here would cancel that out.
+                skipFacingFlip = true;
+            }
+            else if (seatSlot != null && entry.type == BattleUnitType.Archer && seatSlot.Value.archerZone != null)
+            {
+                go = seatSlot.Value.archerZone.PlaceArcherForBattle(entry.prefab);
                 skipFacingFlip = true;
             }
             else
             {
+                skipFacingFlip = false;
+            }
+
+            if (go == null)
+            {
+                // No free castle slot (or zone placement failed) — fall back
+                // to the flat army row, same as before.
                 go = Instantiate(entry.prefab, transform);
 
                 // Grid layout — stack left-to-right then up.
@@ -156,6 +157,20 @@ public class BotArmyGenerator : MonoBehaviour
                     row * unitSpacingY);
 
                 skipFacingFlip = false;
+
+                // A freshly-instantiated Soldier prefab still carries its
+                // own Village patrol AI (SoldierController), which would
+                // otherwise start walking/resting on its own and fight
+                // BattleUnit.Update() for control of this RectTransform —
+                // the same conflict already fixed for carried-over player
+                // soldiers in BattleManager.ReceivePlayerSoldiers(). No-ops
+                // safely for every other unit type, which has no SoldierController.
+                var soldierController = go.GetComponent<SoldierController>();
+                if (soldierController != null)
+                {
+                    soldierController.StopAllCoroutines();
+                    soldierController.enabled = false;
+                }
             }
 
             BattleUnit bu = go.GetComponent<BattleUnit>();
