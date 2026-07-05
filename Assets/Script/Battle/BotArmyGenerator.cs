@@ -40,9 +40,24 @@ public class BotArmyGenerator : MonoBehaviour
     /// BattleUnit.Init(playerUnit: false) is what makes them face/move left
     /// and target the player side; the prefab itself is identical either way.
     /// Horse/Dragon units get a randomized rider look from riderLoadouts.
+    ///
+    /// <paramref name="castleCellAnchors"/> — the bot castle's per-block
+    /// anchors (BotCastleGenerator.GeneratedCellAnchors). When a Cannon or
+    /// Archer is picked from the pool, it's seated directly onto one of
+    /// these blocks (one unit per block, same mutual-exclusion rule as the
+    /// player's castle) instead of dropping into the flat army row — this is
+    /// what makes the bot's cannon/archer zones live ON the castle grid just
+    /// like the player's CastleBlockUnitSlot zones do. Pass null/empty to
+    /// fall back to the old flat-row placement for every unit type.
     /// </summary>
-    public void Generate(int playerUnitCount, BattleUnitPrefabs prefabs, RiderLoadoutPool riderLoadouts)
+    public void Generate(int playerUnitCount, BattleUnitPrefabs prefabs, RiderLoadoutPool riderLoadouts,
+                          List<RectTransform> castleCellAnchors = null)
     {
+        // Local, consumable copy — one cell gets used up per cannon/archer seated.
+        var availableCells = castleCellAnchors != null
+            ? new List<RectTransform>(castleCellAnchors)
+            : new List<RectTransform>();
+
         if (prefabs == null)
         {
             Debug.LogError("[BotArmyGenerator] No BattleUnitPrefabs passed in from BattleManager!");
@@ -83,18 +98,65 @@ public class BotArmyGenerator : MonoBehaviour
             return;
         }
 
+        int flatIndex = 0;
+
         for (int i = 0; i < botCount; i++)
         {
             PoolEntry entry = pool[Random.Range(0, pool.Count)];
-            GameObject go = Instantiate(entry.prefab, transform);
 
-            // Grid layout — stack left-to-right then up.
-            int col = i % unitsPerRow;
-            int row = i / unitsPerRow;
-            RectTransform rt = go.GetComponent<RectTransform>();
-            rt.anchoredPosition = new Vector2(
-                startX + col * unitSpacingX,
-                row * unitSpacingY);
+            // Cannon/Archer prefer a free castle cell so they sit ON the
+            // bot's grid, one per block, exactly like the player's castle.
+            bool isSeatable = entry.type == BattleUnitType.Cannon || entry.type == BattleUnitType.Archer;
+            RectTransform seatCell = null;
+            if (isSeatable && availableCells.Count > 0)
+            {
+                int pick = Random.Range(0, availableCells.Count);
+                seatCell = availableCells[pick];
+                availableCells.RemoveAt(pick);
+            }
+
+            GameObject go;
+            bool skipFacingFlip;
+
+            if (seatCell != null)
+            {
+                go = Instantiate(entry.prefab, seatCell);
+
+                RectTransform rt = go.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(0.5f, 0.5f);
+                rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = Vector2.zero;
+                rt.localScale = Vector3.one;
+
+                // Sit BEHIND the block's wall art (mirrors GridCell.ShowUnitSlot
+                // pushing the unit slot to the first sibling) so the cannon/archer
+                // visually looks embedded in the castle block instead of floating
+                // in front of it.
+                rt.SetAsFirstSibling();
+
+                // seatCell already carries the bot castle's flipHorizontally
+                // mirror (-1 scale), so this unit inherits the correct
+                // left-facing orientation for free — flipping it again here
+                // would cancel that out and leave it facing right.
+                skipFacingFlip = true;
+            }
+            else
+            {
+                go = Instantiate(entry.prefab, transform);
+
+                // Grid layout — stack left-to-right then up.
+                int col = flatIndex % unitsPerRow;
+                int row = flatIndex / unitsPerRow;
+                flatIndex++;
+
+                RectTransform rt = go.GetComponent<RectTransform>();
+                rt.anchoredPosition = new Vector2(
+                    startX + col * unitSpacingX,
+                    row * unitSpacingY);
+
+                skipFacingFlip = false;
+            }
 
             BattleUnit bu = go.GetComponent<BattleUnit>();
             if (bu == null)
@@ -114,7 +176,7 @@ public class BotArmyGenerator : MonoBehaviour
             }
 
             BattleUnitData data = BuildData(entry, riderLoadouts);
-            bu.Init(data, playerUnit: false);
+            bu.Init(data, playerUnit: false, skipFacingFlip: skipFacingFlip);
             SpawnedUnits.Add(bu);
         }
 

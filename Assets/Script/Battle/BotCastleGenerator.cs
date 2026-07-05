@@ -77,6 +77,20 @@ public class BotCastleGenerator : MonoBehaviour
     public int GeneratedCols { get; private set; }
 
     /// <summary>
+    /// One entry per generated block — the Transform cannon/archer units get
+    /// seated under so they sit ON the castle grid exactly like the player's
+    /// CastleBlockUnitSlot zones do, instead of floating in a flat army row.
+    /// This is the cell container's transform (already carrying the
+    /// flipHorizontally mirror) when a gridCellPrefab is assigned, or the
+    /// block's own transform in the no-cell-prefab fallback — either way,
+    /// a unit parented here at anchoredPosition zero automatically inherits
+    /// the correct left/right mirroring for free, no extra flip needed.
+    /// BotArmyGenerator consumes and empties this list as it seats units,
+    /// one cannon/archer per block (mirrors the player's mutual-exclusion rule).
+    /// </summary>
+    public List<RectTransform> GeneratedCellAnchors { get; private set; } = new List<RectTransform>();
+
+    /// <summary>
     /// Bot side: takes the player's real castle dimensions, nudges each axis
     /// independently by -dimensionVariance..+dimensionVariance (clamped to at
     /// least 1), then grows a random staircase/half-triangle shape inside
@@ -166,6 +180,7 @@ public class BotCastleGenerator : MonoBehaviour
     private void BuildGridCells(List<Vector2Int> positions)
     {
         GeneratedBlockCount = positions.Count;
+        GeneratedCellAnchors.Clear();
 
         if (castleBlockPrefab == null)
         {
@@ -284,6 +299,15 @@ public class BotCastleGenerator : MonoBehaviour
                 if (mb is CastleBlock || mb is CastleBlockHUD)
                     mb.enabled = false;
             }
+
+            // Register this block as a seat-able anchor for BotArmyGenerator.
+            // Use the cell container when one exists (it already carries the
+            // flipHorizontally mirror), otherwise fall back to the block's
+            // own transform (which carries the mirror itself in that path).
+            RectTransform anchor = cellObj != null
+                ? cellObj.GetComponent<RectTransform>()
+                : brt;
+            if (anchor != null) GeneratedCellAnchors.Add(anchor);
         }
 
         Debug.Log($"[BotCastleGenerator] '{name}': generated {positions.Count} blocks " +

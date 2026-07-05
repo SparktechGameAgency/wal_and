@@ -148,7 +148,10 @@ public class BattleManager : MonoBehaviour
         botArmyGenerator?.Generate(
             BattleSaveData.PlayerUnits.Count,
             unitPrefabs,
-            botRiderLoadouts);
+            botRiderLoadouts,
+            // Bot cannons/archers seat directly onto these generated castle
+            // blocks — same grid-tied placement the player's castle already has.
+            botCastleGenerator != null ? botCastleGenerator.GeneratedCellAnchors : null);
 
         // Collect bot units after generation.
         if (botArmyGenerator != null)

@@ -49,6 +49,11 @@ public class BattleUnit : MonoBehaviour
     private SpriteLayerAnimator _animator;
     private AnimationState _currentAnimState = AnimationState.Idle;
 
+    // Drives Idle/Run/Fight/Dead for Horse units. HorseController lives on
+    // the same root as this BattleUnit; on-foot units simply have none, so
+    // this stays null and every call below safely no-ops for them.
+    private HorseController _horseController;
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void Awake()
@@ -56,6 +61,7 @@ public class BattleUnit : MonoBehaviour
         _rt = GetComponent<RectTransform>();
         _canvas = GetComponentInParent<Canvas>();
         _animator = GetComponent<SpriteLayerAnimator>();
+        _horseController = GetComponent<HorseController>();
         CurrentHealth = maxHealth;
         UpdateHPBar();
     }
@@ -139,10 +145,40 @@ public class BattleUnit : MonoBehaviour
     /// </summary>
     private void SetAnimState(AnimationState state)
     {
-        if (_animator == null || _currentAnimState == state) return;
-        _currentAnimState = state;
-        _animator.SetState(state);
+        bool changed = _currentAnimState != state;
+        if (changed)
+        {
+            _currentAnimState = state;
+            _animator?.SetState(state);
+        }
+
+        // HorseController tracks its own state (HorseState, a separate enum)
+        // and already no-ops correctly when told to re-enter the state it's
+        // already in (via CurrentState), so this check is independent of the
+        // SpriteLayerAnimator guard above — it fires whenever the HORSE's
+        // state actually needs to change, not just when this unit's on-foot
+        // state changes.
+        if (_horseController == null) return;
+
+        HorseState horseState = MapToHorseState(state);
+        if (_horseController.CurrentState == horseState) return;
+
+        switch (horseState)
+        {
+            case HorseState.Run: _horseController.SetRun(); break;
+            case HorseState.Fight: _horseController.SetFight(); break;
+            case HorseState.Dead: _horseController.SetDead(); break;
+            default: _horseController.SetIdle(); break;
+        }
     }
+
+    private static HorseState MapToHorseState(AnimationState state) => state switch
+    {
+        AnimationState.Run => HorseState.Run,
+        AnimationState.Fight => HorseState.Fight,
+        AnimationState.Death => HorseState.Dead,
+        _ => HorseState.Idle,
+    };
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -177,7 +213,15 @@ public class BattleUnit : MonoBehaviour
         }
     }
 
-    public void Init(BattleUnitData data, bool playerUnit)
+    /// <param name="skipFacingFlip">
+    /// Set true only for units parented under an already-mirrored container
+    /// (e.g. a bot castle cell, which carries flipHorizontally's -1 scale).
+    /// Flipping this unit's OWN scale on top of that would double-negate and
+    /// visually un-mirror it. Flat-army units (the normal case) leave this
+    /// false so they get their own explicit left/right flip immediately at
+    /// spawn instead of waiting for the first Update() walk tick.
+    /// </param>
+    public void Init(BattleUnitData data, bool playerUnit, bool skipFacingFlip = false)
     {
         isPlayerUnit = playerUnit;
         maxHealth = data.health > 0 ? data.health : maxHealth;
@@ -188,6 +232,24 @@ public class BattleUnit : MonoBehaviour
         canMove = data.unitType != BattleUnitType.Cannon &&
                         data.unitType != BattleUnitType.Archer;
         UpdateHPBar();
+
+        if (!skipFacingFlip)
+        {
+            // Face the correct direction immediately on spawn — player units
+            // face right (toward the bot), bot units face left (toward the
+            // player) — instead of only flipping once Update() first moves
+            // this unit toward its target (which never happened at all for
+            // Cannon/Archer, since they never enter the move branch).
+            Vector3 scale = _rt.localScale;
+            scale.x = playerUnit ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
+            _rt.localScale = scale;
+        }
+
+        // Horse units need their animation data initialised — HorseController
+        // starts with _data == null until Setup() is called, so without this
+        // it silently never plays Idle/Run/Fight (PATH=NONE in its own diagnostics).
+        if (_horseController != null && data.horseType != null)
+            _horseController.Setup(data.horseType);
 
         ApplyRiderVisuals(data);
     }
