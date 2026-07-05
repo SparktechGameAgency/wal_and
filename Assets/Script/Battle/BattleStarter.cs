@@ -32,6 +32,7 @@ public class BattleStarter : MonoBehaviour
         GatherArmyData();
         CarryCastleIntoBattle();
         CarrySoldiersIntoBattle();
+        CarryDragonsIntoBattle();
         SceneManager.LoadScene(battleSceneName);
     }
 
@@ -98,6 +99,42 @@ public class BattleStarter : MonoBehaviour
         BattleSaveData.CarriedSoldierSpawnArea = spawnArea;
 
         Debug.Log($"[BattleStarter] '{spawnArea.name}' detached and marked to survive the scene load.");
+    }
+
+    /// <summary>
+    /// Detaches every live FlyZone that currently has a mounted dragon in it
+    /// and flags it to survive the scene load — same DontDestroyOnLoad
+    /// pattern as CarryCastleIntoBattle()/CarrySoldiersIntoBattle(). This
+    /// carries the ACTUAL FlyZone GameObject, with the real dragon (equipment,
+    /// rider visuals, everything) still parented inside it, into the Battle
+    /// scene instead of spawning a fresh prefab copy there.
+    ///
+    /// An empty FlyZone (no dragon, or an unmounted one) is left behind in
+    /// the Village exactly as it is — only occupied ones travel.
+    /// </summary>
+    private void CarryDragonsIntoBattle()
+    {
+        var flyZones = FindObjectsByType<FlyZone>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        foreach (var zone in flyZones)
+        {
+            DragonController dragon = zone.GetComponentInChildren<DragonController>(true);
+            if (dragon == null) continue;
+            if (dragon.RiderSeat == null || !dragon.RiderSeat.IsOccupied) continue;
+
+            RectTransform zoneRt = zone.GetComponent<RectTransform>();
+            if (zoneRt == null) continue;
+
+            Debug.Log($"[BattleStarter] Carrying FlyZone '{zoneRt.name}' (mounted dragon " +
+                      $"'{dragon.name}') into battle.");
+
+            // DontDestroyOnLoad only works on root GameObjects — unparent first,
+            // same as CastleGrid.PrepareForSceneCarry() / CarrySoldiersIntoBattle().
+            zoneRt.SetParent(null, true);
+            DontDestroyOnLoad(zoneRt.gameObject);
+            BattleSaveData.CarriedDragonFlyZones.Add(zoneRt);
+        }
     }
 
     private void GatherArmyData()

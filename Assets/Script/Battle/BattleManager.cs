@@ -140,6 +140,13 @@ public class BattleManager : MonoBehaviour
         // duplicate prefabs.
         ReceivePlayerSoldiers();
 
+        // Live dragons (with a mounted rider) the player parked in a FlyZone —
+        // carried over as real GameObjects by BattleStarter.CarryDragonsIntoBattle(),
+        // same as the castle and soldiers above. Must run before SpawnPlayerArmy()
+        // so its Dragon entries in BattleSaveData.PlayerUnits are consumed here
+        // instead of spawning a duplicate fresh prefab.
+        ReceivePlayerDragons();
+
         SpawnPlayerArmy();
 
         // Bot side — castle first, then army.
@@ -318,6 +325,82 @@ public class BattleManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Reparents each carried-over FlyZone (still holding its real, live
+    /// dragon) into PlayerArmyRoot, then turns that dragon GameObject into a
+    /// combat unit — same hand-off idea as ReceivePlayerSoldiers(), just for
+    /// dragons. Falls back to doing nothing per entry if the FlyZone or its
+    /// dragon didn't survive the trip (e.g. testing the Battle scene directly
+    /// without going through the Village).
+    /// </summary>
+    private void ReceivePlayerDragons()
+    {
+        if (playerArmyRoot == null || BattleSaveData.CarriedDragonFlyZones.Count == 0)
+            return;
+
+        // Matching stat entries gathered by BattleStarter (health/damage/speed
+        // for each dragon) — consumed in order, same pattern ReceivePlayerSoldiers()
+        // uses for soldierData, so each carried dragon still gets its configured stats.
+        var dragonData = BattleSaveData.PlayerUnits.FindAll(
+            u => u.unitType == BattleUnitType.Dragon);
+        int nextData = 0;
+
+        foreach (RectTransform zoneRt in BattleSaveData.CarriedDragonFlyZones)
+        {
+            if (zoneRt == null) continue;
+
+            DragonController dragon = zoneRt.GetComponentInChildren<DragonController>(true);
+            if (dragon == null)
+            {
+                Destroy(zoneRt.gameObject);
+                continue;
+            }
+
+            GameObject go = dragon.gameObject;
+
+            // Pull the whole FlyZone (dragon still inside it) onto
+            // PlayerArmyRoot. worldPositionStays keeps the dragon's on-screen
+            // spot stable through the reparent — BattleDragonFlight takes it
+            // from wherever that lands, same as its Rise phase for a
+            // freshly-Instantiated dragon.
+            zoneRt.SetParent(playerArmyRoot, worldPositionStays: true);
+
+            // Village-only drag/patrol/combat behaviour must stop so it can't
+            // fight BattleUnit/BattleDragonFlight for control mid-battle —
+            // same reasoning as disabling SoldierDragDrop/SoldierController above.
+            dragon.enabled = false;
+
+            BattleUnitData data = nextData < dragonData.Count
+                ? dragonData[nextData++]
+                : new BattleUnitData(BattleUnitType.Dragon, 300f, 40f, 150f);
+
+            // This dragon is the REAL, live GameObject — its rider visuals
+            // (Face/Helmet/Armor/Weapon) are already showing correctly from
+            // being mounted in the Village. BattleUnit.Init() would otherwise
+            // add a second CharacterEquipment and re-apply them on top of the
+            // ones already there, so strip the snapshot before handing it off.
+            data.riderFace = null;
+            data.riderArmor = null;
+            data.riderHelmet = null;
+            data.riderWeapon = null;
+
+            BattleUnit bu = go.GetComponent<BattleUnit>();
+            if (bu == null) bu = go.AddComponent<BattleUnit>();
+            bu.Init(data, playerUnit: true);
+            _playerUnits.Add(bu);
+
+            // BattleDragonFlight self-disabled in the Village (see its
+            // OnEnable — BattleManager.Instance was null there). Re-enabling
+            // it now re-fires OnEnable, and this time Instance is already
+            // set (Awake() above runs before Start()), so it proceeds with
+            // its rise/approach/engage behaviour instead of staying dormant.
+            BattleDragonFlight flight = go.GetComponent<BattleDragonFlight>();
+            if (flight != null) flight.enabled = true;
+
+            Debug.Log($"[BattleManager] Carried-over dragon '{go.name}' ready for battle.");
+        }
+    }
+
+    /// <summary>
     /// Turns a list of placed (row, col) block positions into the castle's
     /// real dimensions — x = rows, y = cols — by taking the bounding box of
     /// the staircase (max row + 1, max col + 1). Returns (1,1) if empty so
@@ -361,6 +444,11 @@ public class BattleManager : MonoBehaviour
             // turned into BattleUnits by ReceivePlayerSoldiers() — skip here
             // to avoid spawning a duplicate prefab copy.
             if (data.unitType == BattleUnitType.Soldier) continue;
+
+            // Dragons already carried over as live GameObjects (FlyZone and
+            // all) and turned into BattleUnits by ReceivePlayerDragons() —
+            // skip here for the same reason.
+            if (data.unitType == BattleUnitType.Dragon) continue;
 
             // Cannons/archers already exist as real, live GameObjects on the
             // carried-over castle (they traveled over with it) — turn THOSE

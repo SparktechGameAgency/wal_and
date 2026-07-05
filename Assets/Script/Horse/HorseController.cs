@@ -113,7 +113,18 @@ public class HorseController : MonoBehaviour, IDropHandler
         if (saddleImage != null && saddleAnimSO != null)
             ApplyFrame(ref _saddleFrame, saddleImage, saddleAnimSO);
 
-        if (seat == null || !seat.IsOccupied)
+        // In the Village, an unoccupied seat means truly no rider — hide it.
+        // In the Battle scene, Horse units never use HorseSeat at all: the
+        // rider look comes from BattleUnit.Init() → ApplyRiderVisuals() calling
+        // riderVisual.ShowRider() directly with a throwaway CharacterEquipment,
+        // BEFORE this Start() runs (Init() is called synchronously right after
+        // Instantiate(), while Start() is deferred to the end of that same
+        // frame). Without the IsShowingRider guard below, this line ran right
+        // after ShowRider() and hid the rider it had just shown — horses
+        // spawned into battle with no one visibly riding them, even though
+        // MountedRiderEquipment/BattleUnitData had the rider's gear the whole
+        // time.
+        if ((seat == null || !seat.IsOccupied) && (riderVisual == null || !riderVisual.IsShowingRider))
             riderVisual?.HideRider();
     }
 

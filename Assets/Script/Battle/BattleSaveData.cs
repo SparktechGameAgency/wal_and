@@ -46,6 +46,15 @@ public static class BattleSaveData
     /// </summary>
     public static RectTransform CarriedSoldierSpawnArea;
 
+    /// <summary>
+    /// Every live FlyZone RectTransform that had a mounted dragon in it,
+    /// detached and DontDestroyOnLoad'd by BattleStarter.CarryDragonsIntoBattle()
+    /// right before the scene load — same pattern as CarriedSoldierSpawnArea.
+    /// BattleManager.ReceivePlayerDragons() reparents each one (dragon still
+    /// live inside it) into PlayerArmyRoot instead of spawning a fresh copy.
+    /// </summary>
+    public static List<RectTransform> CarriedDragonFlyZones = new List<RectTransform>();
+
     // ── Helpers ───────────────────────────────────────────────────────────────
     public static void Clear()
     {
@@ -54,6 +63,7 @@ public static class BattleSaveData
         PlayerUnits.Clear();
         DragonCount = 0;
         CarriedSoldierSpawnArea = null;
+        CarriedDragonFlyZones.Clear();
     }
 }
 

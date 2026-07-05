@@ -292,6 +292,8 @@ GameObject:
   - component: {fileID: 938728460706534895}
   - component: {fileID: 6620568405412943515}
   - component: {fileID: 8143178699912349805}
+  - component: {fileID: 2614715631412449355}
+  - component: {fileID: 401668617891348223}
   m_Layer: 0
   m_Name: DragonRide
   m_TagString: Untagged
@@ -460,6 +462,47 @@ MonoBehaviour:
   colorMid: {r: 1, g: 0.35, b: 0.05, a: 1}
   colorBase: {r: 0.6, g: 0.05, b: 0, a: 1}
   poolSize: 80
+--- !u!114 &2614715631412449355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5747055853561432504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a06523210ff97ed4db7168324aad0753, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattleUnit
+  isPlayerUnit: 1
+  unitType: 0
+  maxHealth: 100
+  damage: 10
+  moveSpeed: 80
+  attackRange: 60
+  attackRate: 1
+  hpBar: {fileID: 0}
+  canMove: 1
+  debugLog: 0
+--- !u!114 &401668617891348223
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5747055853561432504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4c0fd75f4cf15e43b4344fb4bae177f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattleDragonFlight
+  spriteDefaultFacesLeft: 1
+  riseHeight: 220
+  riseSpeed: 220
+  chaseSpeed: 260
+  hoverOffset: {x: 70, y: 120}
+  arrivalThreshold: 10
+  fireBreath: {fileID: 0}
 --- !u!1 &5861220122828285455
 GameObject:
   m_ObjectHideFlags: 0

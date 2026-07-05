@@ -40,6 +40,13 @@ public class HorseRiderVisual : MonoBehaviour
     private AnimationState _state = AnimationState.HorseIdle;
     private bool _active = false;
 
+    /// <summary>
+    /// True once ShowRider() has been called and HideRider() hasn't undone it
+    /// since. Lets callers (e.g. HorseController.Start()) avoid stomping on a
+    /// rider that something else already set up this frame — see HorseController.
+    /// </summary>
+    public bool IsShowingRider => _active;
+
     // Per-layer timers and frame counters
     private float _faceTimer, _armorTimer, _helmetTimer, _weaponTimer;
     private int _faceFrame, _armorFrame, _helmetFrame, _weaponFrame;

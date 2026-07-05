@@ -184,6 +184,13 @@ public class BattleUnit : MonoBehaviour
 
     public Vector2 RectPos => _rt.anchoredPosition;
 
+    // Exposes the same target BattleUnit.Update() already recomputes every
+    // frame via BattleManager.FindNearestEnemy — read by BattleDragonFlight
+    // so the dragon flies toward and hovers over the EXACT unit this
+    // BattleUnit will deal its attack-tick damage to, instead of running a
+    // second, possibly-different target search of its own.
+    public BattleUnit CurrentTarget => _target;
+
     // Player units live under PlayerArmyRoot and bot units live under
     // BotArmyRoot — two different RectTransforms positioned at different
     // places on screen. Their anchoredPosition values are LOCAL to those
@@ -229,8 +236,15 @@ public class BattleUnit : MonoBehaviour
         damage = data.damage > 0 ? data.damage : damage;
         moveSpeed = data.moveSpeed > 0 ? data.moveSpeed : moveSpeed;
         unitType = data.unitType;
+        // Cannon/Archer never move. Dragon ALSO never uses this class's own
+        // straight-line ground walk — BattleDragonFlight (sibling component
+        // on the same prefab) drives its position instead (rise → fly over
+        // → hover near the target), leaving this class to just find the
+        // target, run the attack-range check, and tick damage — the exact
+        // same code path already used for every other unit type.
         canMove = data.unitType != BattleUnitType.Cannon &&
-                        data.unitType != BattleUnitType.Archer;
+                        data.unitType != BattleUnitType.Archer &&
+                        data.unitType != BattleUnitType.Dragon;
         UpdateHPBar();
 
         if (!skipFacingFlip)
