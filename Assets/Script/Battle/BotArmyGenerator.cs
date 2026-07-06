@@ -17,6 +17,9 @@ public class BotArmyGenerator : MonoBehaviour
     [SerializeField] private float unitSpacingX = 80f;
     [SerializeField] private float unitSpacingY = 60f;
     [SerializeField] private int unitsPerRow = 3;
+    [Tooltip("Same purpose as BattleManager.horseGroundOffsetY, for bot-side horses " +
+             "spawned into the flat army row.")]
+    [SerializeField] private float horseGroundOffsetY = 0f;
 
     [Header("Bot Stat Ranges (Soldier / Horse / Archer / Dragon)")]
     [SerializeField] private Vector2 hpRange = new Vector2(70f, 130f);
@@ -152,9 +155,10 @@ public class BotArmyGenerator : MonoBehaviour
                 flatIndex++;
 
                 RectTransform rt = go.GetComponent<RectTransform>();
+                float extraY = entry.type == BattleUnitType.Horse ? horseGroundOffsetY : 0f;
                 rt.anchoredPosition = new Vector2(
                     startX + col * unitSpacingX,
-                    row * unitSpacingY);
+                    row * unitSpacingY + extraY);
 
                 skipFacingFlip = false;
 

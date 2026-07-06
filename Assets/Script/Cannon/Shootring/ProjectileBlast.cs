@@ -158,9 +158,14 @@ public class ProjectileBlast : MonoBehaviour
 
     /// <summary>
     /// Called by <see cref="ProjectileArc"/> when the projectile reaches its destination.
-    /// Plays the blast animation, then deals <paramref name="damage"/> to the enemy.
+    /// Plays the blast animation, then deals <paramref name="damage"/> to the target.
+    ///
+    /// Was typed to EnemyUnit — now IDamageable so the exact same cannon
+    /// projectile works whether it's fired at a Village EnemyUnit or (once
+    /// this cannon is carried into the Battle scene) a BattleUnit. See
+    /// IDamageable.cs / CannonAutoShooter for the full picture.
     /// </summary>
-    public void Explode(EnemyUnit target, float damage)
+    public void Explode(IDamageable target, float damage)
     {
         StartCoroutine(BlastSequence(target, damage));
     }
@@ -176,7 +181,7 @@ public class ProjectileBlast : MonoBehaviour
 
     // ── Coroutine ─────────────────────────────────────────────────
 
-    private IEnumerator BlastSequence(EnemyUnit target, float damage)
+    private IEnumerator BlastSequence(IDamageable target, float damage)
     {
         // ── 1. Hide the flying projectile sprite ─────────────────
         Image projImage = GetComponent<Image>();
@@ -203,7 +208,7 @@ public class ProjectileBlast : MonoBehaviour
         // ── 3. Deal damage ───────────────────────────────────────
         if (target != null && !target.IsDead && damage > 0f)
         {
-            Debug.Log($"[ProjectileBlast] Dealing {damage} damage to '{target.name}'.");
+            Debug.Log($"[ProjectileBlast] Dealing {damage} damage to '{target.DamageableTransform.name}'.");
             target.TakeDamage(damage);
         }
 

@@ -58,6 +58,11 @@ public class CastleUnitDropZone : MonoBehaviour,
 
     private GameObject _placedInstance;
     private CannonInventoryEntry _equippedEntry;  // set by PlaceCannonFromPanel
+
+    /// <summary>The inventory entry (stats/upgrades) of the cannon placed in this
+    /// zone, or null if empty. Read by BattleStarter.GatherArmyData to build the
+    /// Battle-scene BattleUnitData for this cannon.</summary>
+    public CannonInventoryEntry EquippedEntry => _equippedEntry;
     private CastleBlockUnitSlot _parentSlot;
 
     // ── Lifecycle ─────────────────────────────────────────────────

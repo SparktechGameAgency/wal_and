@@ -26,7 +26,10 @@ using System.Collections.Generic;
 ///   moveDirection  → normalised direction vector (default left: -1, 0, 0)
 ///   healthBarFill  → optional UI Image (filled type) that tracks current HP
 /// </summary>
-public class EnemyUnit : MonoBehaviour
+// Implements IDamageable so CannonAutoShooter / ArcherUnit / ProjectileArc /
+// ArrowProjectile can target this (Village) OR a BattleUnit (Battle scene)
+// through the exact same code path — see IDamageable.cs for why.
+public class EnemyUnit : MonoBehaviour, IDamageable
 {
     // ── Static registry ───────────────────────────────────────────
     /// <summary>All currently living EnemyUnit instances.</summary>
@@ -54,6 +57,9 @@ public class EnemyUnit : MonoBehaviour
     // ── State ─────────────────────────────────────────────────────
     public float CurrentHealth { get; private set; }
     public bool IsDead { get; private set; }
+
+    /// <summary>IDamageable — the Transform to aim projectiles at.</summary>
+    public Transform DamageableTransform => transform;
 
     // ── Lifecycle ─────────────────────────────────────────────────
 

@@ -212,7 +212,16 @@ public class BattleDragonFlight : MonoBehaviour
         Vector2 newPos = Vector2.MoveTowards(pos, destination, chaseSpeed * Time.deltaTime);
         _rt.anchoredPosition = newPos;
 
-        FaceDirection(destination.x - pos.x);
+        // Was FaceDirection(destination.x - pos.x) — comparing live positions.
+        // destination (the hover point) is recomputed every frame from a
+        // MOVING target, so once the dragon gets close, small frame-to-frame
+        // drift in the target's position flips the sign of
+        // (destination.x - pos.x) back and forth, re-mirroring the sprite
+        // every frame — the exact "continuously rotating" glitch. Use the
+        // same fixed-side convention as the ENGAGE branch below instead:
+        // which side a dragon approaches from is already fully determined
+        // by which team it's on, never by live position comparison.
+        FaceDirection(_battleUnit.isPlayerUnit ? 1f : -1f);
     }
 
     /// <summary>

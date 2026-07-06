@@ -789,6 +789,16 @@ using UnityEngine.UI;
 /// IMPORTANT — in your ArcherPrefab:
 ///   Set ShootImages GameObject to INACTIVE before saving the prefab.
 ///   This avoids any race between Awake() calls.
+///
+/// ── Battle scene support ───────────────────────────────────────────────────
+/// This same component lives on the carried-over castle and keeps running
+/// when the whole CastleGrid is reparented into the Battle scene. Previously
+/// it only ever scanned EnemyUnit.All — the Village's wave-defense enemy
+/// list — which is always empty in the Battle scene (opponents there are
+/// BattleUnit instances tracked by BattleManager), so it never fired. It now
+/// checks BattleManager.Instance: if set, it reads the target off the
+/// sibling BattleUnit component instead (same pattern BattleDragonFlight
+/// already uses for dragons). See IDamageable.cs.
 /// </summary>
 [DefaultExecutionOrder(10)]   // run AFTER SpriteAnimator (default order 0)
 public class ArcherUnit : MonoBehaviour
@@ -819,13 +829,20 @@ public class ArcherUnit : MonoBehaviour
     // ── Private ───────────────────────────────────────────────────
 
     private ArcherSlot _ownerSlot;
-    private EnemyUnit _lockedTarget;
+    // Was "EnemyUnit _lockedTarget" — now IDamageable so this same field
+    // holds either an EnemyUnit (Village) or a BattleUnit (Battle scene).
+    private IDamageable _lockedTarget;
     private bool _isShooting = false;
     private float _cooldown = 0f;
     private Canvas _rootCanvas;
 
     private GameObject _idleGO;
     private GameObject _shootGO;
+
+    // Present only once this archer is carried into the Battle scene and
+    // BattleManager attaches a BattleUnit to it (see BattleManager.
+    // FindExistingCastleUnit). Null in the Village.
+    private BattleUnit _battleUnit;
 
     // ── Init ──────────────────────────────────────────────────────
 
@@ -835,6 +852,8 @@ public class ArcherUnit : MonoBehaviour
 
     private void Awake()
     {
+        _battleUnit = GetComponent<BattleUnit>();
+
         // --- Find children ---
         Transform idleT = transform.Find("IdleImages");
         Transform shootT = transform.Find("ShootImages");
@@ -903,9 +922,19 @@ public class ArcherUnit : MonoBehaviour
     {
         if (_isShooting) return;
 
+        // This GameObject's Awake() already ran back in the Village (long
+        // before BattleManager exists), so the BattleUnit component this
+        // archer gets in the Battle scene — added AFTER carry-over by
+        // BattleManager.FindExistingCastleUnit — did not exist yet when
+        // Awake() cached _battleUnit. Keep checking until it's found (once
+        // found it never goes away, so this only actually runs GetComponent
+        // for the handful of frames after the scene loads).
+        if (_battleUnit == null)
+            _battleUnit = GetComponent<BattleUnit>();
+
         if (_cooldown > 0f) { _cooldown -= Time.deltaTime; return; }
 
-        EnemyUnit target = FindClosestEnemy();
+        IDamageable target = FindTargetInRange();
 
         if (target == null)
         {
@@ -979,7 +1008,10 @@ public class ArcherUnit : MonoBehaviour
 
         Transform parent = _rootCanvas != null ? _rootCanvas.transform : transform.root;
         Vector3 spawnPos = arrowSpawner != null ? arrowSpawner.position : transform.position;
-        Vector3 targetPos = _lockedTarget.transform.position;
+        // IDamageable only guarantees DamageableTransform, not Component-only
+        // members — works identically for an EnemyUnit (Village) or a
+        // BattleUnit (Battle scene) either way.
+        Vector3 targetPos = _lockedTarget.DamageableTransform.position;
 
         GameObject arrowGO = Instantiate(arrowPrefab, spawnPos, Quaternion.identity, parent);
 
@@ -1005,8 +1037,23 @@ public class ArcherUnit : MonoBehaviour
 
     // ── Enemy scan ────────────────────────────────────────────────
 
-    private EnemyUnit FindClosestEnemy()
+    /// <summary>
+    /// Battle scene: reuses the nearest-enemy result the sibling BattleUnit
+    /// already computes every frame (BattleManager.FindNearestEnemy) instead
+    /// of scanning EnemyUnit.All, which is always empty in the Battle scene.
+    /// Village: unchanged — scans EnemyUnit.All exactly as before.
+    /// </summary>
+    private IDamageable FindTargetInRange()
     {
+        if (BattleManager.Instance != null && _battleUnit != null)
+        {
+            BattleUnit target = _battleUnit.CurrentTarget;
+            if (target == null || target.IsDead) return null;
+
+            float distBattle = Vector3.Distance(transform.position, target.transform.position);
+            return distBattle <= detectionRadius ? (IDamageable)target : null;
+        }
+
         EnemyUnit closest = null;
         float bestDist = float.MaxValue;
 

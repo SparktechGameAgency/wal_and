@@ -518,7 +518,10 @@ public class ArrowProjectile : MonoBehaviour
     // ── Internal ──────────────────────────────────────────────────
 
     private RectTransform _rt;
-    private EnemyUnit _targetEnemy;
+    // Was "EnemyUnit _targetEnemy" — now IDamageable so this same arrow
+    // works whether fired at a Village EnemyUnit or (once this archer is
+    // carried into the Battle scene) a BattleUnit. See IDamageable.cs.
+    private IDamageable _targetEnemy;
     private float _damage;
 
     private void Awake()
@@ -530,7 +533,7 @@ public class ArrowProjectile : MonoBehaviour
 
     public void Launch(Vector3 start, Vector3 end,
                        float arc, float duration,
-                       EnemyUnit targetEnemy, float damage)
+                       IDamageable targetEnemy, float damage)
     {
         arcHeight = arc;
         flightDuration = duration;

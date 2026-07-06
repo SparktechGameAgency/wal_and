@@ -230,15 +230,22 @@ public class BattleStarter : MonoBehaviour
             BattleSaveData.PlayerUnits.Add(archerUnit);
         }
 
-        // ── Cannons (placed via CannonSlotCastle / CannonPanelManager) ───────
-        var cannonSlots = FindObjectsByType<CannonSlotCastle>(
+        // ── Cannons (placed via CastleUnitDropZone / CannonPanelManager) ──────
+        // NOTE: CannonSlotCastle looked like the current system by name, but its
+        // PlaceCannon() (the only place that ever sets hasCannon = true) is never
+        // actually called anywhere — CannonPanelManager.OnEquipClicked/OnBuyClicked
+        // only ever drive _callingDropZone (a CastleUnitDropZone) or the legacy
+        // CannonSlot. CastleUnitDropZone is the one real cannons actually go
+        // through, so that's what needs to be scanned here.
+        var cannonZones = FindObjectsByType<CastleUnitDropZone>(
             FindObjectsInactive.Include, FindObjectsSortMode.None);
 
-        foreach (var cs in cannonSlots)
+        foreach (var zone in cannonZones)
         {
-            if (!cs.hasCannon || cs.equippedEntry == null || cs.equippedEntry.data == null) continue;
+            if (zone.acceptedType != CastleUnitType.Cannon) continue;
+            if (!zone.HasUnit || zone.EquippedEntry == null || zone.EquippedEntry.data == null) continue;
 
-            var entry = cs.equippedEntry;
+            var entry = zone.EquippedEntry;
             var cannonUnit = new BattleUnitData(
                 BattleUnitType.Cannon,
                 entry.CurrentHealth, entry.CurrentDamage, 0f);
@@ -247,7 +254,7 @@ public class BattleStarter : MonoBehaviour
             // Record which castle block this cannon is mounted on so it
             // spawns seated on the matching block in the Battle scene,
             // instead of the flat army row.
-            GridCell cell = cs.GetComponentInParent<GridCell>();
+            GridCell cell = zone.GetComponentInParent<GridCell>();
             if (cell != null)
             {
                 cannonUnit.hasGridPosition = true;

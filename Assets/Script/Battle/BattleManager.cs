@@ -96,6 +96,14 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private float playerUnitSpacingX = 80f;
     [SerializeField] private float playerUnitSpacingY = 60f;
     [SerializeField] private int playerUnitsPerRow = 3;
+    [Tooltip("Extra Y offset (pixels) applied only to freshly-spawned Horse units. " +
+             "Horses are the only unit type that both (a) isn't carried over as a " +
+             "live GameObject like Soldiers, and (b) doesn't immediately reposition " +
+             "itself like the Dragon's rise-off-ground animation — so a pivot that " +
+             "isn't bottom-anchored on the horse prefab shows up here as 'floating'. " +
+             "Tune this negative (e.g. -30) to drop the horse down onto the ground " +
+             "line instead of editing the prefab's RectTransform pivot.")]
+    [SerializeField] private float horseGroundOffsetY = 0f;
 
     [Header("Bot Side")]
     [SerializeField] private BotCastleGenerator botCastleGenerator;
@@ -114,6 +122,16 @@ public class BattleManager : MonoBehaviour
     private List<BattleUnit> _playerUnits = new List<BattleUnit>();
     private List<BattleUnit> _botUnits = new List<BattleUnit>();
     private bool _battleOver;
+
+    /// <summary>
+    /// How many Dragon-type BattleUnitData entries ReceivePlayerDragons()
+    /// actually consumed via a carried-over live FlyZone. Set at the end of
+    /// that method. SpawnPlayerArmy() uses this to tell "already handled"
+    /// dragons apart from ones that never made it into a FlyZone before
+    /// battle started — those still have their data sitting in
+    /// BattleSaveData.PlayerUnits but were previously just silently skipped.
+    /// </summary>
+    private int _dragonsCarriedLive = 0;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -398,6 +416,15 @@ public class BattleManager : MonoBehaviour
 
             Debug.Log($"[BattleManager] Carried-over dragon '{go.name}' ready for battle.");
         }
+
+        // Remember exactly how many Dragon entries were consumed above so
+        // SpawnPlayerArmy() can tell which (if any) leftover Dragon entries
+        // in BattleSaveData.PlayerUnits were NOT carried — e.g. a dragon
+        // that had a soldier mounted but was never dragged into a FlyZone
+        // before Start Battle was pressed, so CarryDragonsIntoBattle() never
+        // found it. Those leftovers get a fresh-spawned fallback instead of
+        // silently vanishing (see SpawnPlayerArmy).
+        _dragonsCarriedLive = nextData;
     }
 
     /// <summary>
@@ -436,6 +463,12 @@ public class BattleManager : MonoBehaviour
         // the remaining foot units/horses/dragons stay tightly packed.
         int flatIndex = 0;
 
+        // How many Dragon-type entries we've walked past so far in this
+        // loop — compared against _dragonsCarriedLive to tell an
+        // already-carried dragon apart from one that never made it into a
+        // FlyZone before battle started (see ReceivePlayerDragons).
+        int dragonEntryIndex = 0;
+
         for (int i = 0; i < BattleSaveData.PlayerUnits.Count; i++)
         {
             BattleUnitData data = BattleSaveData.PlayerUnits[i];
@@ -445,10 +478,24 @@ public class BattleManager : MonoBehaviour
             // to avoid spawning a duplicate prefab copy.
             if (data.unitType == BattleUnitType.Soldier) continue;
 
-            // Dragons already carried over as live GameObjects (FlyZone and
-            // all) and turned into BattleUnits by ReceivePlayerDragons() —
-            // skip here for the same reason.
-            if (data.unitType == BattleUnitType.Dragon) continue;
+            // Dragons: the first _dragonsCarriedLive entries (in list order)
+            // were already carried over as live GameObjects and turned into
+            // BattleUnits by ReceivePlayerDragons() — skip those to avoid a
+            // duplicate. Any Dragon entry BEYOND that count means the
+            // dragon had a soldier mounted but was never dragged into a
+            // FlyZone before Start Battle was pressed, so it never got
+            // carried — fall through to the generic Instantiate path below
+            // instead of silently dropping it.
+            if (data.unitType == BattleUnitType.Dragon)
+            {
+                dragonEntryIndex++;
+                if (dragonEntryIndex <= _dragonsCarriedLive) continue;
+
+                Debug.LogWarning($"[BattleManager] Dragon entry #{dragonEntryIndex} was never " +
+                                  "carried over as a live FlyZone (probably wasn't dragged into " +
+                                  "the airspace before Start Battle) — spawning a fresh copy instead.");
+                // Falls through to the generic Instantiate block below.
+            }
 
             // Cannons/archers already exist as real, live GameObjects on the
             // carried-over castle (they traveled over with it) — turn THOSE
@@ -481,16 +528,25 @@ public class BattleManager : MonoBehaviour
             flatIndex++;
 
             RectTransform rt = go.GetComponent<RectTransform>();
+            float extraY = data.unitType == BattleUnitType.Horse ? horseGroundOffsetY : 0f;
             rt.anchoredPosition = new Vector2(
                 playerStartX + col * playerUnitSpacingX,
-                row * playerUnitSpacingY);
+                row * playerUnitSpacingY + extraY);
 
+            // FIX — was previously "if (bu != null) { ... }", which meant
+            // that if a prefab (e.g. a HorseData.prefab) didn't already
+            // have a BattleUnit component sitting on it in the editor,
+            // Init() silently never ran at all: no HorseController.Setup(),
+            // no ApplyRiderVisuals(). That's exactly why a horse could show
+            // up in battle with its default idle sprite and no visible
+            // rider — every OTHER spawn path here (ReceivePlayerSoldiers,
+            // FindExistingCastleUnit below) already adds the component if
+            // it's missing; this generic path just hadn't matched that
+            // pattern. Now it does.
             BattleUnit bu = go.GetComponent<BattleUnit>();
-            if (bu != null)
-            {
-                bu.Init(data, playerUnit: true);
-                _playerUnits.Add(bu);
-            }
+            if (bu == null) bu = go.AddComponent<BattleUnit>();
+            bu.Init(data, playerUnit: true);
+            _playerUnits.Add(bu);
         }
 
         Debug.Log($"[BattleManager] Spawned {_playerUnits.Count} player units.");

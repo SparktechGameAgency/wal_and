@@ -30,14 +30,17 @@ public class ProjectileArc : MonoBehaviour
     // asset and ignores code defaults, which is why the arc stayed huge even after
     // changing the value in code. This const is the single source of truth.
     // To change the arc, edit ARC_HEIGHT here and save — no Inspector tweak needed.
-    public const float ARC_HEIGHT =0.5f ;
+    public const float ARC_HEIGHT = 0.5f;
 
     [Tooltip("Seconds the projectile takes to reach the target.")]
     public float flightDuration = 1.2f;
 
     // ── Internal state set by whichever Launch() overload is called ──
     private RectTransform _rt;
-    private EnemyUnit _targetEnemy;
+    // Was "EnemyUnit _targetEnemy" — now IDamageable so this same component
+    // works whether it's fired in the Village (target = EnemyUnit) or
+    // carried into the Battle scene (target = BattleUnit). See IDamageable.cs.
+    private IDamageable _targetEnemy;
     private float _damage;
 
     private void Awake()
@@ -54,7 +57,7 @@ public class ProjectileArc : MonoBehaviour
     /// </summary>
     public void Launch(Vector3 start, Vector3 end,
                        float arc, float duration,
-                       EnemyUnit targetEnemy, float damage)
+                       IDamageable targetEnemy, float damage)
     {
         // arc parameter intentionally ignored — ARC_HEIGHT const is used instead.
         flightDuration = duration;

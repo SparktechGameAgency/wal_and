@@ -5,6 +5,19 @@ using UnityEngine.UI;
 /// Auto-detects enemies in range and fires the cannon automatically.
 /// Replaces CannonControllerShot — no fire button needed.
 ///
+/// ── Battle scene support ───────────────────────────────────────────────────
+/// This same component lives on the carried-over castle and keeps running
+/// when the whole CastleGrid is reparented into the Battle scene
+/// (BattleManager.ReceivePlayerCastle). Previously it only ever scanned
+/// EnemyUnit.All — the Village's wave-defense enemy list — so in the Battle
+/// scene (where there are no EnemyUnit instances at all; opponents are
+/// BattleUnit instances tracked by BattleManager) it never found a target
+/// and never fired. It now checks BattleManager.Instance: if set, it reads
+/// the target off the sibling BattleUnit component instead (the exact same
+/// unit BattleUnit.Update()/BattleManager.FindNearestEnemy() already
+/// computes every frame) — same pattern BattleDragonFlight already uses for
+/// dragons. See IDamageable.cs.
+///
 /// ── Arc height fix ─────────────────────────────────────────────────────────
 /// arcHeight is now written directly onto the ProjectileArc component field
 /// before Launch() is called. This means:
@@ -62,16 +75,24 @@ public class CannonAutoShooter : MonoBehaviour
     // ── Private ───────────────────────────────────────────────────
     private bool _isFiring = false;
     private float _fireCooldown = 0f;
-    private EnemyUnit _lockedTarget = null;
+    // Was "EnemyUnit _lockedTarget" — now IDamageable so this same field
+    // holds either an EnemyUnit (Village) or a BattleUnit (Battle scene).
+    private IDamageable _lockedTarget = null;
     private Canvas _rootCanvas = null;
 
     private CastleUnitDraggable _draggable;
+
+    // Present only once this cannon is carried into the Battle scene and
+    // BattleManager attaches a BattleUnit to it (see BattleManager.
+    // FindExistingCastleUnit / SpawnPlayerArmy). Null in the Village.
+    private BattleUnit _battleUnit;
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
     {
         _draggable = GetComponent<CastleUnitDraggable>();
+        _battleUnit = GetComponent<BattleUnit>();
         AutoFindReferences();
     }
 
@@ -115,10 +136,20 @@ public class CannonAutoShooter : MonoBehaviour
         if (_isFiring) return;
         if (IsDragging()) return;
 
+        // This GameObject's Awake() already ran back in the Village (long
+        // before BattleManager exists), so the BattleUnit component this
+        // cannon gets in the Battle scene — added AFTER carry-over by
+        // BattleManager.FindExistingCastleUnit — did not exist yet when
+        // Awake() cached _battleUnit. Keep checking until it's found (once
+        // found it never goes away, so this only actually runs GetComponent
+        // for the handful of frames after the scene loads).
+        if (_battleUnit == null)
+            _battleUnit = GetComponent<BattleUnit>();
+
         _fireCooldown -= Time.deltaTime;
         if (_fireCooldown > 0f) return;
 
-        EnemyUnit target = FindNearestEnemyInRange();
+        IDamageable target = FindTargetInRange();
         if (target == null) return;
 
         _lockedTarget = target;
@@ -142,8 +173,23 @@ public class CannonAutoShooter : MonoBehaviour
 
     // ── Enemy Detection ───────────────────────────────────────────
 
-    private EnemyUnit FindNearestEnemyInRange()
+    /// <summary>
+    /// Battle scene: reuses the nearest-enemy result the sibling BattleUnit
+    /// already computes every frame (BattleManager.FindNearestEnemy) instead
+    /// of scanning EnemyUnit.All, which is always empty in the Battle scene.
+    /// Village: unchanged — scans EnemyUnit.All exactly as before.
+    /// </summary>
+    private IDamageable FindTargetInRange()
     {
+        if (BattleManager.Instance != null && _battleUnit != null)
+        {
+            BattleUnit target = _battleUnit.CurrentTarget;
+            if (target == null || target.IsDead) return null;
+
+            float distBattle = Vector3.Distance(transform.position, target.transform.position);
+            return distBattle <= detectionRadius ? (IDamageable)target : null;
+        }
+
         EnemyUnit nearest = null;
         float bestDist = float.MaxValue;
         Vector3 myPos = transform.position;
@@ -218,18 +264,24 @@ public class CannonAutoShooter : MonoBehaviour
         // already in screen pixels.  If it is a world-space GameObject its position
         // is in world units — mixing both spaces causes Lerp to throw the projectile
         // far off-screen no matter how small arcHeight is.
+        // IDamageable only guarantees a Transform (DamageableTransform), not
+        // Component-specific members — GetComponent<RectTransform>() needs
+        // to go through that Transform rather than _lockedTarget directly.
+        // Works identically for an EnemyUnit (Village) or a BattleUnit
+        // (Battle scene) either way, since both are UI RectTransforms.
+        Transform targetTransform = _lockedTarget.DamageableTransform;
         Vector3 endPos;
-        bool enemyIsUI = _lockedTarget.GetComponent<RectTransform>() != null;
+        bool enemyIsUI = targetTransform.GetComponent<RectTransform>() != null;
         if (enemyIsUI)
         {
-            endPos = _lockedTarget.transform.position;
+            endPos = targetTransform.position;
         }
         else
         {
             Camera cam = Camera.main ?? Object.FindFirstObjectByType<Camera>();
             endPos = (cam != null)
-                ? cam.WorldToScreenPoint(_lockedTarget.transform.position)
-                : _lockedTarget.transform.position;
+                ? cam.WorldToScreenPoint(targetTransform.position)
+                : targetTransform.position;
             endPos.z = 0f;   // canvas lives at z = 0
         }
         Debug.Log($"[CannonAutoShooter] Fire | spawn={spawnPos} end={endPos} enemyIsUI={enemyIsUI}");

@@ -3830,6 +3830,12 @@ public class CannonSlotCastle : MonoBehaviour
     public Transform slotTransform;
 
     private GameObject _cannonInstance;
+
+    /// <summary>The live cannon GameObject placed in this slot (null if empty).
+    /// Used by BattleManager.FindExistingCastleUnit to attach a BattleUnit to
+    /// the EXISTING cannon instead of spawning a duplicate when the castle
+    /// carries into the Battle scene.</summary>
+    public GameObject CannonInstance => _cannonInstance;
     private Button _button;
     private Button _removeButton;
 

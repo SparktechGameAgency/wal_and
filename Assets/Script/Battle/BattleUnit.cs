@@ -10,8 +10,12 @@ using UnityEngine.UI;
 ///
 /// All movement is anchoredPosition-based (Screen Space Overlay canvas).
 /// </summary>
+// Implements IDamageable so the SAME CannonAutoShooter/ArcherUnit components
+// carried over from the Village (still scanning for a target every frame)
+// can fire on a BattleUnit here in the Battle scene, exactly like they fire
+// on an EnemyUnit back in the Village — see IDamageable.cs.
 [RequireComponent(typeof(RectTransform))]
-public class BattleUnit : MonoBehaviour
+public class BattleUnit : MonoBehaviour, IDamageable
 {
     // ── Configuration ─────────────────────────────────────────────────────────
     [Header("Unit Config")]
@@ -32,6 +36,9 @@ public class BattleUnit : MonoBehaviour
     // ── State ─────────────────────────────────────────────────────────────────
     public float CurrentHealth { get; private set; }
     public bool IsDead { get; private set; }
+
+    /// <summary>IDamageable — the Transform for cannons/archers to aim at.</summary>
+    public Transform DamageableTransform => transform;
 
     // Cannons / archers don't walk — set this false.
     public bool canMove = true;
