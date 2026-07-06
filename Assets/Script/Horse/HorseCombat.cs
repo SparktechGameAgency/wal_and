@@ -394,37 +394,24 @@ public class HorseCombat : MonoBehaviour
     {
         if (ownerZone == null) return;
 
-        // Re-add this horse to the zone so it resumes its idle/walk cycle.
-        // SpawnWalkingHorse creates a new entry; since the horse already
-        // exists in the scene we instead call a lighter re-register path.
-        // The cleanest approach given the current API is to re-spawn via
-        // HorseData — grab it from HorseController.
-        HorseData data = _hc.Data;
-        if (data == null) return;
-
-        // Find our inventory index from the drag handler
+        // Find our inventory index from the drag handler (best-effort - only
+        // used for HorseWalkZone bookkeeping; ReRegisterHorse works without it).
         var drag = GetComponent<HorseDragHandler>();
         int idx = drag != null ? drag.inventoryIndex : -1;
 
-        // Re-register: SpawnWalkingHorse will Instantiate a *new* prefab if
-        // Data.prefab is set, which we don't want (we're already in the scene).
-        // Instead, we directly restart the patrol via the zone's OnEnable path
-        // by adding a WalkZoneOwner and re-adding ourselves to the zone's list.
-        // Since _horses is private, the cleanest hook is to call a method that
-        // already exists: NotifyHorseJoined if it existed, or re-spawn.
-        //
-        // ► RECOMMENDED: add the method below to HorseWalkZone (see comment).
-        //   ownerZone.ReRegisterHorse(this, idx);
-        //
-        // For now, reset to Idle and let detection pick a new target if needed.
-        _hc.ExternallyControlled = false;
-        _hc.SetIdle();
+        // Re-add this horse to the zone so its WalkCycleRoutine coroutine
+        // actually restarts. SuspendZonePatrol's NotifyHorseLeft() removed us
+        // from the zone's list, which killed that coroutine - without this
+        // call the horse was left with nothing ever driving its Idle/Run
+        // timer again, so it sat in Idle forever after its first fight,
+        // looking "stuck" even though it keeps killing enemies via
+        // DetectionLoop. ReRegisterHorse() sets ExternallyControlled = true
+        // itself and starts a fresh WalkCycleRoutine (beginning with its
+        // Idle phase), so we don't set state here ourselves.
+        ownerZone.ReRegisterHorse(_hc, idx);
 
-        Debug.Log($"[HorseCombat] '{name}': patrol resumed (zone re-register needed — " +
-                  "add ReRegisterHorse() to HorseWalkZone for full walk-cycle restore).");
+        Debug.Log($"[HorseCombat] '{name}': patrol resumed via ReRegisterHorse (idx={idx}).");
     }
-
-    // ── Cleanup ───────────────────────────────────────────────────────────────
 
     private void StopAllCombatCoroutines()
     {

@@ -17,9 +17,6 @@ public class BotArmyGenerator : MonoBehaviour
     [SerializeField] private float unitSpacingX = 80f;
     [SerializeField] private float unitSpacingY = 60f;
     [SerializeField] private int unitsPerRow = 3;
-    [Tooltip("Same purpose as BattleManager.horseGroundOffsetY, for bot-side horses " +
-             "spawned into the flat army row.")]
-    [SerializeField] private float horseGroundOffsetY = 0f;
 
     [Header("Bot Stat Ranges (Soldier / Horse / Archer / Dragon)")]
     [SerializeField] private Vector2 hpRange = new Vector2(70f, 130f);
@@ -143,6 +140,17 @@ public class BotArmyGenerator : MonoBehaviour
                 skipFacingFlip = false;
             }
 
+            // Cannons must ONLY ever end up on a castle block (BotCastleRoot),
+            // never in the flat BotArmyRoot row - a cannon has no walk/idle
+            // animation and doesn't make sense standing in the open field. If
+            // no free castle slot was available (or the picked slot's cannonZone
+            // was somehow null), skip spawning this cannon entirely instead of
+            // falling through to the flat-row Instantiate() below.
+            if (go == null && entry.type == BattleUnitType.Cannon)
+            {
+                continue;
+            }
+
             if (go == null)
             {
                 // No free castle slot (or zone placement failed) — fall back
@@ -155,7 +163,18 @@ public class BotArmyGenerator : MonoBehaviour
                 flatIndex++;
 
                 RectTransform rt = go.GetComponent<RectTransform>();
-                float extraY = entry.type == BattleUnitType.Horse ? horseGroundOffsetY : 0f;
+                // Read the SAME offset BattleManager uses for player-side
+                // horses instead of keeping a separate copy here — two
+                // independent SerializeFields for one tuning value drift
+                // apart the moment only one gets edited (this is exactly
+                // why the bot horse was sitting at y=0: its own local copy
+                // was never updated when the player-side value was set to
+                // -30). Falls back to -30f only if BattleManager isn't
+                // present yet (e.g. this generator is run in isolation).
+                float horseOffsetY = BattleManager.Instance != null
+                    ? BattleManager.Instance.HorseGroundOffsetY
+                    : 0f;
+                float extraY = entry.type == BattleUnitType.Horse ? horseOffsetY : 0f;
                 rt.anchoredPosition = new Vector2(
                     startX + col * unitSpacingX,
                     row * unitSpacingY + extraY);

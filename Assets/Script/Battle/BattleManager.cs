@@ -105,6 +105,16 @@ public class BattleManager : MonoBehaviour
              "line instead of editing the prefab's RectTransform pivot.")]
     [SerializeField] private float horseGroundOffsetY = 0f;
 
+    /// <summary>
+    /// Public read access so BotArmyGenerator can reuse this EXACT value
+    /// instead of keeping its own separate SerializeField copy. Two copies
+    /// of the same tuning value silently drift apart the moment one is
+    /// edited and the other isn't — which is exactly how the bot-side horse
+    /// ended up sitting at y=0 (its own copy was still at the pre-fix
+    /// default of 0) while the player-side horse correctly used -30.
+    /// </summary>
+    public float HorseGroundOffsetY => horseGroundOffsetY;
+
     [Header("Bot Side")]
     [SerializeField] private BotCastleGenerator botCastleGenerator;
     [SerializeField] private BotArmyGenerator botArmyGenerator;
@@ -518,7 +528,21 @@ public class BattleManager : MonoBehaviour
             }
 
             GameObject prefab = GetPrefabFor(data);
-            if (prefab == null) continue;
+            if (prefab == null)
+            {
+                // Silently continuing here used to make a unit (most often a
+                // Dragon that never got carried over as a live FlyZone, so it
+                // fell through to this generic spawn path) vanish with zero
+                // trace in the console — looking exactly like "I added it in
+                // the Village but it never shows up in Battle". Log WHY so
+                // it's obvious this is a missing Inspector reference
+                // (unitPrefabs.dragonPrefab / a HorseData.prefab / a
+                // CannonData.prefab) rather than a mysterious disappearance.
+                Debug.LogWarning($"[BattleManager] No prefab found for player {data.unitType} " +
+                                  "unit — check that unitPrefabs (or the HorseData/CannonData " +
+                                  "asset) has its prefab field assigned. Unit was skipped.");
+                continue;
+            }
 
             GameObject go = Instantiate(prefab, playerArmyRoot);
 
