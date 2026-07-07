@@ -127,6 +127,22 @@ public class BattleManager : MonoBehaviour
     [Header("Scene")]
     [SerializeField] private string villageSceneName = "Village";
 
+    [Header("Battlefield Bounds")]
+    [Tooltip("Empty RectTransform marking the play area units are allowed to " +
+             "walk within (sibling of PlayerSide/BotSide under Canvas — see " +
+             "setup notes above BattleUnit's bounds-clamping code). Without " +
+             "this, a moving unit (Soldier/Horse) chasing a target has no " +
+             "limit and can walk straight off the visible battlefield. Left " +
+             "unassigned = no clamp (fails safe to old behaviour).")]
+    [SerializeField] private RectTransform battlefieldBounds;
+
+    /// <summary>
+    /// Public read access so BattleUnit can clamp its own walk movement
+    /// against the same bounds every unit shares, instead of each unit
+    /// needing its own separate reference wired in the Inspector.
+    /// </summary>
+    public RectTransform BattlefieldBounds => battlefieldBounds;
+
     // ── State ─────────────────────────────────────────────────────────────────
 
     private List<BattleUnit> _playerUnits = new List<BattleUnit>();
@@ -303,6 +319,17 @@ public class BattleManager : MonoBehaviour
             // *movement* origin, not for the distance math.
             go.transform.SetParent(playerArmyRoot, worldPositionStays: true);
 
+            // Ground line — every soldier sits at a fixed Y regardless of
+            // whatever Y its Village patrol happened to be at the moment
+            // Start Battle was pressed (worldPositionStays above preserves
+            // that original spot, X included, but Y needs to snap to the
+            // battle ground line instead of wherever the soldier was
+            // standing/patrolling in the Village).
+            RectTransform soldierRt = go.GetComponent<RectTransform>();
+            Vector2 pos = soldierRt.anchoredPosition;
+            pos.y = -8f;
+            soldierRt.anchoredPosition = pos;
+
             // Village-only interaction must be turned off so the soldier can't
             // be dragged or resume patrolling mid-battle.
             SoldierDragDrop dragDrop = go.GetComponent<SoldierDragDrop>();
@@ -353,11 +380,16 @@ public class BattleManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Reparents each carried-over FlyZone (still holding its real, live
-    /// dragon) into PlayerArmyRoot, then turns that dragon GameObject into a
-    /// combat unit — same hand-off idea as ReceivePlayerSoldiers(), just for
-    /// dragons. Falls back to doing nothing per entry if the FlyZone or its
-    /// dragon didn't survive the trip (e.g. testing the Battle scene directly
+    /// Pulls each carried-over dragon OUT of its FlyZone and reparents it
+    /// directly onto PlayerArmyRoot — same hand-off idea as
+    /// ReceivePlayerSoldiers() pulling soldiers out of SoldierSpawnArea, just
+    /// for dragons. The FlyZone was only a carrier for the trip over (it has
+    /// no meaning in the Battle scene, where BattleDragonFlight — not
+    /// FlyZone — owns the dragon's movement), so once the dragon is
+    /// extracted the now-empty FlyZone is destroyed, leaving the dragon a
+    /// direct child of PlayerArmyRoot exactly like every other unit type.
+    /// Falls back to doing nothing per entry if the FlyZone or its dragon
+    /// didn't survive the trip (e.g. testing the Battle scene directly
     /// without going through the Village).
     /// </summary>
     private void ReceivePlayerDragons()
@@ -385,12 +417,31 @@ public class BattleManager : MonoBehaviour
 
             GameObject go = dragon.gameObject;
 
-            // Pull the whole FlyZone (dragon still inside it) onto
-            // PlayerArmyRoot. worldPositionStays keeps the dragon's on-screen
-            // spot stable through the reparent — BattleDragonFlight takes it
-            // from wherever that lands, same as its Rise phase for a
-            // freshly-Instantiated dragon.
-            zoneRt.SetParent(playerArmyRoot, worldPositionStays: true);
+            // Pull the dragon OUT of the FlyZone and directly onto
+            // PlayerArmyRoot. worldPositionStays: true (preserving the
+            // dragon's exact on-screen spot through the reparent) is NOT
+            // used here — the dragon's actual journey is FlyZone (nested
+            // under the Village's Canvas) → unparented to scene root for
+            // DontDestroyOnLoad → reparented again onto PlayerArmyRoot here.
+            // If the scale factors along that chain don't cancel out
+            // cleanly, worldPositionStays back-solves anchoredPosition into
+            // an enormous garbage value (seen in practice: Y landing around
+            // -2,480,058) instead of a sane on-screen spot — exactly why the
+            // dragon "spawns" but is nowhere in the visible Game view. Soldiers
+            // don't hit this because their carry-over path never passes
+            // through a nested, differently-scaled container like a FlyZone.
+            //
+            // Fix: reparent WITHOUT preserving world position, then assign a
+            // known-good battle position explicitly instead of trusting the
+            // math to land somewhere reasonable. BattleDragonFlight's Rise
+            // phase takes over from there, same as for a freshly-Instantiated
+            // dragon — it only cares about anchoredPosition.y at Start(),
+            // not about matching the Village's on-screen spot.
+            go.transform.SetParent(playerArmyRoot, worldPositionStays: false);
+            RectTransform dragonRt = go.GetComponent<RectTransform>();
+            dragonRt.anchoredPosition = new Vector2(playerStartX, 0f);
+            dragonRt.localScale = Vector3.one;
+            Destroy(zoneRt.gameObject);
 
             // Village-only drag/patrol/combat behaviour must stop so it can't
             // fight BattleUnit/BattleDragonFlight for control mid-battle —
@@ -418,11 +469,23 @@ public class BattleManager : MonoBehaviour
 
             // BattleDragonFlight self-disabled in the Village (see its
             // OnEnable — BattleManager.Instance was null there). Re-enabling
-            // it now re-fires OnEnable, and this time Instance is already
-            // set (Awake() above runs before Start()), so it proceeds with
-            // its rise/approach/engage behaviour instead of staying dormant.
+            // it re-fires OnEnable. That USED to be enough on its own —
+            // relying on Unity's Start() to fire once, now that the
+            // component is enabled — but Start() only ever runs once per
+            // component instance for the object's whole lifetime; if it
+            // somehow already fired before (enable/disable edge cases),
+            // re-enabling here would silently skip recomputing bounds/cruise
+            // altitude, leaving this exact dragon (and only this one —
+            // freshly-Instantiated bot/player dragons never hit this path)
+            // permanently stuck and never breathing fire. Call
+            // ActivateForBattle() explicitly so initialization always runs,
+            // regardless of Start()'s own history.
             BattleDragonFlight flight = go.GetComponent<BattleDragonFlight>();
-            if (flight != null) flight.enabled = true;
+            if (flight != null)
+            {
+                flight.enabled = true;
+                flight.ActivateForBattle();
+            }
 
             Debug.Log($"[BattleManager] Carried-over dragon '{go.name}' ready for battle.");
         }
@@ -552,10 +615,21 @@ public class BattleManager : MonoBehaviour
             flatIndex++;
 
             RectTransform rt = go.GetComponent<RectTransform>();
-            float extraY = data.unitType == BattleUnitType.Horse ? horseGroundOffsetY : 0f;
+
+            // Horses always sit flat on the ground line — never stacked into
+            // a row like foot units. Using "row * spacing" here (like every
+            // other type) made a horse's Y depend on how many other units
+            // happened to spawn before it in this particular battle, so the
+            // SAME horse could land at y=0 in one battle and y=60/120/etc. in
+            // another purely by chance of spawn order. Forcing y=0 (instead
+            // of row * playerUnitSpacingY + horseGroundOffsetY) keeps every
+            // horse on the same ground line regardless of order.
+            float y = data.unitType == BattleUnitType.Horse
+                ? 0f
+                : row * playerUnitSpacingY;
+
             rt.anchoredPosition = new Vector2(
-                playerStartX + col * playerUnitSpacingX,
-                row * playerUnitSpacingY + extraY);
+                playerStartX + col * playerUnitSpacingX, y);
 
             // FIX — was previously "if (bu != null) { ... }", which meant
             // that if a prefab (e.g. a HorseData.prefab) didn't already
@@ -571,6 +645,23 @@ public class BattleManager : MonoBehaviour
             if (bu == null) bu = go.AddComponent<BattleUnit>();
             bu.Init(data, playerUnit: true);
             _playerUnits.Add(bu);
+
+            // A freshly-Instantiated Dragon prefab still carries its own
+            // Village-only DragonController (drag/patrol/combat), same
+            // class of conflict already handled for carried-over soldiers
+            // (SoldierController) and carried-over dragons in
+            // ReceivePlayerDragons(). This generic fallback path spawns a
+            // Dragon that was never dragged into a FlyZone before Start
+            // Battle, so ReceivePlayerDragons() never touched it — without
+            // this, it's the one Dragon-type unit left with DragonController
+            // still enabled in the Battle scene. No-ops safely for every
+            // other unit type, which has no DragonController.
+            if (data.unitType == BattleUnitType.Dragon)
+            {
+                var freshDragonController = go.GetComponent<DragonController>();
+                if (freshDragonController != null)
+                    freshDragonController.enabled = false;
+            }
         }
 
         Debug.Log($"[BattleManager] Spawned {_playerUnits.Count} player units.");

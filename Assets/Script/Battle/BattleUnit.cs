@@ -48,6 +48,18 @@ public class BattleUnit : MonoBehaviour, IDamageable
     private BattleUnit _target;
     private float _attackTimer;
 
+    // Left/right walk limit, converted once into THIS unit's own parent's
+    // local anchoredPosition space (soldiers/horses live under different
+    // parents — PlayerArmyRoot, BotArmyRoot, or a castle slot — so the same
+    // world-space bound converts to a different local X for each). Only
+    // canMove units (Soldier/Horse) ever use these; Cannon/Archer/Dragon
+    // don't walk here. float.MinValue/MaxValue (no clamp) until Start()
+    // computes real values from BattleManager.BattlefieldBounds, so a
+    // missing reference fails safe to the old unbounded behaviour instead
+    // of trapping every unit at x=0.
+    private float _minLocalX = float.MinValue;
+    private float _maxLocalX = float.MaxValue;
+
     // Drives Walk/Fight/Idle for on-foot units (Soldier/Archer) that carry
     // their own SpriteLayerAnimator directly on this GameObject. Horse/Dragon
     // units use a different animation system on their own root (Animator
@@ -71,6 +83,61 @@ public class BattleUnit : MonoBehaviour, IDamageable
         _horseController = GetComponent<HorseController>();
         CurrentHealth = maxHealth;
         UpdateHPBar();
+    }
+
+    private void Start()
+    {
+        // Only walking units (Soldier/Horse) ever need this — Cannon/Archer
+        // never move and Dragon is driven entirely by BattleDragonFlight's
+        // own separate bounds. Skip the conversion for anything that can't
+        // walk off the battlefield in the first place.
+        if (!canMove) return;
+
+        RectTransform bounds = BattleManager.Instance?.BattlefieldBounds;
+        if (bounds == null) return; // Unassigned — fails safe, no clamp.
+
+        ComputeHorizontalBounds(bounds, out _minLocalX, out _maxLocalX);
+    }
+
+    /// <summary>
+    /// Converts the battlefield RectTransform's left/right edges into THIS
+    /// unit's own parent's local anchoredPosition space, so Update()'s walk
+    /// step has real walls to clamp pos.x against. Same technique as
+    /// BattleDragonFlight.ComputeMaxAltitudeY/ComputeHorizontalBounds — each
+    /// unit converts independently because soldiers/horses can live under
+    /// different parents (PlayerArmyRoot, BotArmyRoot, or a seated castle
+    /// slot), so the same world-space edge maps to a different local X for
+    /// each one.
+    /// </summary>
+    private void ComputeHorizontalBounds(RectTransform bounds, out float minX, out float maxX)
+    {
+        if (_rt.parent == null)
+        {
+            minX = float.MinValue;
+            maxX = float.MaxValue;
+            return;
+        }
+
+        Camera cam = (_canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            ? _canvas.worldCamera
+            : null;
+
+        Vector3 leftWorld = bounds.TransformPoint(new Vector2(bounds.rect.xMin, bounds.rect.center.y));
+        Vector3 rightWorld = bounds.TransformPoint(new Vector2(bounds.rect.xMax, bounds.rect.center.y));
+
+        Vector2 leftScreen = RectTransformUtility.WorldToScreenPoint(cam, leftWorld);
+        Vector2 rightScreen = RectTransformUtility.WorldToScreenPoint(cam, rightWorld);
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            (RectTransform)_rt.parent, leftScreen, cam, out Vector2 leftLocal);
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            (RectTransform)_rt.parent, rightScreen, cam, out Vector2 rightLocal);
+
+        // Don't assume left edge → smaller local X — a bot-side unit's
+        // parent can be mirrored (flipHorizontally on a bot castle cell),
+        // which flips which converted value ends up smaller.
+        minX = Mathf.Min(leftLocal.x, rightLocal.x);
+        maxX = Mathf.Max(leftLocal.x, rightLocal.x);
     }
 
     // Temporary diagnostics — set true on the soldier's BattleUnit in the
@@ -114,6 +181,14 @@ public class BattleUnit : MonoBehaviour, IDamageable
                 float dir = isPlayerUnit ? 1f : -1f;
                 Vector2 pos = _rt.anchoredPosition;
                 pos.x += dir * moveSpeed * Time.deltaTime;
+
+                // Stop at the battlefield edge instead of walking straight
+                // off it — without this, a unit chasing a target that's
+                // slow to come into range (or unreachable, e.g. blocked by
+                // other units bunched up) just keeps walking past wherever
+                // the visible battlefield actually ends.
+                pos.x = Mathf.Clamp(pos.x, _minLocalX, _maxLocalX);
+
                 _rt.anchoredPosition = pos;
 
                 // Flip sprite to face the right direction.

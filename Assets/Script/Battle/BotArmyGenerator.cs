@@ -140,13 +140,15 @@ public class BotArmyGenerator : MonoBehaviour
                 skipFacingFlip = false;
             }
 
-            // Cannons must ONLY ever end up on a castle block (BotCastleRoot),
-            // never in the flat BotArmyRoot row - a cannon has no walk/idle
-            // animation and doesn't make sense standing in the open field. If
-            // no free castle slot was available (or the picked slot's cannonZone
-            // was somehow null), skip spawning this cannon entirely instead of
-            // falling through to the flat-row Instantiate() below.
-            if (go == null && entry.type == BattleUnitType.Cannon)
+            // Cannons AND Archers must ONLY ever end up on a castle block
+            // (BotCastleRoot), never in the flat BotArmyRoot row - a cannon
+            // has no walk/idle animation and doesn't make sense standing in
+            // the open field, and archers are meant to sit in their castle
+            // zone exactly like the player's archers do. If no free castle
+            // slot was available (or the picked slot's zone was somehow
+            // null), skip spawning this unit entirely instead of falling
+            // through to the flat-row Instantiate() below.
+            if (go == null && (entry.type == BattleUnitType.Cannon || entry.type == BattleUnitType.Archer))
             {
                 continue;
             }
@@ -163,21 +165,21 @@ public class BotArmyGenerator : MonoBehaviour
                 flatIndex++;
 
                 RectTransform rt = go.GetComponent<RectTransform>();
-                // Read the SAME offset BattleManager uses for player-side
-                // horses instead of keeping a separate copy here — two
-                // independent SerializeFields for one tuning value drift
-                // apart the moment only one gets edited (this is exactly
-                // why the bot horse was sitting at y=0: its own local copy
-                // was never updated when the player-side value was set to
-                // -30). Falls back to -30f only if BattleManager isn't
-                // present yet (e.g. this generator is run in isolation).
-                float horseOffsetY = BattleManager.Instance != null
-                    ? BattleManager.Instance.HorseGroundOffsetY
-                    : 0f;
-                float extraY = entry.type == BattleUnitType.Horse ? horseOffsetY : 0f;
+
+                // Horses always sit flat on the ground line — never stacked
+                // into a row like foot units. Using "row * spacing" here
+                // (like every other type) made a horse's Y depend on how many
+                // other units happened to spawn before it in this particular
+                // battle, so the SAME horse could land at y=0 in one battle
+                // and y=60/120/etc. in another purely by chance of spawn
+                // order — exactly why "not every horse" was sitting at y=0.
+                // Forcing y=0 keeps every horse on the same ground line
+                // regardless of order, same as the player-side fix.
+                float y = entry.type == BattleUnitType.Horse
+                    ? 0f
+                    : row * unitSpacingY;
                 rt.anchoredPosition = new Vector2(
-                    startX + col * unitSpacingX,
-                    row * unitSpacingY + extraY);
+                    startX + col * unitSpacingX, y);
 
                 skipFacingFlip = false;
 

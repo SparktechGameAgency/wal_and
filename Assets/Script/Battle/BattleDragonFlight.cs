@@ -63,6 +63,18 @@ public class BattleDragonFlight : MonoBehaviour
              "dragon's mouth. Auto-found on children if left blank.")]
     [SerializeField] private DragonFireBreath fireBreath;
 
+    [Header("Screen Bounds")]
+    [Tooltip("How far inside the Battlefield's edges (BattleManager." +
+             "BattlefieldBounds) the dragon must stay, in canvas-space units. " +
+             "Without a ceiling, a dragon retargeting to a Cannon/Archer " +
+             "seated high up on the castle's TopSlots staircase flies to " +
+             "(target Y + hoverOffset.y) with no limit — which can land " +
+             "outside the battlefield, looking like the dragon flew away. " +
+             "Falls back to the full canvas rect if BattlefieldBounds isn't " +
+             "assigned. Cruise altitude and every hover point (both X and Y) " +
+             "are clamped to this margin inside the battlefield.")]
+    [SerializeField] private float topMargin = 40f;
+
     // ── Components ───────────────────────────────────────────────────────────
 
     private RectTransform _rt;
@@ -78,6 +90,22 @@ public class BattleDragonFlight : MonoBehaviour
     private float _cruiseY;
     private bool _hasReachedCruise;
     private bool _isBreathingFire;
+
+    // Highest Y this dragon is allowed to fly to, in ITS OWN parent's local
+    // anchoredPosition space — computed once from the canvas's actual visible
+    // top edge (see ComputeMaxAltitudeY). float.MaxValue (i.e. no ceiling)
+    // until Start() computes a real value, so nothing clamps before that.
+    private float _maxAltitudeY = float.MaxValue;
+
+    // Left/right canvas edges in the dragon's parent's local anchoredPosition
+    // space, with the same topMargin used as a side margin. Without these,
+    // GetHoverPoint's X (targetLocalPos.x + hoverOffset.x * facingSign) has
+    // no limit — a target near the left/right edge of the battlefield pushes
+    // the hover point past the visible canvas and the dragon flies off the
+    // side of the screen, same class of bug as the altitude ceiling above.
+    // float.MinValue/MaxValue (no clamp) until Start() computes real values.
+    private float _minX = float.MinValue;
+    private float _maxX = float.MaxValue;
 
     // ══════════════════════════════════════════════════════════════════════════
     // LIFECYCLE
@@ -115,16 +143,74 @@ public class BattleDragonFlight : MonoBehaviour
             enabled = false;
             return;
         }
+
+        // A dragon already dropped into a FlyZone before Start Battle was
+        // pressed is carried into the Battle scene as the SAME live
+        // GameObject (BattleManager.ReceivePlayerDragons re-enables this
+        // component here). Its Awake() only ever ran once, back in the
+        // Village — _rootCanvas/_canvasRt were cached pointing at the
+        // VILLAGE Canvas, which gets destroyed when that scene unloads.
+        // WorldToLocalAnchoredPos() silently falls back to "return the
+        // dragon's own current position" whenever _canvasRt is a destroyed
+        // reference, which collapses every bounds calculation (altitude,
+        // left/right edges, hover point) down to wherever the dragon
+        // already is — exactly the "stuck in place" symptom. Re-resolving
+        // here, every time this component actually proceeds into battle
+        // mode, fixes both the carried-over case and is a harmless no-op
+        // for a freshly-spawned dragon whose canvas was already correct.
+        _rootCanvas = GetComponentInParent<Canvas>();
+        _canvasRt = _rootCanvas != null ? _rootCanvas.GetComponent<RectTransform>() : null;
     }
 
     private void Start()
     {
         if (BattleManager.Instance == null) return; // Village copy — see OnEnable().
+        ActivateForBattle();
+    }
+
+    /// <summary>
+    /// Runs the same initialization Start() used to do inline, but as a
+    /// public, idempotent method BattleManager can call directly and
+    /// explicitly — instead of depending on Unity's "Start() only ever runs
+    /// once per component instance" lifecycle rule lining up correctly for
+    /// a dragon that gets disabled in the Village (OnEnable bails out before
+    /// Start ever fires there) and later re-enabled here in the Battle
+    /// scene. That reliance is fragile: if Start() somehow already ran once
+    /// (edge cases around enable/disable/SetActive cycling), re-enabling the
+    /// component a second time would silently skip re-computing bounds/
+    /// cruise altitude entirely, leaving the dragon permanently stuck at
+    /// whatever cruise/hover state it last had — which reads exactly like
+    /// "the dragon just floats there and never breathes fire". Calling this
+    /// explicitly after flight.enabled = true removes that guesswork.
+    /// Safe to call multiple times — every field it touches is fully
+    /// recomputed from scratch each call, no partial/leftover state.
+    /// </summary>
+    public void ActivateForBattle()
+    {
+        // Canvas refs can be stale (see OnEnable's comment) if this dragon
+        // is a carried-over live GameObject — re-resolve every time this is
+        // called, not just once, since ActivateForBattle can now run from
+        // more than one caller.
+        _rootCanvas = GetComponentInParent<Canvas>();
+        _canvasRt = _rootCanvas != null ? _rootCanvas.GetComponent<RectTransform>() : null;
+
+        // Compute the real ceiling from the canvas's own visible top edge —
+        // this adapts automatically to whatever Canvas Scaler resolution the
+        // game is actually running at, instead of a guessed flat number.
+        _maxAltitudeY = ComputeMaxAltitudeY();
+        ComputeHorizontalBounds(out _minX, out _maxX);
+
+        Debug.Log($"[BattleDragonFlight] '{name}' bounds check — " +
+                  $"maxAltitudeY={_maxAltitudeY:F1} minX={_minX:F1} maxX={_maxX:F1} " +
+                  $"spawnPos={_rt.anchoredPosition} topMargin={topMargin}");
 
         // Spawn point becomes the base of the climb — works the same whether
         // the dragon landed in the flat army row or a seated castle slot.
-        _cruiseY = _rt.anchoredPosition.y + riseHeight;
+        // Clamped to the ceiling too, in case riseHeight alone would already
+        // push cruise altitude above what's visible.
+        _cruiseY = Mathf.Min(_rt.anchoredPosition.y + riseHeight, _maxAltitudeY);
         _hasReachedCruise = false;
+        _isBreathingFire = false;
 
         // "Appear, then fly to the top" — start the fly animation immediately
         // on spawn instead of waiting for the first Approach/Engage tick.
@@ -245,7 +331,79 @@ public class BattleDragonFlight : MonoBehaviour
         // target on its left (negative offset). Bot units approach from the
         // right → hover just short of it on its right (positive offset).
         float facingSign = _battleUnit.isPlayerUnit ? -1f : 1f;
-        return targetLocalPos + new Vector2(hoverOffset.x * facingSign, hoverOffset.y);
+
+        // Clamp Y to the altitude ceiling — without this, a target seated
+        // high on the castle's TopSlots staircase (a Cannon/Archer) plus
+        // hoverOffset.y puts the hover point above the visible canvas, and
+        // the dragon dutifully flies straight there, looking like it left
+        // the game scene. Hovering at the ceiling directly above a
+        // high-seated target still keeps the target in range for
+        // BattleUnit's own attack-range check as long as attackRange
+        // comfortably covers the gap — same as any other Y offset here.
+        float hoverY = Mathf.Min(targetLocalPos.y + hoverOffset.y, _maxAltitudeY);
+
+        // Clamp X to the canvas's visible left/right edges — without this, a
+        // target near either edge of the battlefield (e.g. a cannon/archer
+        // on the outer end of the castle's TopSlots row) pushes the hover
+        // point past the canvas boundary and the dragon flies off the side
+        // of the screen instead of stopping at the edge.
+        float hoverX = Mathf.Clamp(targetLocalPos.x + hoverOffset.x * facingSign, _minX, _maxX);
+
+        return new Vector2(hoverX, hoverY);
+    }
+
+    /// <summary>
+    /// Converts the battlefield's own top edge into THIS dragon's parent's
+    /// local anchoredPosition space, minus topMargin, so RiseToCruise/
+    /// GetHoverPoint have a real ceiling to clamp against instead of flying
+    /// to whatever Y the maths produces. Uses BattleManager.BattlefieldBounds
+    /// (the same play-area rect BattleUnit's ground units are clamped to) so
+    /// the dragon can't fly above the battlefield even when the battlefield
+    /// is smaller than the full canvas (e.g. leaving room for a HUD at the
+    /// top). Falls back to the full canvas rect if BattlefieldBounds isn't
+    /// assigned, so nothing changes until you wire it up in the Inspector.
+    /// </summary>
+    private float ComputeMaxAltitudeY()
+    {
+        RectTransform bounds = BattleManager.Instance?.BattlefieldBounds ?? _canvasRt;
+        if (bounds == null) return float.MaxValue;
+
+        Vector3 topWorld = bounds.TransformPoint(
+            new Vector2(bounds.rect.center.x, bounds.rect.yMax));
+
+        return WorldToLocalAnchoredPos(topWorld).y - topMargin;
+    }
+
+    /// <summary>
+    /// Converts the battlefield's own left/right edges into THIS dragon's
+    /// parent's local anchoredPosition space, inset by topMargin, so
+    /// GetHoverPoint has real left/right walls to clamp against instead of
+    /// flying to whatever X the hover-offset maths produces. Same
+    /// BattlefieldBounds-with-canvas-fallback approach as ComputeMaxAltitudeY.
+    /// </summary>
+    private void ComputeHorizontalBounds(out float minX, out float maxX)
+    {
+        RectTransform bounds = BattleManager.Instance?.BattlefieldBounds ?? _canvasRt;
+        if (bounds == null)
+        {
+            minX = float.MinValue;
+            maxX = float.MaxValue;
+            return;
+        }
+
+        Vector3 leftWorld = bounds.TransformPoint(
+            new Vector2(bounds.rect.xMin, bounds.rect.center.y));
+        Vector3 rightWorld = bounds.TransformPoint(
+            new Vector2(bounds.rect.xMax, bounds.rect.center.y));
+
+        float leftLocalX = WorldToLocalAnchoredPos(leftWorld).x;
+        float rightLocalX = WorldToLocalAnchoredPos(rightWorld).x;
+
+        // Don't assume left edge → smaller local X — a bot-side dragon's
+        // parent can be mirrored (flipHorizontally on a bot castle cell),
+        // which flips which converted value ends up smaller.
+        minX = Mathf.Min(leftLocalX, rightLocalX) + topMargin;
+        maxX = Mathf.Max(leftLocalX, rightLocalX) - topMargin;
     }
 
     private Vector2 WorldToLocalAnchoredPos(Vector3 worldPos)
