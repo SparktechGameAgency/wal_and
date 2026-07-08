@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using System;
 
 public class CastleBlock : MonoBehaviour
@@ -21,6 +22,9 @@ public class CastleBlock : MonoBehaviour
     public event Action<CastleBlock> OnStatsChanged;
     public event Action<CastleBlock> OnBlockDestroyed;
 
+    /// <summary>Fired whenever this block's wall tier changes via ApplyWallUpgrade.</summary>
+    public event Action<CastleBlock, CastleWallData> OnWallChanged;
+
     // ─── Slots ───────────────────────────────────────
     [Header("Slots")]
     public CannonSlot cannonSlot;
@@ -38,11 +42,31 @@ public class CastleBlock : MonoBehaviour
     public string blockName = "Stone Block";
     public int blockCost = 30;
 
+    // ─── Wall Visual ─────────────────────────────────
+    [Header("Wall Visual")]
+    [Tooltip("The Image showing this block's wall sprite. Swapped by " +
+             "CastleWallUpgrader/ApplyWallUpgrade whenever the wall's tier changes. " +
+             "Auto-found in children by name (\"WallArt\" or \"WallSprite\") if left blank.")]
+    public Image wallArtImage;
+
     private void Awake()
     {
         _health = maxHealth;
         _shield = maxShield;
         _durability = maxDurability;
+
+        if (wallArtImage == null)
+        {
+            // Try both common naming conventions so prefabs using either
+            // "WallArt" or "WallSprite" as the child name work out of the box.
+            Transform found = transform.Find("WallArt") ?? transform.Find("WallSprite");
+            if (found != null) wallArtImage = found.GetComponent<Image>();
+        }
+
+        if (wallArtImage == null)
+            Debug.LogWarning($"[CastleBlock] '{blockName}': wallArtImage is unassigned — " +
+                              "wall sprite swaps from ApplyWallUpgrade() will silently do nothing. " +
+                              "Assign it in the Inspector or name the child \"WallArt\"/\"WallSprite\".", this);
 
         DisableArtRaycasts();
     }
@@ -119,6 +143,42 @@ public class CastleBlock : MonoBehaviour
     {
         _durability = Mathf.Min(_durability + amount, maxDurability);
         OnStatsChanged?.Invoke(this);
+    }
+
+    // ─── Wall Upgrade ────────────────────────────────
+
+    /// <summary>
+    /// Swaps this block over to a new CastleWallData tier — called by
+    /// CastleWallUpgrader once its Update-button timer finishes. Updates
+    /// name/cost/stat caps, refills health/shield/durability to the new
+    /// (usually higher) max, and swaps the visible wall sprite.
+    /// </summary>
+    public void ApplyWallUpgrade(CastleWallData data)
+    {
+        if (data == null) return;
+
+        blockName = data.wallName;
+        blockCost = data.updateCost;
+
+        maxHealth = data.maxHealth;
+        maxShield = data.maxShield;
+        maxDurability = data.maxDurability;
+
+        // A freshly-completed wall starts at full stats rather than
+        // carrying over whatever fraction of health/shield/durability the
+        // previous tier happened to be at.
+        _health = maxHealth;
+        _shield = maxShield;
+        _durability = maxDurability;
+
+        if (wallArtImage != null && data.wallSprite != null)
+            wallArtImage.sprite = data.wallSprite;
+
+        if (hud != null && hud.blockNameLabel != null)
+            hud.blockNameLabel.text = blockName;
+
+        OnStatsChanged?.Invoke(this);
+        OnWallChanged?.Invoke(this, data);
     }
 
     // ─── Destroy ─────────────────────────────────────
