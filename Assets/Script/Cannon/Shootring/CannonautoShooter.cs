@@ -274,7 +274,12 @@ public class CannonAutoShooter : MonoBehaviour
         bool enemyIsUI = targetTransform.GetComponent<RectTransform>() != null;
         if (enemyIsUI)
         {
-            endPos = targetTransform.position;
+            // Was targetTransform.position — the raw RectTransform pivot,
+            // which sits at the enemy's FEET for ground units (bottom
+            // pivot, so they sit correctly on the ground line). That put
+            // every cannonball at the target's feet instead of its body.
+            // See AimPointUtil for the full explanation.
+            endPos = AimPointUtil.GetBodyCenter(targetTransform);
         }
         else
         {

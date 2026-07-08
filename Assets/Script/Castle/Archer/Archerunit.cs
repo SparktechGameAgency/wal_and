@@ -1011,7 +1011,10 @@ public class ArcherUnit : MonoBehaviour
         // IDamageable only guarantees DamageableTransform, not Component-only
         // members — works identically for an EnemyUnit (Village) or a
         // BattleUnit (Battle scene) either way.
-        Vector3 targetPos = _lockedTarget.DamageableTransform.position;
+        // Was _lockedTarget.DamageableTransform.position — the raw pivot,
+        // which sits at the enemy's feet for ground units. See
+        // AimPointUtil for the full explanation.
+        Vector3 targetPos = AimPointUtil.GetBodyCenter(_lockedTarget.DamageableTransform);
 
         GameObject arrowGO = Instantiate(arrowPrefab, spawnPos, Quaternion.identity, parent);
 

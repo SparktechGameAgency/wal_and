@@ -487,6 +487,16 @@ public class BattleManager : MonoBehaviour
                 flight.ActivateForBattle();
             }
 
+            // Same class of stale-scene-reference bug as BattleDragonFlight
+            // above, just for the fire VFX instead of movement — see
+            // DragonFireBreath.RebindToCurrentScene() for the full reason.
+            // Without this, a carried-over dragon's fire pool is still
+            // parented under the (now-destroyed) Village Canvas, and it
+            // never visibly breathes fire in battle.
+            DragonFireBreath fireBreath = go.GetComponentInChildren<DragonFireBreath>(true);
+            if (fireBreath != null)
+                fireBreath.RebindToCurrentScene();
+
             Debug.Log($"[BattleManager] Carried-over dragon '{go.name}' ready for battle.");
         }
 

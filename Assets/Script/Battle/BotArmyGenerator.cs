@@ -157,7 +157,19 @@ public class BotArmyGenerator : MonoBehaviour
             {
                 // No free castle slot (or zone placement failed) — fall back
                 // to the flat army row, same as before.
-                go = Instantiate(entry.prefab, transform);
+                //
+                // worldPositionStays: false — the 2-arg Instantiate(prefab,
+                // parent) overload defaults to worldPositionStays: TRUE,
+                // which tries to preserve the prefab's original world
+                // position while reparenting it under BotArmyRoot (deep in a
+                // scaled Canvas hierarchy) and back-solves into garbage
+                // localPosition values — same failure mode already documented
+                // in BattleManager.ReceivePlayerDragons ("Y landing around
+                // -2,480,058"). Passing false makes the new instance start at
+                // the prefab's own local origin under the new parent instead,
+                // which the anchoredPosition3D line below then overwrites
+                // with a known-good value anyway.
+                go = Instantiate(entry.prefab, transform, false);
 
                 // Grid layout — stack left-to-right then up.
                 int col = flatIndex % unitsPerRow;
@@ -178,8 +190,16 @@ public class BotArmyGenerator : MonoBehaviour
                 float y = entry.type == BattleUnitType.Horse
                     ? 0f
                     : row * unitSpacingY;
-                rt.anchoredPosition = new Vector2(
-                    startX + col * unitSpacingX, y);
+
+                // anchoredPosition (Vector2) only ever wrote X/Y — it never
+                // touches localPosition.z, so any leftover garbage Z from a
+                // bad reparent used to survive untouched. Setting
+                // anchoredPosition3D explicitly zeroes Z too. localScale is
+                // reset for the same "don't trust whatever Instantiate left
+                // behind" reason the dragon carry-over path already resets it.
+                rt.anchoredPosition3D = new Vector3(
+                    startX + col * unitSpacingX, y, 0f);
+                rt.localScale = Vector3.one;
 
                 skipFacingFlip = false;
 
