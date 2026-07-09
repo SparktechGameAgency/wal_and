@@ -635,7 +635,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1bba4c5e39ce8c4ab50a6d41d98f5ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BotArmyGenerator
-  difficulty: 2
+  difficulty: 0
   easyBotCountOffset: {x: -4, y: -2}
   mediumBotCountOffset: {x: -2, y: 2}
   hardBotCountOffset: {x: 2, y: 5}
