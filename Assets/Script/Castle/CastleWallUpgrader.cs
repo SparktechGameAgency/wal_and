@@ -85,6 +85,12 @@ public class CastleWallUpgrader : MonoBehaviour
     // the expansion section only.
     private bool _isExpandTabActive;
 
+    // Whether GameManager currently has the Castle panel open. This block's
+    // GameObject is shared between the Village panel (visual-only, moved
+    // there by CastleGridMover) and the Castle panel (interactive) — the
+    // Update button must never be active while sitting in the Village view.
+    private bool _isCastlePanelActive;
+
     public bool IsUpgrading => _isUpgrading;
     public CastleWallData CurrentWallData =>
         (_currentTierIndex >= 0 && _currentTierIndex < wallTiers.Count) ? wallTiers[_currentTierIndex] : null;
@@ -113,25 +119,38 @@ public class CastleWallUpgrader : MonoBehaviour
         if (updateButton != null)
             updateButton.onClick.AddListener(OnUpdateButtonClicked);
 
-        // Pick up whatever tab is already active (e.g. panel opened directly
-        // into Expand) instead of assuming hidden until the first tab event.
-        // If there's no CastleTabController in the scene at all (e.g. a
-        // standalone test scene with just the CastleBlock prefab), don't
-        // gate on tabs — default to visible instead of permanently hidden.
-        _isExpandTabActive = CastleTabController.Instance == null ||
-                              CastleTabController.Instance.ActiveTab == CastleTabController.CastleTab.Expand;
-
+        // Flags (_isExpandTabActive / _isCastlePanelActive) are computed in
+        // OnEnable(), which always runs before Start() — including on this
+        // very first activation — so no need to duplicate that here.
         RefreshVisuals();
     }
 
     private void OnEnable()
     {
         CastleTabController.OnTabChanged += HandleTabChanged;
+        GameManager.OnGameStateChanged += HandleGameStateChanged;
+
+        // IMPORTANT: this block's GameObject gets disabled/re-enabled every
+        // time it's reparented between the Village panel and the Castle
+        // panel (CastleGridMover moves it, and the panel it leaves gets
+        // SetActive(false)'d, which disables everything under it — including
+        // this component). Start() only runs once ever, so if we only read
+        // the current tab/panel state there, this flag goes stale the first
+        // time the block is disabled and re-enabled elsewhere. Re-reading it
+        // here, on every re-enable, is what keeps it correct.
+        _isExpandTabActive = CastleTabController.Instance == null ||
+                              CastleTabController.Instance.ActiveTab == CastleTabController.CastleTab.Expand;
+
+        _isCastlePanelActive = GameManager.Instance == null ||
+                                GameManager.Instance.CurrentState == GameManager.GameState.Castle;
+
+        RefreshVisuals();
     }
 
     private void OnDisable()
     {
         CastleTabController.OnTabChanged -= HandleTabChanged;
+        GameManager.OnGameStateChanged -= HandleGameStateChanged;
     }
 
     private void OnDestroy()
@@ -149,6 +168,15 @@ public class CastleWallUpgrader : MonoBehaviour
         // Just toggles what's shown — never touches the running timer, so
         // real-time progress keeps counting in the background and picks up
         // right where it left off when the player returns to Expand.
+        RefreshVisuals();
+    }
+
+    private void HandleGameStateChanged(GameManager.GameState newState)
+    {
+        _isCastlePanelActive = newState == GameManager.GameState.Castle;
+
+        // Same reasoning as HandleTabChanged — only toggles visibility, the
+        // running upgrade timer (if any) keeps counting in the background.
         RefreshVisuals();
     }
 
@@ -194,7 +222,7 @@ public class CastleWallUpgrader : MonoBehaviour
             if (statusLabel != null)
             {
                 float remaining = Mathf.Max(0f, duration - elapsed);
-                statusLabel.text = $"Building {nextData.wallName}… {remaining:F1}s";
+                statusLabel.text = $"{remaining:F1}s";
             }
 
             yield return null;
@@ -219,8 +247,8 @@ public class CastleWallUpgrader : MonoBehaviour
     /// </summary>
     private void RefreshVisuals()
     {
-        bool showButton = _isExpandTabActive && !IsUpgrading && HasNextTier;
-        bool showProgress = _isExpandTabActive && IsUpgrading;
+        bool showButton = _isExpandTabActive && _isCastlePanelActive && !IsUpgrading && HasNextTier;
+        bool showProgress = _isExpandTabActive && _isCastlePanelActive && IsUpgrading;
 
         if (updateButton != null)
         {

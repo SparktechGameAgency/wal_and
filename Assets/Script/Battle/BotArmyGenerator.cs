@@ -5,13 +5,59 @@ using System.Collections.Generic;
 /// BotArmyGenerator
 ///
 /// Spawns a randomized enemy army on the RIGHT side of the Battle scene.
-/// The bot army is scaled to be roughly even with the player's army size
-/// (±2 units) so fights feel fair but unpredictable.
+/// The bot army size is scaled off the player's army size by a
+/// difficulty-tuned random offset (see BotDifficulty / CurrentBotCountOffset)
+/// so fights feel fair but unpredictable, and scale up/down with the chosen
+/// difficulty level.
 ///
 /// Assign to an empty RectTransform called "BotArmyRoot".
 /// </summary>
 public class BotArmyGenerator : MonoBehaviour
 {
+    public enum BotDifficulty
+    {
+        Easy,
+        Medium,
+        Hard
+    }
+
+    [Header("Difficulty")]
+    [Tooltip("Set in the Inspector (or from code via the Difficulty property " +
+             "before calling Generate) to control how large the bot army is.")]
+    [SerializeField] private BotDifficulty difficulty = BotDifficulty.Medium;
+
+    [Tooltip("Bot army size = player army size + a random value from this " +
+             "range (inclusive), clamped to a minimum of 1. Use negative " +
+             "values to keep the bot army smaller than the player's.")]
+    [SerializeField] private Vector2Int easyBotCountOffset = new Vector2Int(-4, -2);
+
+    [Tooltip("Same as above, used when difficulty is set to Medium.")]
+    [SerializeField] private Vector2Int mediumBotCountOffset = new Vector2Int(-2, 2);
+
+    [Tooltip("Same as above, used when difficulty is set to Hard.")]
+    [SerializeField] private Vector2Int hardBotCountOffset = new Vector2Int(2, 5);
+
+    // Lets a difficulty-select menu set this at runtime before Generate() is
+    // called, without needing a reference to the SerializeField directly.
+    public BotDifficulty Difficulty
+    {
+        get => difficulty;
+        set => difficulty = value;
+    }
+
+    private Vector2Int CurrentBotCountOffset
+    {
+        get
+        {
+            switch (difficulty)
+            {
+                case BotDifficulty.Easy: return easyBotCountOffset;
+                case BotDifficulty.Hard: return hardBotCountOffset;
+                default: return mediumBotCountOffset;
+            }
+        }
+    }
+
     [Header("Spawn Layout")]
     [SerializeField] private float startX = 0f;    // local x offset from BotArmyRoot
     [SerializeField] private float unitSpacingX = 80f;
@@ -66,8 +112,11 @@ public class BotArmyGenerator : MonoBehaviour
             return;
         }
 
-        // Bot army is playerCount ± 2 (min 1).
-        int botCount = Mathf.Max(1, playerUnitCount + Random.Range(-2, 3));
+        // Bot army is playerCount + a difficulty-tuned random offset (min 1).
+        // Easy skews negative (fewer bots), Medium is roughly even (±2, same
+        // as before difficulty was added), Hard skews positive (more bots).
+        Vector2Int offset = CurrentBotCountOffset;
+        int botCount = Mathf.Max(1, playerUnitCount + Random.Range(offset.x, offset.y + 1));
 
         // Build a pool of available unit types (skip anything unassigned).
         var pool = new List<PoolEntry>();
@@ -241,7 +290,7 @@ public class BotArmyGenerator : MonoBehaviour
         }
 
         Debug.Log($"[BotArmyGenerator] Spawned {SpawnedUnits.Count} bot units " +
-                  $"(player had {playerUnitCount}).");
+                  $"(player had {playerUnitCount}, difficulty: {difficulty}).");
     }
 
     private BattleUnitData BuildData(PoolEntry entry, RiderLoadoutPool riderLoadouts)
