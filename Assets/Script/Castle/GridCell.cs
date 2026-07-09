@@ -8,6 +8,9 @@ public class GridCell : MonoBehaviour
     public int Col { get; private set; }
     public bool HasBlock => _block != null;
 
+    /// <summary>The CastleBlock placed on this cell, or null if empty.</summary>
+    public CastleBlock Block => _block;
+
     private CastleBlock _block;
     private GameObject _expansionSlotInstance;
     private GameObject _unitSlotInstance;

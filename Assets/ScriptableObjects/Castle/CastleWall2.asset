@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CastleWallData
   wallName: Wood Wall
   tier: 1
-  wallSprite: {fileID: 21300000, guid: 57950e9abd3ffb54c9f06f5ccc2e33bc, type: 3}
+  topWallSprite: {fileID: 21300000, guid: 5a1373e8b9c60774ba29ce05dc718c7b, type: 3}
+  bodyWallSprite: {fileID: 21300000, guid: 3dc1fd17f79a97b4ea61d4cff7d4f89c, type: 3}
   maxHealth: 100
   maxShield: 50
   maxDurability: 100

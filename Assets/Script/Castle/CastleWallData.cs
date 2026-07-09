@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// AREA FORGE — CastleWallData  (ScriptableObject)
@@ -26,8 +27,14 @@ public class CastleWallData : ScriptableObject
     // ── Visual ────────────────────────────────────────────────────────────────
 
     [Header("Visual")]
-    [Tooltip("Swapped onto CastleBlock.wallArtImage the moment this tier finishes building.")]
-    public Sprite wallSprite;
+    [Tooltip("The crenellated/battlement top edge piece — swapped onto " +
+             "CastleBlock.topWallArtImage the moment this tier finishes building.")]
+    public Sprite topWallSprite;
+
+    [Tooltip("The repeating wall body texture below the top piece — swapped " +
+             "onto CastleBlock.wallArtImage the moment this tier finishes building.")]
+    [FormerlySerializedAs("wallSprite")]
+    public Sprite bodyWallSprite;
 
     // ── Stats ─────────────────────────────────────────────────────────────────
 
@@ -48,9 +55,13 @@ public class CastleWallData : ScriptableObject
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (wallSprite == null)
-            Debug.LogWarning($"[CastleWallData] '{name}': wallSprite is empty — " +
-                              "the wall will appear blank once this tier is applied.", this);
+        if (topWallSprite == null)
+            Debug.LogWarning($"[CastleWallData] '{name}': topWallSprite is empty — " +
+                              "the wall's top edge will appear blank once this tier is applied.", this);
+
+        if (bodyWallSprite == null)
+            Debug.LogWarning($"[CastleWallData] '{name}': bodyWallSprite is empty — " +
+                              "the wall body will appear blank once this tier is applied.", this);
 
         if (updateDuration < 0f)
             updateDuration = 0f;

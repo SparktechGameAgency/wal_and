@@ -1806,7 +1806,7 @@ MonoBehaviour:
   totalRows: 6
   totalCols: 8
   cellSize: 80
-  cellSpacing: 0
+  cellSpacing: 15.7
   gridCellPrefab: {fileID: 8012074761302108501, guid: 9537dd407e1aad84d8e966142ee6055a, type: 3}
   castleBlockPrefab: {fileID: 5277657931440314103, guid: 22e659926d2354c4c82b559753a735e1, type: 3}
   expansionSlotPrefab: {fileID: 1013685700882912299, guid: 879cde51603e95840a970b8585b8b097, type: 3}

@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CastleWallData
   wallName: Stone Wall
   tier: 2
-  wallSprite: {fileID: 21300000, guid: 472180aa574786b4ab58958b6d725842, type: 3}
+  topWallSprite: {fileID: 21300000, guid: d518819b6a4cfad4ba590d0912ff201d, type: 3}
+  bodyWallSprite: {fileID: 21300000, guid: a75928f800e5a0944a6c63720f7a062f, type: 3}
   maxHealth: 100
   maxShield: 50
   maxDurability: 100

@@ -323,6 +323,12 @@ public class CastleGrid : MonoBehaviour
                 // "Exposed" = the cell directly above this one has no block
                 bool isExposed = !InBounds(r + 1, c) || !_grid[r + 1, c].HasBlock;
 
+                // Same condition also decides which wall piece this block
+                // shows: the top-most block in each column (no block above)
+                // is the one with the crenellated top edge; every block
+                // stacked under it shows the plain body texture instead.
+                cell.Block.SetTopOfColumn(isExposed);
+
                 if (isExposed && castleBlockUnitSlotPrefab != null)
                 {
                     // Always show the slot so the cannon visual persists.

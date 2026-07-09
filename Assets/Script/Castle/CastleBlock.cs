@@ -44,9 +44,14 @@ public class CastleBlock : MonoBehaviour
 
     // ─── Wall Visual ─────────────────────────────────
     [Header("Wall Visual")]
-    [Tooltip("The Image showing this block's wall sprite. Swapped by " +
+    [Tooltip("The Image showing this block's wall TOP (crenellated edge) sprite. " +
+             "Swapped by CastleWallUpgrader/ApplyWallUpgrade whenever the wall's tier " +
+             "changes. Auto-found in children by name (\"TopWallSprite\", \"WallTop\", or \"TopWallArt\") if left blank.")]
+    public Image topWallArtImage;
+
+    [Tooltip("The Image showing this block's wall BODY sprite. Swapped by " +
              "CastleWallUpgrader/ApplyWallUpgrade whenever the wall's tier changes. " +
-             "Auto-found in children by name (\"WallArt\" or \"WallSprite\") if left blank.")]
+             "Auto-found in children by name (\"BodyWallSprite\", \"WallArt\", \"WallSprite\", or \"WallBody\") if left blank.")]
     public Image wallArtImage;
 
     private void Awake()
@@ -55,18 +60,34 @@ public class CastleBlock : MonoBehaviour
         _shield = maxShield;
         _durability = maxDurability;
 
-        if (wallArtImage == null)
+        if (topWallArtImage == null)
         {
-            // Try both common naming conventions so prefabs using either
-            // "WallArt" or "WallSprite" as the child name work out of the box.
-            Transform found = transform.Find("WallArt") ?? transform.Find("WallSprite");
-            if (found != null) wallArtImage = found.GetComponent<Image>();
+            // transform.Find only checks DIRECT children — won't reach an
+            // Image nested deeper. Search recursively by name instead.
+            topWallArtImage = FindImageInChildrenByName("TopWallSprite", "WallTop", "TopWallArt");
         }
 
         if (wallArtImage == null)
-            Debug.LogWarning($"[CastleBlock] '{blockName}': wallArtImage is unassigned — " +
-                              "wall sprite swaps from ApplyWallUpgrade() will silently do nothing. " +
-                              "Assign it in the Inspector or name the child \"WallArt\"/\"WallSprite\".", this);
+        {
+            // Same recursive search, covering both naming conventions.
+            wallArtImage = FindImageInChildrenByName("BodyWallSprite", "WallArt", "WallSprite", "WallBody");
+        }
+
+        // NOTE: it's expected/by-design for a block to have only ONE of
+        // these two assigned, not both — diagonal blocks only carry a top
+        // (crenellated) piece, regular blocks only carry a body piece. Don't
+        // guess at a substitute Image when one is missing; ApplyWallUpgrade
+        // already null-checks each one independently and simply skips
+        // whichever isn't present, which is the correct behavior here.
+
+        // No warnings here if one is null — see the note above. A block that
+        // truly has neither (both null) would just render no wall art at
+        // all, which is a real misconfiguration, so that case alone is worth
+        // flagging.
+        if (topWallArtImage == null && wallArtImage == null)
+            Debug.LogWarning($"[CastleBlock] '{blockName}': neither topWallArtImage nor wallArtImage " +
+                              "is assigned/found — this block will show no wall art at all. " +
+                              "Assign at least one in the Inspector.", this);
 
         DisableArtRaycasts();
     }
@@ -80,6 +101,24 @@ public class CastleBlock : MonoBehaviour
     /// CannonZone/ArcherZone buttons sitting behind it. Disable raycastTarget
     /// on all purely decorative Images here so clicks pass through.
     /// </summary>
+    /// <summary>
+    /// Recursively searches all descendants (any depth, not just direct
+    /// children like transform.Find) for the first Image whose GameObject
+    /// name case-insensitively matches any of the given candidate names.
+    /// </summary>
+    private Image FindImageInChildrenByName(params string[] candidateNames)
+    {
+        foreach (var img in GetComponentsInChildren<Image>(true))
+        {
+            foreach (var name in candidateNames)
+            {
+                if (string.Equals(img.gameObject.name, name, System.StringComparison.OrdinalIgnoreCase))
+                    return img;
+            }
+        }
+        return null;
+    }
+
     private void DisableArtRaycasts()
     {
         foreach (var img in GetComponentsInChildren<UnityEngine.UI.Image>(true))
@@ -89,6 +128,29 @@ public class CastleBlock : MonoBehaviour
             if (img.GetComponent<UnityEngine.UI.Button>() != null) continue;
             img.raycastTarget = false;
         }
+    }
+
+    // ─── Top-Of-Column Visual ─────────────────────────
+
+    /// <summary>
+    /// Only one of topWallArtImage / wallArtImage should ever be VISIBLE at
+    /// once on a given block — they're full-size siblings, so having both
+    /// active means whichever is the later sibling (TopWallSprite, in the
+    /// current prefab) always renders over and completely hides the other,
+    /// everywhere, regardless of which one "should" be showing.
+    ///
+    /// Called by CastleGrid.RefreshUnitSlots() with the same isTop == true
+    /// condition it already uses for "isExposed" (no block above this one) —
+    /// the top-most block in each column shows the crenellated top piece,
+    /// every block under it shows the plain body piece instead.
+    /// </summary>
+    public void SetTopOfColumn(bool isTop)
+    {
+        if (topWallArtImage != null)
+            topWallArtImage.gameObject.SetActive(isTop);
+
+        if (wallArtImage != null)
+            wallArtImage.gameObject.SetActive(!isTop);
     }
 
     private void Start()
@@ -171,8 +233,11 @@ public class CastleBlock : MonoBehaviour
         _shield = maxShield;
         _durability = maxDurability;
 
-        if (wallArtImage != null && data.wallSprite != null)
-            wallArtImage.sprite = data.wallSprite;
+        if (topWallArtImage != null && data.topWallSprite != null)
+            topWallArtImage.sprite = data.topWallSprite;
+
+        if (wallArtImage != null && data.bodyWallSprite != null)
+            wallArtImage.sprite = data.bodyWallSprite;
 
         if (hud != null && hud.blockNameLabel != null)
             hud.blockNameLabel.text = blockName;
