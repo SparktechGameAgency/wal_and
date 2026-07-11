@@ -16,6 +16,7 @@ public class BotArmyGenerator : MonoBehaviour
 {
     public enum BotDifficulty
     {
+        ExtraEasy,
         Easy,
         Medium,
         Hard
@@ -53,6 +54,8 @@ public class BotArmyGenerator : MonoBehaviour
             {
                 case BotDifficulty.Easy: return easyBotCountOffset;
                 case BotDifficulty.Hard: return hardBotCountOffset;
+                // ExtraEasy never reads this — Generate() hard-codes botCount = 1
+                // for it before this property would otherwise be consulted.
                 default: return mediumBotCountOffset;
             }
         }
@@ -115,8 +118,23 @@ public class BotArmyGenerator : MonoBehaviour
         // Bot army is playerCount + a difficulty-tuned random offset (min 1).
         // Easy skews negative (fewer bots), Medium is roughly even (±2, same
         // as before difficulty was added), Hard skews positive (more bots).
-        Vector2Int offset = CurrentBotCountOffset;
-        int botCount = Mathf.Max(1, playerUnitCount + Random.Range(offset.x, offset.y + 1));
+        //
+        // ExtraEasy is a special case, not just "Easy with a bigger negative
+        // offset" — it must ALWAYS spawn exactly one bot unit regardless of
+        // how large the player's army is (a 12-soldier player army still
+        // only faces one lone cannon/horse/etc.), so it skips the
+        // offset-based scaling entirely instead of going through
+        // CurrentBotCountOffset like every other difficulty.
+        int botCount;
+        if (difficulty == BotDifficulty.ExtraEasy)
+        {
+            botCount = 1;
+        }
+        else
+        {
+            Vector2Int offset = CurrentBotCountOffset;
+            botCount = Mathf.Max(1, playerUnitCount + Random.Range(offset.x, offset.y + 1));
+        }
 
         // Build a pool of available unit types (skip anything unassigned).
         var pool = new List<PoolEntry>();
@@ -286,6 +304,15 @@ public class BotArmyGenerator : MonoBehaviour
 
             BattleUnitData data = BuildData(entry, riderLoadouts);
             bu.Init(data, playerUnit: false, skipFacingFlip: skipFacingFlip);
+
+            // Only cannons/archers actually seated on a castle block have a
+            // floor a climbing soldier needs to reach — everyone else
+            // (flat-row fallback, or non-seatable types) keeps CastleRow at
+            // its default (-1), which BattleUnit.Update reads as "not on a
+            // castle block, don't bother climbing for this one."
+            if (seatSlot != null)
+                bu.SetCastleRow(seatSlot.Value.row);
+
             SpawnedUnits.Add(bu);
         }
 

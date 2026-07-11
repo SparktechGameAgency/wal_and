@@ -596,6 +596,9 @@ public class BattleManager : MonoBehaviour
                 BattleUnit existingBu = existing.GetComponent<BattleUnit>();
                 if (existingBu == null) existingBu = existing.AddComponent<BattleUnit>();
                 existingBu.Init(data, playerUnit: true);
+                // data.hasGridPosition is guaranteed true here (checked at the
+                // top of FindExistingCastleUnit), so gridPosition.x is real.
+                existingBu.SetCastleRow(data.gridPosition.x);
                 _playerUnits.Add(existingBu);
                 continue;
             }
@@ -752,6 +755,26 @@ public class BattleManager : MonoBehaviour
         }
 
         return closest;
+    }
+
+    /// <summary>
+    /// Called by a climbing BattleUnit (Soldier only) to find the door for a
+    /// given floor row on the side it's attacking INTO.
+    ///
+    /// Only the bot's procedurally generated castle spawns CastleDoor
+    /// instances right now (see BotCastleGenerator.castleDoorPrefab) — the
+    /// player's real, carried-over Village CastleGrid doesn't. So a player
+    /// soldier climbing into the bot's castle is the only supported
+    /// direction today; a bot soldier calling this with
+    /// climberIsPlayerUnit == false just fails safe to null, and
+    /// BattleUnit falls back to its old straight-line WorldX walk for it —
+    /// same "unassigned = no special behaviour" convention used everywhere
+    /// else in this file (see battlefieldBounds above).
+    /// </summary>
+    public CastleDoor GetCastleDoorForClimb(bool climberIsPlayerUnit, int floorRow)
+    {
+        if (!climberIsPlayerUnit) return null;
+        return botCastleGenerator != null ? botCastleGenerator.GetDoor(floorRow) : null;
     }
 
     // ── Death Tracking ────────────────────────────────────────────────────────

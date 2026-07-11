@@ -99,9 +99,30 @@ public class BotCastleGenerator : MonoBehaviour
     {
         public CastleUnitDropZone cannonZone;
         public ArcherZoneCastle archerZone;
+
+        /// <summary>The grid row (floor) this slot's block sits on — set by BuildGridCells.
+        /// BotArmyGenerator copies this onto the seated unit's BattleUnit.CastleRow so a
+        /// climbing soldier knows which floor to stop on.</summary>
+        public int row;
     }
 
     public List<BotUnitSlot> GeneratedUnitSlots { get; private set; } = new List<BotUnitSlot>();
+
+    [Header("Castle Door (soldiers climb through these to reach archers/cannons)")]
+    [Tooltip("Prefab with the CastleDoor component — enterFrames/exitFrames wired on the " +
+             "prefab itself. Instantiated once per generated floor row, on that row's " +
+             "highest-column block ('the last castle grid' of that floor), exactly like " +
+             "castleBlockUnitSlotPrefab is placed once per exposed block. Leave empty to " +
+             "skip door generation entirely — soldiers fall back to the old straight-line walk.")]
+    [SerializeField] private GameObject castleDoorPrefab;
+
+    /// <summary>One CastleDoor per generated floor row. BattleManager.GetCastleDoorForClimb
+    /// looks these up by row for a climbing soldier.</summary>
+    public List<CastleDoor> GeneratedDoors { get; private set; } = new List<CastleDoor>();
+
+    /// <summary>The door belonging to <paramref name="row"/>, or null if that row doesn't
+    /// exist / castleDoorPrefab wasn't assigned.</summary>
+    public CastleDoor GetDoor(int row) => GeneratedDoors.Find(d => d != null && d.Row == row);
 
     /// <summary>
     /// Bot side: takes the player's real castle dimensions, nudges each axis
@@ -194,11 +215,22 @@ public class BotCastleGenerator : MonoBehaviour
     {
         GeneratedBlockCount = positions.Count;
         GeneratedUnitSlots.Clear();
+        GeneratedDoors.Clear();
 
         // "Exposed" = same rule CastleGrid.RefreshUnitSlots uses: no block
         // stacked directly above this one in the same column. Used below to
         // decide which blocks get a CastleBlockUnitSlot (cannon/archer zones).
         var placedSet = new HashSet<Vector2Int>(positions);
+
+        // "The last castle grid" of a floor = its highest occupied column —
+        // one door per row, on whichever block ends up there. Computed up
+        // front so the per-position loop below can just look each row up.
+        var rowMaxCol = new Dictionary<int, int>();
+        foreach (var p in positions)
+        {
+            if (!rowMaxCol.TryGetValue(p.x, out int maxCol) || p.y > maxCol)
+                rowMaxCol[p.x] = p.y;
+        }
 
         if (castleBlockPrefab == null)
         {
@@ -360,8 +392,42 @@ public class BotCastleGenerator : MonoBehaviour
                 GeneratedUnitSlots.Add(new BotUnitSlot
                 {
                     cannonZone = cannonZone,
-                    archerZone = archerZone
+                    archerZone = archerZone,
+                    row = row
                 });
+            }
+
+            // ── Castle door (matches the "last castle grid" of this row) ──
+            // One per floor, sitting on whichever block ends up at that
+            // row's highest column — regardless of whether that block is
+            // exposed (isExposed above is about cannon/archer zones, not
+            // this). Requires the two-tier cell/block hierarchy, same as
+            // the unit slot above.
+            if (cellObj != null && castleDoorPrefab != null &&
+                rowMaxCol.TryGetValue(row, out int maxColForRow) && col == maxColForRow)
+            {
+                GameObject doorObj = Instantiate(castleDoorPrefab, cellObj.transform);
+                doorObj.name = $"BotCastleDoor_{row}_{col}";
+
+                RectTransform drt = doorObj.GetComponent<RectTransform>();
+                if (drt != null)
+                {
+                    drt.anchorMin = new Vector2(0.5f, 0.5f);
+                    drt.anchorMax = new Vector2(0.5f, 0.5f);
+                    drt.pivot = new Vector2(0.5f, 0.5f);
+                    drt.anchoredPosition = Vector2.zero;
+                }
+
+                CastleDoor door = doorObj.GetComponent<CastleDoor>();
+                if (door != null)
+                {
+                    door.Init(row);
+                    GeneratedDoors.Add(door);
+                }
+                else
+                {
+                    Debug.LogWarning("[BotCastleGenerator] castleDoorPrefab has no CastleDoor component!");
+                }
             }
         }
 

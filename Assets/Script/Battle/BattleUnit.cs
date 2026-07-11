@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -73,6 +74,20 @@ public class BattleUnit : MonoBehaviour, IDamageable
     // this stays null and every call below safely no-ops for them.
     private HorseController _horseController;
 
+    // Cached so ClimbThroughDoor can hide/show the soldier's normal layered
+    // visuals while the CastleDoor overlay plays, without a GetComponent
+    // lookup every climb. Null for every unit type except Soldier — no-ops
+    // safely everywhere below.
+    private SoldierController _soldierController;
+
+    // Cached so ClimbThroughDoor can read which of the 6 armor variations this
+    // soldier currently has equipped and ask the door for the matching
+    // enter/exit frame set (CastleDoor.GetFrames). A flat-army Soldier is the
+    // SAME live GameObject carried over from the Village (not a respawned
+    // snapshot), so its real CharacterEquipment is already sitting right here.
+    // Null for every unit type except Soldier — no-ops safely everywhere below.
+    private CharacterEquipment _equipment;
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     private void Awake()
@@ -81,6 +96,8 @@ public class BattleUnit : MonoBehaviour, IDamageable
         _canvas = GetComponentInParent<Canvas>();
         _animator = GetComponent<SpriteLayerAnimator>();
         _horseController = GetComponent<HorseController>();
+        _soldierController = GetComponent<SoldierController>();
+        _equipment = GetComponent<CharacterEquipment>();
         CurrentHealth = maxHealth;
         UpdateHPBar();
     }
@@ -147,9 +164,45 @@ public class BattleUnit : MonoBehaviour, IDamageable
     public bool debugLog = false;
     private float _debugTimer;
 
+    // ── Castle Door Climbing (Soldier only) ─────────────────────────────────
+    // See CastleDoor.cs and BattleManager.GetCastleDoorForClimb. Cannon/Archer
+    // targets sit on a castle block far above the flat ground row, but
+    // FindNearestEnemy/WorldX only ever compared horizontal distance — so a
+    // soldier used to walk straight at a cannon it could never actually
+    // reach and just stood there in range on the wrong floor. This makes a
+    // Soldier climb the castle's own doors floor-by-floor instead.
+
+    [Header("Castle Door Climbing (Soldier only)")]
+    [Tooltip("Child Image (start it disabled in the prefab) used to play the door " +
+             "enter/exit frame sequence. Leave unassigned to still climb doors, just " +
+             "without the visual — the soldier will pause in place for each transition instead.")]
+    public Image castleDoorOverlayImage;
+
+    /// <summary>Which castle grid row (floor) THIS unit's target sits on. -1 = not on a
+    /// castle block at all (a flat-army Soldier/Horse/Dragon, or simply unassigned) —
+    /// BattleUnit.Update reads that as "nothing to climb toward, use the old flat walk."
+    /// Set via SetCastleRow() for Cannon/Archer units seated on a castle block.</summary>
+    public int CastleRow { get; private set; } = -1;
+
+    public void SetCastleRow(int row) => CastleRow = row;
+
+    /// <summary>Which floor THIS soldier is currently standing on. 0 = ground / outside
+    /// the castle. Only ever increases — see ClimbThroughDoor.</summary>
+    private int _currentFloor = 0;
+
+    /// <summary>True while a ClimbThroughDoor coroutine owns this unit's movement and
+    /// animation — Update()'s normal walk/attack logic is skipped entirely until it clears.</summary>
+    private bool _isClimbing;
+    private Coroutine _climbRoutine;
+
     private void Update()
     {
         if (IsDead) return;
+
+        // A ClimbThroughDoor coroutine owns movement/animation for the
+        // duration of a door transition — don't fight it with the normal
+        // walk/attack logic below.
+        if (_isClimbing) return;
 
         // Always retarget to whoever is currently nearest — a unit shouldn't
         // stay locked onto its first target for the whole fight if a closer
@@ -170,6 +223,27 @@ public class BattleUnit : MonoBehaviour, IDamageable
         }
 
         if (_target == null) return;
+
+        // ── Castle door climbing (Soldier only) ─────────────────────────
+        // The current target sits on a castle floor higher than this
+        // soldier has climbed to yet — walk to that floor's door and climb
+        // instead of trying to close a WorldX gap that's actually a wall
+        // away. Once _currentFloor catches up to the target's floor, this
+        // is skipped and the normal flat walk/attack below just works,
+        // since by then both units are effectively at the same height.
+        if (unitType == BattleUnitType.Soldier && canMove && _target.CastleRow > _currentFloor)
+        {
+            CastleDoor door = BattleManager.Instance?.GetCastleDoorForClimb(isPlayerUnit, _currentFloor);
+            if (door != null)
+            {
+                ApproachDoor(door);
+                return;
+            }
+            // No door configured for this floor (castleDoorPrefab unassigned,
+            // or this is the unsupported bot-attacks-player-castle direction)
+            // — fails safe to the old flat walk below instead of the soldier
+            // getting stuck here forever.
+        }
 
         float dist = Mathf.Abs(_target.WorldX - WorldX);
 
@@ -261,6 +335,135 @@ public class BattleUnit : MonoBehaviour, IDamageable
         AnimationState.Death => HorseState.Dead,
         _ => HorseState.Idle,
     };
+
+    // ── Castle Door Climbing (Soldier only) ─────────────────────────────────
+
+    /// <summary>
+    /// Walks toward <paramref name="door"/>'s screen X exactly like the
+    /// normal enemy-chase walk (same moveSpeed/bounds-clamp/facing-flip),
+    /// then hands off to ClimbThroughDoor once close enough — so the
+    /// approach looks identical to normal combat movement right up until
+    /// the soldier reaches the door.
+    /// </summary>
+    private void ApproachDoor(CastleDoor door)
+    {
+        float doorDist = Mathf.Abs(door.WorldX - WorldX);
+
+        if (doorDist > attackRange)
+        {
+            float dir = isPlayerUnit ? 1f : -1f;
+            Vector2 pos = _rt.anchoredPosition;
+            pos.x += dir * moveSpeed * Time.deltaTime;
+            pos.x = Mathf.Clamp(pos.x, _minLocalX, _maxLocalX);
+            _rt.anchoredPosition = pos;
+
+            Vector3 scale = _rt.localScale;
+            scale.x = isPlayerUnit ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
+            _rt.localScale = scale;
+
+            SetAnimState(AnimationState.Run);
+        }
+        else if (_climbRoutine == null)
+        {
+            _climbRoutine = StartCoroutine(ClimbThroughDoor(door));
+        }
+    }
+
+    /// <summary>
+    /// Plays the door's enterFrames, snaps this soldier to the matching door
+    /// one floor up (same side), then plays that door's exitFrames there.
+    /// _isClimbing blocks Update()'s normal logic for the whole sequence.
+    /// Runs again automatically on the next Update() if the soldier's real
+    /// target is still further up — this is what makes climbing repeat
+    /// floor-by-floor instead of just once.
+    /// </summary>
+    private IEnumerator ClimbThroughDoor(CastleDoor door)
+    {
+        _isClimbing = true;
+        SetAnimState(AnimationState.Idle);
+
+        // Which of the 6 armor variations THIS soldier is wearing right now —
+        // null-safe: soldiers with no CharacterEquipment (shouldn't happen for
+        // a real Soldier, but fails safe) or no armor equipped both fall
+        // through to the door's fallback frames.
+        EquipmentItem armor = _equipment != null ? _equipment.GetEquipped(EquipmentSlot.Armor) : null;
+        door.GetFrames(armor, out Sprite[] enterFrames, out Sprite[] exitFrames);
+
+        yield return PlayDoorFrames(enterFrames, door.frameInterval);
+
+        int nextFloor = _currentFloor + 1;
+        CastleDoor exitDoor = BattleManager.Instance?.GetCastleDoorForClimb(isPlayerUnit, nextFloor);
+        if (exitDoor != null)
+            _rt.anchoredPosition = ConvertToLocalPosition(exitDoor.transform);
+
+        _currentFloor = nextFloor;
+
+        // Re-resolve frames against exitDoor — it's a different CastleDoor
+        // instance (one per floor) and may have its own armorFrames table, so
+        // re-running the same armor lookup here (rather than reusing
+        // exitFrames from the entry door above) keeps the exit animation
+        // correct even if a per-floor door's table differs from the one
+        // the soldier just entered.
+        CastleDoor frameSourceForExit = exitDoor != null ? exitDoor : door;
+        frameSourceForExit.GetFrames(armor, out _, out Sprite[] exitFramesForThisDoor);
+
+        yield return PlayDoorFrames(exitFramesForThisDoor, frameSourceForExit.frameInterval);
+
+        _isClimbing = false;
+        _climbRoutine = null;
+    }
+
+    /// <summary>
+    /// Steps castleDoorOverlayImage through frames while hiding the soldier's
+    /// normal layered visuals underneath it, then restores them. No-ops (just
+    /// waits nothing / returns immediately) if frames is empty — climbing
+    /// still works, there's just no door visual, e.g. before an overlay Image
+    /// is wired up on the prefab.
+    /// </summary>
+    private IEnumerator PlayDoorFrames(Sprite[] frames, float interval)
+    {
+        if (frames == null || frames.Length == 0) yield break;
+
+        bool hasOverlay = castleDoorOverlayImage != null;
+        if (hasOverlay)
+        {
+            castleDoorOverlayImage.enabled = true;
+            _soldierController?.SetVisualRootActive(false);
+        }
+
+        foreach (var frame in frames)
+        {
+            if (hasOverlay) castleDoorOverlayImage.sprite = frame;
+            yield return new WaitForSeconds(interval);
+        }
+
+        if (hasOverlay)
+        {
+            castleDoorOverlayImage.enabled = false;
+            _soldierController?.SetVisualRootActive(true);
+        }
+    }
+
+    /// <summary>
+    /// Converts a world Transform's position into THIS unit's own parent's
+    /// local anchoredPosition space — same WorldToScreenPoint →
+    /// ScreenPointToLocalPointInRectangle technique ComputeHorizontalBounds
+    /// already uses, so a soldier reappearing at a door lands at the exact
+    /// on-screen spot regardless of Canvas scale or how deeply the door and
+    /// this soldier are each nested under their own (different) parents.
+    /// </summary>
+    private Vector2 ConvertToLocalPosition(Transform worldTarget)
+    {
+        Camera cam = (_canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            ? _canvas.worldCamera
+            : null;
+
+        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(cam, worldTarget.position);
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            (RectTransform)_rt.parent, screenPoint, cam, out Vector2 localPoint);
+
+        return localPoint;
+    }
 
     // ── Public API ────────────────────────────────────────────────────────────
 

@@ -554,6 +554,18 @@ public class SoldierController : MonoBehaviour
     public void RefreshFlip() => ApplyFlip(_direction);
 
     /// <summary>
+    /// Shows/hides the entire "VisualFlip" layer container (Body/Head/Hair/
+    /// Armor/Helmet/Weapon) without touching this GameObject's own
+    /// active/enabled state. Used by BattleUnit while a soldier plays a
+    /// CastleDoor enter/exit frame sequence on a separate overlay Image, so
+    /// the normal layered sprites don't show through underneath it.
+    /// </summary>
+    public void SetVisualRootActive(bool active)
+    {
+        if (visualRoot != null) visualRoot.gameObject.SetActive(active);
+    }
+
+    /// <summary>
     /// Forces the soldier's visual facing directly to right (toward the bot
     /// side) or left (toward the player side), ignoring whatever direction
     /// the Village patrol AI last left it in. Call this when handing a
