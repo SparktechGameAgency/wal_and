@@ -31,6 +31,20 @@ public class CastleGrid : MonoBehaviour
     private GridCell[,] _grid;
 
     /// <summary>
+    /// One CastleDoor per row that currently has at least one block placed —
+    /// mirrors BotCastleGenerator.GeneratedDoors so BattleManager can look up
+    /// a player-castle door the same way it already looks up a bot-castle
+    /// door. Populated/kept in sync in PlaceBlockAt as column-0 blocks are
+    /// placed (a row's door only ever needs registering once — activating
+    /// it again on retry is harmless, see the col == 0 check below).
+    /// </summary>
+    public List<CastleDoor> GeneratedDoors { get; private set; } = new List<CastleDoor>();
+
+    /// <summary>The registered door for a given row, or null if that row has no
+    /// blocks yet / castleBlockPrefab has no CastleDoor child.</summary>
+    public CastleDoor GetDoor(int row) => GeneratedDoors.Find(d => d != null && d.Row == row);
+
+    /// <summary>
     /// false = Village Panel → expansion slots hidden, cannon zones transparent (alpha 0).
     ///                         Drag-and-drop of cannons is still ENABLED.
     /// true  = Castle Panel  → expansion slots shown, cannon zones visible, full interaction.
@@ -241,6 +255,42 @@ public class CastleGrid : MonoBehaviour
 
         CastleBlock block = blockObj.GetComponent<CastleBlock>();
         cell.PlaceBlock(block);
+
+        // Same door rule BotCastleGenerator uses for the bot side: only the
+        // block at COLUMN 0 of a row (grid_0_0, grid_1_0, grid_2_0 ...) keeps
+        // its CastleDoor child (wired directly on castleBlockPrefab in the
+        // Editor, defaulted to SetActive(false)) active — every other
+        // column's copy stays disabled. Column 0 is used because a player
+        // can place blocks in any order via the expansion slots, but column
+        // 0 of an occupied row is always reachable/placeable first (same
+        // adjacency rule as the bot's staircase generation), making it the
+        // one predictable "door" spot regardless of what the player builds
+        // further out in that row. Registered into GeneratedDoors below so
+        // BattleManager.GetCastleDoorForClimb can find it for a bot soldier
+        // climbing INTO the player's castle, the same way it already finds
+        // BotCastleGenerator's doors for the reverse direction.
+        CastleDoor blockDoor = blockObj.GetComponentInChildren<CastleDoor>(true);
+        if (blockDoor != null)
+        {
+            if (col == 0)
+            {
+                blockDoor.gameObject.SetActive(true);
+                blockDoor.Init(row);
+
+                // Register it so BattleManager.GetCastleDoorForClimb can find
+                // it for a bot soldier climbing INTO the player castle — same
+                // GeneratedDoors/GetDoor pattern BotCastleGenerator already
+                // uses for the reverse direction. Guard against duplicates:
+                // rebuilding/retrying could call PlaceBlockAt on an
+                // already-registered row's column 0 again.
+                if (!GeneratedDoors.Contains(blockDoor))
+                    GeneratedDoors.Add(blockDoor);
+            }
+            else
+            {
+                blockDoor.gameObject.SetActive(false);
+            }
+        }
 
         Debug.Log($"[CastleGrid] Block placed at ({row},{col})");
 

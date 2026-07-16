@@ -109,19 +109,25 @@ public class BotCastleGenerator : MonoBehaviour
     public List<BotUnitSlot> GeneratedUnitSlots { get; private set; } = new List<BotUnitSlot>();
 
     [Header("Castle Door (soldiers climb through these to reach archers/cannons)")]
-    [Tooltip("Prefab with the CastleDoor component — enterFrames/exitFrames wired on the " +
-             "prefab itself. Instantiated once per generated floor row, on that row's " +
-             "highest-column block ('the last castle grid' of that floor), exactly like " +
-             "castleBlockUnitSlotPrefab is placed once per exposed block. Leave empty to " +
-             "skip door generation entirely — soldiers fall back to the old straight-line walk.")]
-    [SerializeField] private GameObject castleDoorPrefab;
+    [Tooltip("CastleDoor now lives as a CHILD of castleBlockPrefab itself (added directly " +
+             "on that prefab in the Editor, start it SetActive(false) there) — every block " +
+             "instantiated below already carries one, so there's nothing to assign here. " +
+             "Only the block that sits at COLUMN 0 of each floor row ('the last castle grid' " +
+             "of that floor, e.g. grid_0_0, grid_1_0, grid_2_0 ...) has its door child " +
+             "re-enabled and registered; every other block's copy is explicitly disabled. " +
+             "Column 0 of a row is guaranteed to exist for any row that has blocks at all — " +
+             "every other column in a row chains back to it (see GenerateStaircaseShape's " +
+             "adjacency rule) — which is what makes it a reliable, always-present door spot, " +
+             "unlike the row's shifting frontier edge. If castleBlockPrefab has no CastleDoor " +
+             "child at all, doors are skipped entirely for every row — soldiers fall back to " +
+             "the old straight-line walk (see BattleUnit.Update).")]
 
     /// <summary>One CastleDoor per generated floor row. BattleManager.GetCastleDoorForClimb
     /// looks these up by row for a climbing soldier.</summary>
     public List<CastleDoor> GeneratedDoors { get; private set; } = new List<CastleDoor>();
 
     /// <summary>The door belonging to <paramref name="row"/>, or null if that row doesn't
-    /// exist / castleDoorPrefab wasn't assigned.</summary>
+    /// exist / castleBlockPrefab has no CastleDoor child.</summary>
     public CastleDoor GetDoor(int row) => GeneratedDoors.Find(d => d != null && d.Row == row);
 
     /// <summary>
@@ -221,16 +227,6 @@ public class BotCastleGenerator : MonoBehaviour
         // stacked directly above this one in the same column. Used below to
         // decide which blocks get a CastleBlockUnitSlot (cannon/archer zones).
         var placedSet = new HashSet<Vector2Int>(positions);
-
-        // "The last castle grid" of a floor = its highest occupied column —
-        // one door per row, on whichever block ends up there. Computed up
-        // front so the per-position loop below can just look each row up.
-        var rowMaxCol = new Dictionary<int, int>();
-        foreach (var p in positions)
-        {
-            if (!rowMaxCol.TryGetValue(p.x, out int maxCol) || p.y > maxCol)
-                rowMaxCol[p.x] = p.y;
-        }
 
         if (castleBlockPrefab == null)
         {
@@ -398,35 +394,33 @@ public class BotCastleGenerator : MonoBehaviour
             }
 
             // ── Castle door (matches the "last castle grid" of this row) ──
-            // One per floor, sitting on whichever block ends up at that
-            // row's highest column — regardless of whether that block is
-            // exposed (isExposed above is about cannon/archer zones, not
-            // this). Requires the two-tier cell/block hierarchy, same as
-            // the unit slot above.
-            if (cellObj != null && castleDoorPrefab != null &&
-                rowMaxCol.TryGetValue(row, out int maxColForRow) && col == maxColForRow)
+            // The door is a CHILD OF THE BLOCK ITSELF now (wired directly on
+            // castleBlockPrefab in the Editor), not a separate prefab
+            // instantiated on top — so it comes along for free with `block`
+            // above. Only the block sitting at COLUMN 0 of each row (e.g.
+            // grid_0_0, grid_1_0, grid_2_0 ...) keeps its door active and
+            // registered; every other block's copy is disabled so it's
+            // neither visible nor picked up by GetDoor(). Column 0 is used
+            // (rather than the row's highest/frontier column) because it's
+            // GUARANTEED to exist for any row that has blocks at all — every
+            // other column in a row requires (row, col-1) to already be
+            // placed, so column 0 is always the first block built in its
+            // row (see GenerateStaircaseShape) — a stable, predictable door
+            // spot instead of one that shifts with the random shape.
+            CastleDoor blockDoor = block.GetComponentInChildren<CastleDoor>(true);
+            if (blockDoor != null)
             {
-                GameObject doorObj = Instantiate(castleDoorPrefab, cellObj.transform);
-                doorObj.name = $"BotCastleDoor_{row}_{col}";
+                bool isLastBlockOfRow = col == 0;
 
-                RectTransform drt = doorObj.GetComponent<RectTransform>();
-                if (drt != null)
+                if (isLastBlockOfRow)
                 {
-                    drt.anchorMin = new Vector2(0.5f, 0.5f);
-                    drt.anchorMax = new Vector2(0.5f, 0.5f);
-                    drt.pivot = new Vector2(0.5f, 0.5f);
-                    drt.anchoredPosition = Vector2.zero;
-                }
-
-                CastleDoor door = doorObj.GetComponent<CastleDoor>();
-                if (door != null)
-                {
-                    door.Init(row);
-                    GeneratedDoors.Add(door);
+                    blockDoor.gameObject.SetActive(true);
+                    blockDoor.Init(row);
+                    GeneratedDoors.Add(blockDoor);
                 }
                 else
                 {
-                    Debug.LogWarning("[BotCastleGenerator] castleDoorPrefab has no CastleDoor component!");
+                    blockDoor.gameObject.SetActive(false);
                 }
             }
         }

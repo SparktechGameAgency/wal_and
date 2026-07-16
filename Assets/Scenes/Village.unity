@@ -5160,8 +5160,8 @@ MonoBehaviour:
   soldierSpawnArea: {fileID: 1991074321}
   villageSoldierParent: {fileID: 2115274408}
   castleSoldierParent: {fileID: 385257386}
-  soldierSpawnVillageY: -50
-  soldierSpawnCastleY: -225
+  soldierSpawnVillageY: -65
+  soldierSpawnCastleY: -240
 --- !u!1 &191763498
 GameObject:
   m_ObjectHideFlags: 0

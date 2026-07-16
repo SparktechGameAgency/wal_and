@@ -164,7 +164,7 @@ MonoBehaviour:
   projectileSize: {x: 15, y: 15}
   detectionRadius: 100
   fireInterval: 1
-  damage: 50
+  damage: 10
   flightDuration: 2
   showGizmo: 1
 --- !u!1 &8747855732657271708

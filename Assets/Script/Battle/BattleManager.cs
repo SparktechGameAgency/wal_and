@@ -28,8 +28,8 @@ public class BattleUnitPrefabs
 
 /// <summary>
 /// Pool of equipment items the bot side picks randomly from when spawning a
-/// Horse or Dragon unit, so bot riders look varied instead of either bare
-/// or an exact clone of the player's own soldier.
+/// Horse, Dragon, or Soldier unit, so bot riders/soldiers look varied
+/// instead of either bare or an exact clone of the player's own soldier.
 /// </summary>
 [System.Serializable]
 public class RiderLoadoutPool
@@ -735,10 +735,24 @@ public class BattleManager : MonoBehaviour
 
     /// <summary>
     /// Called by each BattleUnit every frame to find its nearest living enemy.
+    ///
+    /// For a Soldier specifically, castle-mounted targets (Cannon/Archer,
+    /// CastleRow >= 0) are withheld entirely while any ground-based enemy
+    /// (Soldier/Horse/Dragon) on the OPPOSING side is still alive — this is
+    /// what makes soldiers finish off the enemy army in the field before
+    /// ever approaching the castle door, instead of peeling off toward a
+    /// cannon while allied ground troops are still fighting nearby. Once no
+    /// ground enemy remains, castle-mounted targets become visible again and
+    /// BattleUnit.Update's door-climb branch takes over naturally (see
+    /// BattleUnit.CastleRow / ApproachDoor). Horse/Dragon/Cannon/Archer
+    /// askers are never restricted this way — only a Soldier climbs doors,
+    /// so only a Soldier needs the ground-first ordering.
     /// </summary>
     public BattleUnit FindNearestEnemy(BattleUnit asker)
     {
         List<BattleUnit> enemies = asker.isPlayerUnit ? _botUnits : _playerUnits;
+
+        bool restrictToGroundOnly = asker.unitType == BattleUnitType.Soldier && AnyGroundUnitAlive(enemies);
 
         BattleUnit closest = null;
         float closestDist = float.MaxValue;
@@ -746,6 +760,8 @@ public class BattleManager : MonoBehaviour
         foreach (var e in enemies)
         {
             if (e == null || e.IsDead) continue;
+            if (restrictToGroundOnly && e.CastleRow >= 0) continue; // castle-mounted — not eligible yet
+
             float d = Mathf.Abs(e.WorldX - asker.WorldX);
             if (d < closestDist)
             {
@@ -757,24 +773,65 @@ public class BattleManager : MonoBehaviour
         return closest;
     }
 
+    /// <summary>True if any non-castle-mounted (CastleRow == -1) unit in the list is
+    /// still alive — i.e. the flat army wave (Soldier/Horse/Dragon) isn't cleared yet.</summary>
+    private bool AnyGroundUnitAlive(List<BattleUnit> list)
+    {
+        foreach (var u in list)
+            if (u != null && !u.IsDead && u.CastleRow < 0)
+                return true;
+        return false;
+    }
+
     /// <summary>
     /// Called by a climbing BattleUnit (Soldier only) to find the door for a
     /// given floor row on the side it's attacking INTO.
     ///
-    /// Only the bot's procedurally generated castle spawns CastleDoor
-    /// instances right now (see BotCastleGenerator.castleDoorPrefab) — the
-    /// player's real, carried-over Village CastleGrid doesn't. So a player
-    /// soldier climbing into the bot's castle is the only supported
-    /// direction today; a bot soldier calling this with
-    /// climberIsPlayerUnit == false just fails safe to null, and
-    /// BattleUnit falls back to its old straight-line WorldX walk for it —
-    /// same "unassigned = no special behaviour" convention used everywhere
-    /// else in this file (see battlefieldBounds above).
+    /// A player soldier climbs into the bot's procedurally generated castle
+    /// via BotCastleGenerator.GetDoor(). A bot soldier climbs into the
+    /// player's real, carried-over Village CastleGrid via
+    /// CastleGrid.Instance.GetDoor() — CastleGrid.PlaceBlockAt registers its
+    /// own column-0 doors into GeneratedDoors the same way
+    /// BotCastleGenerator does, so both directions share this one method.
+    /// Either side still fails safe to null (BattleUnit falls back to its
+    /// old straight-line WorldX walk) if the relevant generator/grid isn't
+    /// available — e.g. CastleGrid.Instance is null when testing the Battle
+    /// scene directly without a carried-over castle.
     /// </summary>
     public CastleDoor GetCastleDoorForClimb(bool climberIsPlayerUnit, int floorRow)
     {
-        if (!climberIsPlayerUnit) return null;
-        return botCastleGenerator != null ? botCastleGenerator.GetDoor(floorRow) : null;
+        if (climberIsPlayerUnit)
+            return botCastleGenerator != null ? botCastleGenerator.GetDoor(floorRow) : null;
+
+        return CastleGrid.Instance != null ? CastleGrid.Instance.GetDoor(floorRow) : null;
+    }
+
+    /// <summary>
+    /// The ARMY root (not castle root) belonging to whichever side a
+    /// climbing unit is climbing INTO — i.e. the enemy's own side. A
+    /// climbing Soldier that reappears at a floor's exit door is now
+    /// visually positioned inside the enemy castle's on-screen footprint,
+    /// but Canvas UI render order is governed by hierarchy position, not
+    /// on-screen position — a unit still parented under its OWN side's
+    /// PlayerArmyRoot draws behind the ENTIRE BotSide branch (BotCastleRoot
+    /// AND BotArmyRoot), i.e. it looks like it walked behind the castle
+    /// instead of into it. BotArmyRoot/PlayerArmyRoot already sit AFTER
+    /// their own side's castle root in the Canvas hierarchy (so a side's own
+    /// army units always draw on top of its own castle) — reparenting a
+    /// climbing unit onto the ENEMY's army root borrows that same correct
+    /// ordering instead of inventing a new one. See BattleUnit.ClimbThroughDoor.
+    /// Both directions are supported — a player soldier climbing into the bot
+    /// castle reparents onto botArmyGenerator's root, and a bot soldier
+    /// climbing into the player castle reparents onto playerArmyRoot, same
+    /// reasoning either way: borrow the correct side's already-established
+    /// render order instead of inventing a new one.
+    /// </summary>
+    public Transform GetEnemyArmyRoot(bool climberIsPlayerUnit)
+    {
+        if (climberIsPlayerUnit)
+            return botArmyGenerator != null ? botArmyGenerator.transform : null;
+
+        return playerArmyRoot;
     }
 
     // ── Death Tracking ────────────────────────────────────────────────────────

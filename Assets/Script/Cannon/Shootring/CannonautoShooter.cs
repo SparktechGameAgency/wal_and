@@ -54,6 +54,13 @@ public class CannonAutoShooter : MonoBehaviour
     [Tooltip("Detection radius in world units (pixels in Screen Space Overlay).")]
     public float detectionRadius = 300f;
 
+    [Tooltip("Minimum distance a target must be at before this cannon will fire. " +
+             "An enemy standing closer than this is 'too near' for the cannon to hit — " +
+             "it holds fire and stays idle instead, same as it does when nothing is in " +
+             "detectionRadius at all, forcing the enemy to be dealt with in melee instead. " +
+             "0 = no minimum (fires at any range up to detectionRadius, the old behaviour).")]
+    public float minFireRange = 0f;
+
     [Tooltip("Seconds between shots.")]
     public float fireInterval = 2f;
 
@@ -187,6 +194,7 @@ public class CannonAutoShooter : MonoBehaviour
             if (target == null || target.IsDead) return null;
 
             float distBattle = Vector3.Distance(transform.position, target.transform.position);
+            if (distBattle < minFireRange) return null;
             return distBattle <= detectionRadius ? (IDamageable)target : null;
         }
 
@@ -198,6 +206,7 @@ public class CannonAutoShooter : MonoBehaviour
         {
             if (enemy == null || enemy.IsDead) continue;
             float dist = Vector3.Distance(myPos, enemy.transform.position);
+            if (dist < minFireRange) continue;
             if (dist <= detectionRadius && dist < bestDist)
             {
                 bestDist = dist;

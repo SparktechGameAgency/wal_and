@@ -163,6 +163,7 @@ public class BattleUnit : MonoBehaviour, IDamageable
     [Header("Debug")]
     public bool debugLog = false;
     private float _debugTimer;
+    private float _doorDebugTimer;
 
     // ── Castle Door Climbing (Soldier only) ─────────────────────────────────
     // See CastleDoor.cs and BattleManager.GetCastleDoorForClimb. Cannon/Archer
@@ -186,9 +187,10 @@ public class BattleUnit : MonoBehaviour, IDamageable
 
     public void SetCastleRow(int row) => CastleRow = row;
 
-    /// <summary>Which floor THIS soldier is currently standing on. 0 = ground / outside
-    /// the castle. Only ever increases — see ClimbThroughDoor.</summary>
-    private int _currentFloor = 0;
+    /// <summary>True once THIS soldier has made its one fixed entrance transition
+    /// (ground → inside via the row-0/row-1 doors). Only ever set once — see
+    /// ClimbThroughDoor. Soldier/Horse/Dragon-army units never touch this at all.</summary>
+    private bool _hasEnteredCastle;
 
     /// <summary>True while a ClimbThroughDoor coroutine owns this unit's movement and
     /// animation — Update()'s normal walk/attack logic is skipped entirely until it clears.</summary>
@@ -225,24 +227,27 @@ public class BattleUnit : MonoBehaviour, IDamageable
         if (_target == null) return;
 
         // ── Castle door climbing (Soldier only) ─────────────────────────
-        // The current target sits on a castle floor higher than this
-        // soldier has climbed to yet — walk to that floor's door and climb
-        // instead of trying to close a WorldX gap that's actually a wall
-        // away. Once _currentFloor catches up to the target's floor, this
-        // is skipped and the normal flat walk/attack below just works,
-        // since by then both units are effectively at the same height.
-        if (unitType == BattleUnitType.Soldier && canMove && _target.CastleRow > _currentFloor)
+        // A soldier makes exactly ONE fixed entrance transition — walk to
+        // the entrance door (row 0) and climb in — never a floor-by-floor
+        // climb. _target being castle-mounted (CastleRow >= 0) only ever
+        // happens once BattleManager.FindNearestEnemy has run out of bot
+        // ground units (Soldier/Horse/Dragon) to offer instead — see
+        // FindNearestEnemy's groundUnitsRemain check — so reaching this
+        // branch already implies the ground wave is cleared. !_hasEnteredCastle
+        // makes sure a soldier that's already inside just fights normally
+        // below instead of trying to walk back out and re-enter.
+        if (unitType == BattleUnitType.Soldier && canMove && !_hasEnteredCastle && _target.CastleRow >= 0)
         {
-            CastleDoor door = BattleManager.Instance?.GetCastleDoorForClimb(isPlayerUnit, _currentFloor);
+            CastleDoor door = BattleManager.Instance?.GetCastleDoorForClimb(isPlayerUnit, 0);
             if (door != null)
             {
                 ApproachDoor(door);
                 return;
             }
-            // No door configured for this floor (castleDoorPrefab unassigned,
-            // or this is the unsupported bot-attacks-player-castle direction)
-            // — fails safe to the old flat walk below instead of the soldier
-            // getting stuck here forever.
+            // No entrance door configured (castleDoorPrefab unassigned, or
+            // the generator/grid for this side hasn't run yet) — fails safe
+            // to the old flat walk below instead of the soldier getting
+            // stuck here forever.
         }
 
         float dist = Mathf.Abs(_target.WorldX - WorldX);
@@ -252,7 +257,21 @@ public class BattleUnit : MonoBehaviour, IDamageable
             // Walk toward enemy.
             if (canMove)
             {
-                float dir = isPlayerUnit ? 1f : -1f;
+                // Walk toward the TARGET's actual side, not a fixed
+                // per-army direction. isPlayerUnit ? 1 : -1 was only ever
+                // correct on the flat pre-castle approach, where the bot
+                // army is guaranteed to be to the right of the player army
+                // (and vice versa). Once a soldier has climbed into the
+                // enemy castle (see ClimbThroughDoor) its target — an
+                // archer/cannon seated on a specific castle block — can sit
+                // to either side of the landing spot depending on that
+                // block's column in the staircase, so a hardcoded direction
+                // just walks the soldier straight past the battlefield edge
+                // whenever the real target is behind it.
+                float diff = _target.WorldX - WorldX;
+                float dir = Mathf.Approximately(diff, 0f)
+                    ? (isPlayerUnit ? 1f : -1f)
+                    : Mathf.Sign(diff);
                 Vector2 pos = _rt.anchoredPosition;
                 pos.x += dir * moveSpeed * Time.deltaTime;
 
@@ -265,9 +284,10 @@ public class BattleUnit : MonoBehaviour, IDamageable
 
                 _rt.anchoredPosition = pos;
 
-                // Flip sprite to face the right direction.
+                // Flip sprite to face the direction it's actually walking,
+                // same reasoning as dir above — was isPlayerUnit ? Abs : -Abs.
                 Vector3 scale = _rt.localScale;
-                scale.x = isPlayerUnit ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
+                scale.x = dir > 0f ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
                 _rt.localScale = scale;
 
                 SetAnimState(AnimationState.Run);
@@ -349,6 +369,21 @@ public class BattleUnit : MonoBehaviour, IDamageable
     {
         float doorDist = Mathf.Abs(door.WorldX - WorldX);
 
+        if (debugLog)
+        {
+            _doorDebugTimer += Time.deltaTime;
+            if (_doorDebugTimer >= 1f)
+            {
+                _doorDebugTimer = 0f;
+                Debug.Log($"[BattleUnit/ApproachDoor] '{name}' doorDist={doorDist:F1} " +
+                          $"(attackRange={attackRange}) doorWorldX={door.WorldX:F1} " +
+                          $"myWorldX={WorldX:F1} anchoredPos={_rt.anchoredPosition} " +
+                          $"minLocalX={_minLocalX:F1} maxLocalX={_maxLocalX:F1} " +
+                          $"clampedAtMax={(Mathf.Approximately(_rt.anchoredPosition.x, _maxLocalX))} " +
+                          $"doorParent={door.transform.parent?.name}");
+            }
+        }
+
         if (doorDist > attackRange)
         {
             float dir = isPlayerUnit ? 1f : -1f;
@@ -391,23 +426,61 @@ public class BattleUnit : MonoBehaviour, IDamageable
 
         yield return PlayDoorFrames(enterFrames, door.frameInterval);
 
-        int nextFloor = _currentFloor + 1;
-        CastleDoor exitDoor = BattleManager.Instance?.GetCastleDoorForClimb(isPlayerUnit, nextFloor);
-        if (exitDoor != null)
-            _rt.anchoredPosition = ConvertToLocalPosition(exitDoor.transform);
+        // Reappear at the door on the SAME ROW as this soldier's actual
+        // target (the archer/cannon it's chasing), not a hardcoded row 1 —
+        // a target seated on row 2+ was never actually reachable before,
+        // since a soldier only ever makes this one fixed ground → inside
+        // transition and then just chases flat afterward. Falls back to
+        // row 1 if _target somehow isn't castle-mounted anymore (shouldn't
+        // happen — this whole coroutine only starts when it was), and
+        // falls back further to the entry door itself if that row has no
+        // door either, so the soldier still ends up visibly at/inside the
+        // door it just entered instead of stranded on the old side of it.
+        int targetRow = (_target != null && _target.CastleRow >= 0) ? _target.CastleRow : 1;
+        CastleDoor exitDoor = BattleManager.Instance?.GetCastleDoorForClimb(isPlayerUnit, targetRow);
+        CastleDoor landingDoor = exitDoor != null ? exitDoor : door;
 
-        _currentFloor = nextFloor;
+        {
+            // This soldier is about to reappear at a spot visually INSIDE
+            // the enemy castle's on-screen footprint. Reparent onto the
+            // enemy's own army root FIRST — before computing/assigning the
+            // landing-door position — so ConvertToLocalPosition resolves
+            // against the SAME parent the anchoredPosition is about to be
+            // set on, and this unit's Canvas render order matches its new
+            // on-screen position instead of still drawing behind the whole
+            // enemy branch (see BattleManager.GetEnemyArmyRoot).
+            Transform enemyArmyRoot = BattleManager.Instance?.GetEnemyArmyRoot(isPlayerUnit);
+            if (enemyArmyRoot != null && _rt.parent != enemyArmyRoot)
+            {
+                _rt.SetParent(enemyArmyRoot, worldPositionStays: false);
 
-        // Re-resolve frames against exitDoor — it's a different CastleDoor
-        // instance (one per floor) and may have its own armorFrames table, so
-        // re-running the same armor lookup here (rather than reusing
-        // exitFrames from the entry door above) keeps the exit animation
-        // correct even if a per-floor door's table differs from the one
-        // the soldier just entered.
-        CastleDoor frameSourceForExit = exitDoor != null ? exitDoor : door;
-        frameSourceForExit.GetFrames(armor, out _, out Sprite[] exitFramesForThisDoor);
+                // The old _minLocalX/_maxLocalX bounds were computed against
+                // the OLD parent's local space — reusing them here would
+                // clamp this unit's future walk against nonsense values
+                // under the new parent. Recompute the same way Start() did.
+                RectTransform bounds = BattleManager.Instance?.BattlefieldBounds;
+                if (bounds != null)
+                    ComputeHorizontalBounds(bounds, out _minLocalX, out _maxLocalX);
+            }
 
-        yield return PlayDoorFrames(exitFramesForThisDoor, frameSourceForExit.frameInterval);
+            _rt.anchoredPosition = ConvertToLocalPosition(landingDoor.transform);
+        }
+
+        // The one fixed entrance transition is done — from here on this
+        // soldier just fights normally (flat WorldX chase/attack against
+        // whatever remaining archer/cannon FindNearestEnemy hands it,
+        // regardless of which row it's actually on) instead of trying to
+        // climb again.
+        _hasEnteredCastle = true;
+
+        // Re-resolve frames against landingDoor — it's a different CastleDoor
+        // instance and may have its own armorFrames table, so re-running the
+        // same armor lookup here (rather than reusing exitFrames from the
+        // entry door above) keeps the exit animation correct even if the
+        // second row's door table differs from the one the soldier entered.
+        landingDoor.GetFrames(armor, out _, out Sprite[] exitFramesForThisDoor);
+
+        yield return PlayDoorFrames(exitFramesForThisDoor, landingDoor.frameInterval);
 
         _isClimbing = false;
         _climbRoutine = null;
@@ -576,6 +649,31 @@ public class BattleUnit : MonoBehaviour, IDamageable
         bool hasRiderData = data.riderFace != null || data.riderArmor != null ||
                              data.riderHelmet != null || data.riderWeapon != null;
         if (!hasRiderData) return;
+
+        // Soldier units already carry their OWN CharacterEquipment (the same
+        // component that drove their outfit back in the Village, via
+        // SpriteLayerAnimator) — unlike Horse/Dragon, which need a throwaway
+        // CharacterEquipment built here purely to feed their separate
+        // Face/Helmet/Armor/Weapon rider-visual child components. Equip
+        // straight onto that existing component instead of adding a second
+        // one: this runs synchronously right after Instantiate(), before
+        // Unity calls the new soldier's own CharacterEquipment.Start(), so
+        // TryEquipDefault()'s "slot already occupied" guard skips the
+        // prefab's defaultLoadout for whichever slots get equipped here —
+        // same equip-before-Start ordering a player-customized soldier gets
+        // from the Army panel. No riderFace handling here on purpose (see
+        // BotArmyGenerator.BuildData — a soldier's face isn't randomized,
+        // only its worn equipment).
+        if (unitType == BattleUnitType.Soldier)
+        {
+            CharacterEquipment soldierEquipment = _equipment != null ? _equipment : GetComponent<CharacterEquipment>();
+            if (soldierEquipment == null) return;
+
+            if (data.riderArmor != null) soldierEquipment.Equip(data.riderArmor);
+            if (data.riderHelmet != null) soldierEquipment.Equip(data.riderHelmet);
+            if (data.riderWeapon != null) soldierEquipment.Equip(data.riderWeapon);
+            return;
+        }
 
         CharacterEquipment equipment = gameObject.AddComponent<CharacterEquipment>();
         if (data.riderFace != null) equipment.Equip(data.riderFace);

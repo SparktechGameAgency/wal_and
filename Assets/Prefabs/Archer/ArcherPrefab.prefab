@@ -154,7 +154,7 @@ MonoBehaviour:
   arrowSize: {x: 5, y: 25}
   detectionRadius: 20
   fireInterval: 1.8
-  damage: 30
+  damage: 5
   arcHeight: 2
   flightDuration: 0.6
   showGizmo: 1

@@ -4,11 +4,15 @@ using UnityEngine;
 /// CastleDoor
 ///
 /// Marks the "last castle grid" doorway on one floor (grid row) of a
-/// generated castle. BotCastleGenerator spawns one of these on the
-/// highest-column block of every floor it builds — but only if
-/// castleDoorPrefab is assigned in the Inspector; leave it empty and
-/// soldiers keep the old straight-line WorldX walk (fails safe, same
-/// convention as every other optional reference in this project).
+/// castle. A CastleDoor lives as a CHILD of the castleBlockPrefab itself
+/// (added directly on that prefab in the Editor, start it SetActive(false)
+/// there) — CastleGrid.PlaceBlockAt (player castle) and
+/// BotCastleGenerator.BuildGridCells (bot castle) both re-enable it only on
+/// the block sitting at COLUMN 0 of each occupied row (grid_0_0, grid_1_0,
+/// grid_2_0, ...) and leave it disabled everywhere else. Leave the block
+/// prefab without a CastleDoor child at all to skip door generation
+/// entirely — soldiers keep the old straight-line WorldX walk (fails safe,
+/// same convention as every other optional reference in this project).
 ///
 /// A climbing BattleUnit (Soldier only — see BattleUnit.Update /
 /// ApproachDoor / ClimbThroughDoor) treats the SAME CastleDoor instance two

@@ -384,7 +384,7 @@ public class CastleGridMover : MonoBehaviour
     public RectTransform castleSoldierParent;
 
     [Tooltip("Anchored Y position of SoldierSpawnArea when in the Village panel.")]
-    public float soldierSpawnVillageY = -50f;
+    public float soldierSpawnVillageY = -65f;
 
     [Tooltip("Anchored Y position of SoldierSpawnArea when in the Castle panel.")]
     public float soldierSpawnCastleY = -65f;

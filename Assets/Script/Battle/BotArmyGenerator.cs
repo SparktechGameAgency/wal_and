@@ -66,6 +66,15 @@ public class BotArmyGenerator : MonoBehaviour
     [SerializeField] private float unitSpacingX = 80f;
     [SerializeField] private float unitSpacingY = 60f;
     [SerializeField] private int unitsPerRow = 3;
+    [Tooltip("Fixed ground-line Y (local to BotArmyRoot) for freshly-spawned bot " +
+             "Soldiers — BotArmyRoot and PlayerArmyRoot are different RectTransforms, " +
+             "so the same anchoredPosition.y does NOT land at the same on-screen height " +
+             "in both. Player soldiers get their ground line for free from the live " +
+             "carried-over GameObject (see BattleManager.ReceivePlayerSoldiers, -8), but " +
+             "a bot soldier is instantiated fresh here with no such reference, and used " +
+             "to float above the ground line at anchoredPosition.y = 0 without this. " +
+             "Tune this in the Inspector against BotArmyRoot if -16 isn't pixel-perfect.")]
+    [SerializeField] private float soldierGroundOffsetY = -16f;
 
     [Header("Bot Stat Ranges (Soldier / Horse / Archer / Dragon)")]
     [SerializeField] private Vector2 hpRange = new Vector2(70f, 130f);
@@ -88,7 +97,9 @@ public class BotArmyGenerator : MonoBehaviour
     /// (passed in from BattleManager) — no separate bot-only prefabs needed.
     /// BattleUnit.Init(playerUnit: false) is what makes them face/move left
     /// and target the player side; the prefab itself is identical either way.
-    /// Horse/Dragon units get a randomized rider look from riderLoadouts.
+    /// Horse/Dragon units get a randomized rider look from riderLoadouts, and
+    /// Soldier units get a randomized armor/helmet/weapon outfit from the
+    /// same pool.
     ///
     /// <paramref name="castleUnitSlots"/> — the bot castle's per-block
     /// CastleBlockUnitSlot zones (BotCastleGenerator.GeneratedUnitSlots). When
@@ -167,11 +178,31 @@ public class BotArmyGenerator : MonoBehaviour
             return;
         }
 
+        // ExtraEasy always faces exactly one bot unit (botCount forced to 1
+        // above), and that lone unit should only ever be a Soldier, Archer,
+        // or Cannon — a single Horse or Dragon is a much bigger, more mobile
+        // threat than the "barely a fight" ExtraEasy tier is meant to offer.
+        // Restrict the pool it randomly picks from instead of reusing the
+        // full pool every other difficulty draws from.
+        List<PoolEntry> activePool = pool;
+        if (difficulty == BotDifficulty.ExtraEasy)
+        {
+            activePool = pool.FindAll(p => p.type == BattleUnitType.Soldier ||
+                                            p.type == BattleUnitType.Archer ||
+                                            p.type == BattleUnitType.Cannon);
+
+            // Fail-safe: if none of those 3 types have a prefab assigned
+            // (unlikely, but possible on a half-configured BattleUnitPrefabs),
+            // fall back to the full pool instead of spawning nothing.
+            if (activePool.Count == 0)
+                activePool = pool;
+        }
+
         int flatIndex = 0;
 
         for (int i = 0; i < botCount; i++)
         {
-            PoolEntry entry = pool[Random.Range(0, pool.Count)];
+            PoolEntry entry = activePool[Random.Range(0, activePool.Count)];
 
             // Cannon/Archer prefer a free castle block slot so they sit ON the
             // bot's grid through the SAME CastleUnitDropZone/ArcherZoneCastle
@@ -254,9 +285,20 @@ public class BotArmyGenerator : MonoBehaviour
                 // order — exactly why "not every horse" was sitting at y=0.
                 // Forcing y=0 keeps every horse on the same ground line
                 // regardless of order, same as the player-side fix.
-                float y = entry.type == BattleUnitType.Horse
-                    ? 0f
-                    : row * unitSpacingY;
+                // Soldiers, like horses, always sit on a fixed ground line
+                // instead of stacking row-by-row — matches the player side's
+                // carried-over soldiers, which are snapped to a fixed
+                // anchoredPosition.y (-8) in BattleManager.ReceivePlayerSoldiers
+                // regardless of where they were patrolling in the Village.
+                // -16 is the bot-side equivalent ground line for a freshly
+                // spawned (not carried-over) soldier.
+                float y;
+                if (entry.type == BattleUnitType.Horse)
+                    y = 0f;
+                else if (entry.type == BattleUnitType.Soldier)
+                    y = soldierGroundOffsetY;
+                else
+                    y = row * unitSpacingY;
 
                 // anchoredPosition (Vector2) only ever wrote X/Y — it never
                 // touches localPosition.z, so any leftover garbage Z from a
@@ -369,6 +411,22 @@ public class BotArmyGenerator : MonoBehaviour
         if (entry.type == BattleUnitType.Dragon && riderLoadouts != null)
         {
             data.riderFace = RandomItem(riderLoadouts.faces);
+            data.riderArmor = RandomItem(riderLoadouts.armors);
+            data.riderHelmet = RandomItem(riderLoadouts.helmets);
+            data.riderWeapon = RandomItem(riderLoadouts.weapons);
+        }
+
+        // Bot Soldiers get a randomized armor/helmet/weapon outfit too, for
+        // the same "don't all look identical" reason — without this they
+        // fall back to the soldier prefab's own CharacterEquipment
+        // defaultLoadout and every bot soldier spawns wearing the exact
+        // same default outfit. No riderFace here — a soldier's face isn't
+        // meant to be swapped like a mounted rider's is; only its worn
+        // equipment. BattleUnit.ApplyRiderVisuals() equips these straight
+        // onto the soldier's OWN CharacterEquipment (not a throwaway one)
+        // since a Soldier prefab already carries that component itself.
+        if (entry.type == BattleUnitType.Soldier && riderLoadouts != null)
+        {
             data.riderArmor = RandomItem(riderLoadouts.armors);
             data.riderHelmet = RandomItem(riderLoadouts.helmets);
             data.riderWeapon = RandomItem(riderLoadouts.weapons);
