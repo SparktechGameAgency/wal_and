@@ -53,6 +53,20 @@ public class CastleDoor : MonoBehaviour
     [Tooltip("Seconds each frame is held for.")]
     public float frameInterval = 0.08f;
 
+    [Header("Teleport Offsets")]
+    [Tooltip("Anchored-position offset (pixels) added to this door's own position " +
+             "when a soldier snaps to the exact door-center point to START climbing " +
+             "(the 'teleport in'). Use this to nudge the soldier a few pixels left/" +
+             "right/up/down from the door's raw RectTransform position — e.g. after " +
+             "resizing the soldier prefab and the default centering no longer looks right.")]
+    public Vector2 enterOffset = Vector2.zero;
+
+    [Tooltip("Anchored-position offset (pixels) added to this door's own position " +
+             "when a climbing soldier reappears here (the 'teleport out' / landing " +
+             "point). Same idea as enterOffset, just for the door the soldier lands " +
+             "at one floor up.")]
+    public Vector2 exitOffset = Vector2.zero;
+
     /// <summary>
     /// Looks up the enter/exit frame sequences that match <paramref name="armor"/>.
     /// No fallback — if no entry's armor matches, both out arrays are null and

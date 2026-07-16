@@ -77,3 +77,5 @@ MonoBehaviour:
     enterFrames: []
     exitFrames: []
   frameInterval: 1
+  enterOffset: {x: 20, y: 0}
+  exitOffset: {x: -60, y: 0}

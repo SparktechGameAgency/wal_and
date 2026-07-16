@@ -1091,6 +1091,10 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6338026077108045365, guid: dc768e71a7e02ec488c706cc8a9ed1c5, type: 3}
+      propertyPath: frameInterval
+      value: 0.2
+      objectReference: {fileID: 0}
     - target: {fileID: 7079393007027912355, guid: dc768e71a7e02ec488c706cc8a9ed1c5, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5

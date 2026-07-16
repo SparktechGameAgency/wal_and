@@ -327,7 +327,7 @@ public class BattleManager : MonoBehaviour
             // standing/patrolling in the Village).
             RectTransform soldierRt = go.GetComponent<RectTransform>();
             Vector2 pos = soldierRt.anchoredPosition;
-            pos.y = -8f;
+            pos.y = -35f;
             soldierRt.anchoredPosition = pos;
 
             // Village-only interaction must be turned off so the soldier can't

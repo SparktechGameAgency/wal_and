@@ -70,11 +70,11 @@ public class BotArmyGenerator : MonoBehaviour
              "Soldiers — BotArmyRoot and PlayerArmyRoot are different RectTransforms, " +
              "so the same anchoredPosition.y does NOT land at the same on-screen height " +
              "in both. Player soldiers get their ground line for free from the live " +
-             "carried-over GameObject (see BattleManager.ReceivePlayerSoldiers, -8), but " +
+             "carried-over GameObject (see BattleManager.ReceivePlayerSoldiers, -35), but " +
              "a bot soldier is instantiated fresh here with no such reference, and used " +
              "to float above the ground line at anchoredPosition.y = 0 without this. " +
-             "Tune this in the Inspector against BotArmyRoot if -16 isn't pixel-perfect.")]
-    [SerializeField] private float soldierGroundOffsetY = -16f;
+             "Tune this in the Inspector against BotArmyRoot if -35 isn't pixel-perfect.")]
+    [SerializeField] private float soldierGroundOffsetY = -35f;
 
     [Header("Bot Stat Ranges (Soldier / Horse / Archer / Dragon)")]
     [SerializeField] private Vector2 hpRange = new Vector2(70f, 130f);

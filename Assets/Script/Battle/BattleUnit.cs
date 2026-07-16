@@ -179,6 +179,13 @@ public class BattleUnit : MonoBehaviour, IDamageable
              "without the visual — the soldier will pause in place for each transition instead.")]
     public Image castleDoorOverlayImage;
 
+    [Tooltip("How close (pixels, screen space) the soldier must be to the door before " +
+             "climbing starts. Deliberately separate from attackRange (which is a much " +
+             "larger combat-engagement distance) — using attackRange here made the " +
+             "soldier start climbing well before it visually reached the door. A small " +
+             "value here makes the teleport-in happen right at the door's middle.")]
+    [SerializeField] private float doorTriggerRange = 6f;
+
     /// <summary>Which castle grid row (floor) THIS unit's target sits on. -1 = not on a
     /// castle block at all (a flat-army Soldier/Horse/Dragon, or simply unassigned) —
     /// BattleUnit.Update reads that as "nothing to climb toward, use the old flat walk."
@@ -284,11 +291,7 @@ public class BattleUnit : MonoBehaviour, IDamageable
 
                 _rt.anchoredPosition = pos;
 
-                // Flip sprite to face the direction it's actually walking,
-                // same reasoning as dir above — was isPlayerUnit ? Abs : -Abs.
-                Vector3 scale = _rt.localScale;
-                scale.x = dir > 0f ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
-                _rt.localScale = scale;
+                ApplyFacing(dir);
 
                 SetAnimState(AnimationState.Run);
             }
@@ -376,7 +379,7 @@ public class BattleUnit : MonoBehaviour, IDamageable
             {
                 _doorDebugTimer = 0f;
                 Debug.Log($"[BattleUnit/ApproachDoor] '{name}' doorDist={doorDist:F1} " +
-                          $"(attackRange={attackRange}) doorWorldX={door.WorldX:F1} " +
+                          $"(doorTriggerRange={doorTriggerRange}) doorWorldX={door.WorldX:F1} " +
                           $"myWorldX={WorldX:F1} anchoredPos={_rt.anchoredPosition} " +
                           $"minLocalX={_minLocalX:F1} maxLocalX={_maxLocalX:F1} " +
                           $"clampedAtMax={(Mathf.Approximately(_rt.anchoredPosition.x, _maxLocalX))} " +
@@ -384,24 +387,64 @@ public class BattleUnit : MonoBehaviour, IDamageable
             }
         }
 
-        if (doorDist > attackRange)
+        // Was "doorDist > attackRange" — attackRange is a combat-engagement
+        // distance (60px by default), so climbing used to start well before
+        // the soldier visually reached the door. doorTriggerRange is a much
+        // tighter threshold so the "teleport in" happens right at the
+        // door's middle instead of some distance short of it.
+        if (doorDist > doorTriggerRange)
         {
-            float dir = isPlayerUnit ? 1f : -1f;
+            // Same direction/flip fix as the main walk block above — was
+            // hardcoded isPlayerUnit ? 1 : -1, which only matched a door
+            // that's actually further in the "forward" direction. Walking
+            // toward the door's real side keeps this correct even if a
+            // soldier ends up on the far side of it for any reason.
+            float diff = door.WorldX - WorldX;
+            float dir = Mathf.Approximately(diff, 0f)
+                ? (isPlayerUnit ? 1f : -1f)
+                : Mathf.Sign(diff);
+
             Vector2 pos = _rt.anchoredPosition;
             pos.x += dir * moveSpeed * Time.deltaTime;
             pos.x = Mathf.Clamp(pos.x, _minLocalX, _maxLocalX);
             _rt.anchoredPosition = pos;
 
-            Vector3 scale = _rt.localScale;
-            scale.x = isPlayerUnit ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
-            _rt.localScale = scale;
+            ApplyFacing(dir);
 
             SetAnimState(AnimationState.Run);
         }
         else if (_climbRoutine == null)
         {
+            // Snap exactly to the door's middle (+ its configured
+            // enterOffset) before climbing starts — the walk above only
+            // gets the soldier to within doorTriggerRange, not pixel-perfect
+            // on the door, so this guarantees the "teleport in" always
+            // happens from the same, exact, tunable spot.
+            _rt.anchoredPosition = ConvertToLocalPosition(door.transform) + door.enterOffset;
             _climbRoutine = StartCoroutine(ClimbThroughDoor(door));
         }
+    }
+
+    /// <summary>
+    /// Flips this unit to face the walk direction it's actually moving in.
+    /// A plain Horse/Archer/Cannon/Dragon flips its own root RectTransform
+    /// scale, but a Soldier's visible sprite is driven entirely by
+    /// SoldierController's own "visualRoot" CHILD transform (see
+    /// SoldierController.SetBattleFacing) — flipping the root here has zero
+    /// visible effect for a Soldier, that child's flip always wins. Route
+    /// through SoldierController when present so the flip actually shows.
+    /// </summary>
+    private void ApplyFacing(float dir)
+    {
+        if (_soldierController != null)
+        {
+            _soldierController.SetBattleFacing(faceRight: dir > 0f);
+            return;
+        }
+
+        Vector3 scale = _rt.localScale;
+        scale.x = dir > 0f ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
+        _rt.localScale = scale;
     }
 
     /// <summary>
@@ -426,18 +469,26 @@ public class BattleUnit : MonoBehaviour, IDamageable
 
         yield return PlayDoorFrames(enterFrames, door.frameInterval);
 
-        // Reappear at the door on the SAME ROW as this soldier's actual
-        // target (the archer/cannon it's chasing), not a hardcoded row 1 —
-        // a target seated on row 2+ was never actually reachable before,
-        // since a soldier only ever makes this one fixed ground → inside
-        // transition and then just chases flat afterward. Falls back to
-        // row 1 if _target somehow isn't castle-mounted anymore (shouldn't
-        // happen — this whole coroutine only starts when it was), and
-        // falls back further to the entry door itself if that row has no
-        // door either, so the soldier still ends up visibly at/inside the
-        // door it just entered instead of stranded on the old side of it.
-        int targetRow = (_target != null && _target.CastleRow >= 0) ? _target.CastleRow : 1;
+        // Reappear at the door on the row ABOVE this soldier's actual target
+        // (the archer/cannon it's chasing) — a target on row 1 means the
+        // soldier lands at the row-2 door, not row 1 itself.
+        int targetRow = (_target != null && _target.CastleRow >= 0) ? _target.CastleRow + 1 : 1;
         CastleDoor exitDoor = BattleManager.Instance?.GetCastleDoorForClimb(isPlayerUnit, targetRow);
+
+        // No door one row above — this happens whenever the target sits on
+        // the castle's TOP row (there's nothing above it to generate a
+        // door for). Without this fallback, exitDoor stayed null and
+        // landingDoor below fell all the way back to the ENTRY door
+        // (row 0), so a top-row cannon/archer was never actually reachable
+        // — the soldier just reappeared back at the entrance every time.
+        // Landing on the target's own row instead keeps it reachable.
+        if (exitDoor == null && _target != null && _target.CastleRow >= 0)
+            exitDoor = BattleManager.Instance?.GetCastleDoorForClimb(isPlayerUnit, _target.CastleRow);
+
+        // Still nothing (e.g. _target isn't castle-mounted after all, or
+        // neither row has a registered door) — fall back to the entry door
+        // itself so the soldier at least ends up visibly at/inside the
+        // door it just entered instead of stranded on the old side of it.
         CastleDoor landingDoor = exitDoor != null ? exitDoor : door;
 
         {
@@ -463,7 +514,10 @@ public class BattleUnit : MonoBehaviour, IDamageable
                     ComputeHorizontalBounds(bounds, out _minLocalX, out _maxLocalX);
             }
 
-            _rt.anchoredPosition = ConvertToLocalPosition(landingDoor.transform);
+            // Landing point = the door's own position + its configured
+            // exitOffset (the "teleport out" nudge), same idea as
+            // enterOffset in ApproachDoor.
+            _rt.anchoredPosition = ConvertToLocalPosition(landingDoor.transform) + landingDoor.exitOffset;
         }
 
         // The one fixed entrance transition is done — from here on this
